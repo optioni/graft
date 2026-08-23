@@ -91,10 +91,10 @@
 ## 8. Documentation
 <!-- kind: operational -->
 
-- [ ] 8.1 CHECK: Re-read SPEC.md's `graft.lock` section and confirm the example contradicts the ordering bullet directly beneath it — the example prints `schema:tdd` before `agent:apply-orchestrator`, while the rule says items sort by id
-- [ ] 8.2 CHECK: Confirm no AGENTS.md change is warranted — lock determinism, asserted error strings, the `apply`-is-sole-writer rule, and the `./internal/...` coverage scope are already written there, and this change adds no new recurring pitfall
-- [ ] 8.3 CHANGE: Rewrite that example in SPEC.md so its two `[[source.item]]` blocks appear id-ascending. Document: SPEC.md; audience: anyone implementing or reviewing the lock; section: `graft.lock — what was actually installed`; durable reason: the example is the format contract a future change will copy, and an example that violates its own rule will be copied instead of the rule. This reorders existing lines and adds no net content
-- [ ] 8.4 VERIFY: Re-read the edited SPEC.md section against `internal/lock/testdata/canonical.lock` and confirm the two agree on order
+- [x] 8.1 CHECK: Re-read SPEC.md's `graft.lock` section and confirm the example contradicts the ordering bullet directly beneath it — the example prints `schema:tdd` before `agent:apply-orchestrator`, while the rule says items sort by id
+- [x] 8.2 CHECK: Confirm no AGENTS.md change is warranted — lock determinism, asserted error strings, the `apply`-is-sole-writer rule, and the `./internal/...` coverage scope are already written there, and this change adds no new recurring pitfall
+- [x] 8.3 CHANGE: Rewrite that example in SPEC.md so its two `[[source.item]]` blocks appear id-ascending. Document: SPEC.md; audience: anyone implementing or reviewing the lock; section: `graft.lock — what was actually installed`; durable reason: the example is the format contract a future change will copy, and an example that violates its own rule will be copied instead of the rule. This reorders existing lines and adds no net content
+- [x] 8.4 VERIFY: Re-read the edited SPEC.md section against `internal/lock/testdata/canonical.lock` and confirm the two agree on order
 
 ## 9. Change Review
 <!-- kind: operational -->

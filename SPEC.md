@@ -92,6 +92,10 @@ rev      = "v1.2.0"
 resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 
   [[source.item]]
+  id    = "agent:apply-orchestrator"
+  files = [".claude/agents/apply-orchestrator.md"]
+
+  [[source.item]]
   id    = "schema:tdd"
   files = [
     "openspec/schemas/tdd/schema.yaml",
@@ -101,10 +105,6 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
     "openspec/schemas/tdd/templates/spec.md",
     "openspec/schemas/tdd/templates/tasks.md",
   ]
-
-  [[source.item]]
-  id    = "agent:apply-orchestrator"
-  files = [".claude/agents/apply-orchestrator.md"]
 ```
 
 - `rev` records the request, `resolved` the SHA it became. A `rev` that no longer matches
