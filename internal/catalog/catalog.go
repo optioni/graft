@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -124,15 +125,32 @@ func checkVersion(raw map[string]any, filename string) (int, error) {
 	if !ok || v == nil {
 		return 0, errf(filename, "version is required")
 	}
-	n, ok := asInt(v)
-	if !ok {
+
+	// The decoder picks uint64 for a non-negative literal and int64 for a negative
+	// one. int is accepted as well, so a later change in that choice cannot make a
+	// catalog this graft should read suddenly unreadable.
+	var n int64
+	switch t := v.(type) {
+	case uint64:
+		if t > math.MaxInt64 {
+			// Not representable as int64, and unambiguously newer than the one
+			// version this binary knows. Printed as written rather than clamped.
+			return 0, errf(filename, "version %d is not supported by this graft; upgrade graft", t)
+		}
+		n = int64(t)
+	case int64:
+		n = t
+	case int:
+		n = int64(t)
+	default:
 		return 0, errf(filename, "version must be an integer")
 	}
+
 	switch {
 	case n > Version:
 		return 0, errf(filename, "version %d is not supported by this graft; upgrade graft", n)
 	case n < Version:
 		return 0, errf(filename, "version %d is not a known catalog version", n)
 	}
-	return n, nil
+	return int(n), nil
 }

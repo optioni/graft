@@ -114,6 +114,32 @@ func TestLoad_Missing(t *testing.T) {
 	}
 }
 
+// A read that fails for any reason other than absence is not the not-graftable
+// error: the source may well be graftable and the read is what went wrong.
+func TestLoad_Unreadable(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "catalog.yaml")
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatalf("creating fixture: %v", err)
+	}
+
+	c, err := catalog.Load(path)
+	if c != nil {
+		t.Errorf("Load() catalog = %+v, want nil", c)
+	}
+	if err == nil {
+		t.Fatal("Load() error = nil, want a read error")
+	}
+	if !strings.HasPrefix(err.Error(), "catalog.yaml: ") {
+		t.Errorf("Load() error = %q, want the %q prefix", err, "catalog.yaml: ")
+	}
+	if strings.Contains(err.Error(), "not graftable") {
+		t.Errorf("Load() error = %q, want a read error rather than the not-graftable one", err)
+	}
+}
+
 func TestParse_BadYAML(t *testing.T) {
 	t.Parallel()
 
@@ -266,6 +292,13 @@ func TestParse_VersionErrors(t *testing.T) {
 			name: "an explicitly null version",
 			in:   "version:\n",
 			want: "catalog.yaml: version is required",
+		},
+		{
+			// Past what an int64 holds. It is still unambiguously newer than the one
+			// version this graft knows, and it is printed as written, not clamped.
+			name: "a version past the machine integer range",
+			in:   "version: 9223372036854775808\n",
+			want: "catalog.yaml: version 9223372036854775808 is not supported by this graft; upgrade graft",
 		},
 	}
 
