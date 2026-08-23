@@ -1,32 +1,66 @@
-schema: spec-driven
+schema: tdd
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project: graft, a CLI that vendors files from a source git repository into the
+  repository it runs in — agents, OpenSpec schemas, skills — pinned and reproducible.
+  See PRD.md for motivation, SPEC.md for behavior, ENGINEERING.md for conventions.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Tech stack: Go 1.27, no runtime dependency beyond `git` on PATH. Cobra is the
+  intended command surface but is not added yet — the module has no dependencies. Built and tested through `task`; released with GoReleaser.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Domain concepts: a *source* is a git repo publishing a `catalog.yaml`; the catalog
+  declares *kinds* (where a class of thing belongs) and *provides* (the items it offers).
+  An *item* is `kind:name` and is the stable identity — its path within the source may
+  move freely. A consumer's `graft.toml` lists *selectors* naming items; `graft.lock`
+  records the resolved SHA and, per item, the files graft wrote. The *prune set* is the
+  files in the lock that the new resolution no longer produces.
+
+  Architecture: `cmd/graft` is flag wiring and exit codes only. `internal/plan` is pure —
+  it turns manifest plus lock plus catalog into a list of file operations and touches
+  nothing. `internal/apply` is the only package permitted to write to the working tree.
+  `internal/{manifest,lock,catalog,source}` parse, serialize, and fetch.
+
+  Semantics: synced files are derived artifacts with `node_modules` semantics — always
+  overwritten, never merged, never collected back — but they are committed, because the
+  tools that read them run where graft does not. `sync` installs what the lock says and
+  never re-resolves a pin; only `update` moves one.
+
+  Verification tiers: unit tests over `./internal/...` for pure logic; integration tests
+  against fixture git repositories built in `t.TempDir()`. Coverage is enforced at 80%
+  over `./internal/...` only. Commands: `task lint`, `task test`, `task cover`,
+  `task build`, `task ci`.
+
+rules:
+  proposal:
+    - State the user-visible problem before implementation detail, and bound the scope with an explicit Non-Goals section.
+    - 'Check the change against the PRD non-goals: no dependency resolution, no registry, no merge behavior, no auth layer, no runtime dependency on graft.'
+    - Mark as **BREAKING** any change to the `graft.toml`, `graft.lock`, or `catalog.yaml` format, or to a command's observable output.
+  specs:
+    - Use concrete SHALL requirements with observable CLI behavior — exit code, files written, files deleted, text on stderr.
+    - Every requirement needs at least one `#### Scenario:` in WHEN/THEN form naming the starting tree state and the resulting tree state.
+    - Specify the failure path whenever one exists; SPEC.md's failure-mode table is the contract, and error text is part of it.
+    - Cover empty and boundary state: no lock, empty install list, a selector matching nothing, a source providing zero items.
+  design:
+    - Name which of `manifest`, `lock`, `catalog`, `source`, `plan`, and `apply` the change touches, and keep `plan` free of filesystem access.
+    - 'Any new write path belongs in `internal/apply`: state explicitly if the change adds one, and why it cannot live there if it does not.'
+    - Include a Test Boundaries table naming every real and replaced collaborator — the filesystem, `git`, the network, and the fetch cache each get a row.
+    - Include the verification matrix with one row per spec scenario, naming its tier, collaborators, and command.
+    - State the effect on `graft.lock`'s format and whether `version` must move.
+  tasks:
+    - 'Classify every group with exactly one of `<!-- kind: behavior -->`, `<!-- kind: refactor -->`, or `<!-- kind: operational -->`; split mixed groups.'
+    - Behavior groups follow RED then GREEN then REFACTOR; refactors follow CHARACTERIZE then REFACTOR then VERIFY; operational work follows CHECK then CHANGE then VERIFY.
+    - Open with an outer-loop acceptance group only when the change alters end-to-end command behavior; otherwise delete it and record in design.md why.
+    - 'Concentration point: graft may never delete a file absent from the lock. Any change touching the prune set needs a test proving a foreign file in a shared destination survives.'
+    - 'Concentration point: `internal/plan` must stay pure. A test that needs a real directory to exercise plan logic is a signal the boundary moved.'
+    - 'Concentration point: lock serialization must be deterministic — sources by name, items by id, files by path — or every sync churns the diff. Assert byte equality across two runs, not just semantic equality.'
+    - 'Concentration point: fixture git repositories need `user.name` and `user.email` set on the repo, not the machine, or commits fail on a clean CI runner.'
+    - 'Concentration point: error strings are asserted by tests. Changing one is a deliberate contract change, never an incidental edit.'
+    - 'Concentration point: coverage is measured over `./internal/...` only. Logic added to `cmd/graft` is invisible to the gate — that is the reason to keep it out of there.'
+    - Add a contract gate to any group changing `graft.toml`, `graft.lock`, or `catalog.yaml` parsing — re-read SPEC.md and confirm the documented format still matches.
+    - Include an independent Change Review group before final verification.
+    - 'End with the required validation sequence: `task lint`, `task cover`, and `task build` as separate commands.'
+  planning-review:
+    - Delegate the finding pass to subagents that did not write the plan; never fork the planning session.
+    - Confirm every spec scenario appears in the design verification matrix and has a corresponding task.
+    - Confirm no task invents a boundary the design Test Boundaries table does not name.
+    - Confirm the change does not quietly cross a PRD non-goal, and that no new code path lets a source repository cause anything to execute.

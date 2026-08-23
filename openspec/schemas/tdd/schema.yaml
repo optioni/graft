@@ -1,0 +1,636 @@
+name: tdd
+version: 1
+description: TDD workflow — concrete specifications, explicit test boundaries, reviewed planning, and RED → GREEN → REFACTOR implementation from the outside in
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Initial proposal document outlining the change
+    template: proposal.md
+    instruction: |
+      Create the proposal document that establishes WHY this change is needed.
+
+      Sections:
+      - **Why**: 1-2 sentences on the problem or opportunity. What problem does this
+        solve? Why now?
+      - **What Changes**: Bullet list of changes. Be specific about new capabilities,
+        modifications, or removals. Mark breaking changes with **BREAKING** — including
+        changes to any interface a separate consumer depends on.
+      - **Non-Goals**: Explicitly bound the scope. Say what this change is not, so it
+        cannot quietly expand into adjacent product or infrastructure work.
+      - **Capabilities**: Identify which specs will be created or modified:
+        - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<name>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).
+        - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `openspec/specs/` for existing spec names. Leave empty if no requirement changes.
+      - **Impact**: Affected code, APIs, data model, background jobs, external services,
+        and any sibling repository or deployment manifest that must change alongside
+        this one.
+
+      IMPORTANT: The Capabilities section is critical. It creates the contract between
+      proposal and specs phases. Research existing specs in `openspec/specs/` before
+      filling this in. Each capability listed here will need a corresponding spec file.
+
+      Keep it concise (under 400 words). Focus on the "why" not the "how" —
+      implementation details belong in design.md.
+
+      This is the foundation — specs, design, and tasks all build on this.
+    requires: []
+  - id: specs
+    generates: specs/**/*.md
+    description: Detailed specifications — concrete scenarios that map to the fastest meaningful verification
+    template: spec.md
+    instruction: |
+      Create specification files that define WHAT the system should do. Every scenario
+      you write is a verification target — write them as if something will execute them:
+      concrete inputs, observable outputs, no ambiguity.
+
+      Create one spec file per capability listed in the proposal's Capabilities section.
+      - New capabilities: use the exact kebab-case name from the proposal
+        (specs/<capability>/spec.md).
+      - Modified capabilities: use the existing spec folder name from
+        openspec/specs/<capability>/ when creating the delta spec at
+        specs/<capability>/spec.md.
+
+      Delta operations (use ## headers):
+      - **ADDED Requirements**: New capabilities
+      - **MODIFIED Requirements**: Changed behavior — MUST include full updated content
+      - **REMOVED Requirements**: Deprecated features — MUST include **Reason** and **Migration**
+      - **RENAMED Requirements**: Name changes only — use FROM:/TO: format
+
+      Format requirements:
+      - Each requirement: `### Requirement: <name>` followed by description
+      - Use SHALL/MUST for normative requirements (avoid should/may)
+      - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
+      - **CRITICAL**: Scenarios MUST use exactly 4 hashtags (`####`). Using 3 hashtags
+        or bullets will fail silently.
+      - Every requirement MUST have at least one scenario.
+      - Scenarios MUST be concrete: name specific inputs, observable outcomes, and
+        relevant side effects. Avoid vague statements such as "WHEN it works THEN it
+        succeeds" that cannot drive a test or deterministic verification.
+
+      Cover the failure surface, not just the happy path. A scenario set that omits
+      these is incomplete:
+      - Authorization: who may do this, and what an unauthorized caller observes.
+      - Domain failure: which error the caller observes, on which path, in the shape
+        this codebase uses for expected failures.
+      - Empty and boundary state: empty collections, absent relations, first and last
+        item, zero results.
+      - Data integrity: what is persisted, what is invalidated, what is published.
+
+      Keep capability names aligned with the live `openspec/specs/` tree.
+
+      Do not encode implementation trivia unless it is required for interoperability,
+      safety, or backwards compatibility.
+
+      MODIFIED requirements workflow:
+      1. Locate the existing requirement in openspec/specs/<capability>/spec.md
+      2. Copy the ENTIRE requirement block (from `### Requirement:` through all scenarios)
+      3. Paste under `## MODIFIED Requirements` and edit to reflect new behavior
+      4. Ensure header text matches exactly (whitespace-insensitive)
+
+      Common pitfall: Using MODIFIED with partial content loses detail at archive time.
+      If adding new concerns without changing existing behavior, use ADDED instead.
+
+      Example:
+      ```
+      ## ADDED Requirements
+
+      ### Requirement: Members can export a list
+      The system SHALL allow any member of a list to export its contents as CSV.
+
+      #### Scenario: Non-member is refused
+      - **WHEN** a user who is not a member requests the export
+      - **THEN** the caller observes a permission-denied failure
+      - **AND** no export record is persisted
+
+      ## REMOVED Requirements
+
+      ### Requirement: Legacy export
+      **Reason**: Replaced by the new export path
+      **Migration**: Callers use the v2 export endpoint
+      ```
+
+      Specs should be testable. Each scenario must map to an explicit form of
+      verification, but it does not have to be an end-to-end acceptance test.
+    requires:
+      - proposal
+  - id: design
+    generates: design.md
+    description: Technical design — implementation decisions, test boundaries, and verification plan
+    template: design.md
+    instruction: |
+      Create the design document that explains HOW to implement the change and WHERE
+      the test boundaries sit.
+
+      design.md is required by this schema. Keep it concise when the change has no
+      material architectural choices, but still record the test boundaries and strategy,
+      and explicitly state when no design decision, migration, or open question is needed.
+
+      Give additional design detail when any apply:
+      - Cross-cutting change (multiple modules or services) or a new architectural pattern
+      - New external dependency or significant data model change
+      - Security, performance, or migration complexity
+      - Ambiguity that benefits from technical decisions before coding
+
+      Sections:
+      - **Context**: Background, current state, constraints
+      - **Goals / Non-Goals**: What this design achieves and explicitly excludes
+      - **Boundaries**: Ground the design in this codebase's existing patterns — name
+        the modules, layers, and collaborators the change touches, and which existing
+        pattern each new piece follows. Consult the project context and rules for what
+        those patterns are.
+      - **Contracts**: For changes to any interface a separate consumer depends on,
+        specify the shape, the error surface, pagination or streaming behavior, and
+        compatibility — state explicitly whether the change is additive or breaking,
+        and name every consumer affected.
+      - **Persistence and Rollout**: Migration, backfill, seeding, cache invalidation,
+        index rebuild, authorization, observability, and deployment impact. State "none"
+        per item rather than omitting it.
+      - **Test Boundaries** (REQUIRED): For every external dependency and collaborator
+        this change touches, state whether it is real or replaced, and at which layer,
+        in each kind of test. Fill this in before tasks.md — an acceptance test cannot
+        be written without it. Format as a table:
+        | Dependency | In acceptance test | In unit tests |
+        |---|---|---|
+        | <datastore> | real (containerized) | replaced |
+        | <external API> | mocked at the HTTP layer | mocked |
+        List every collaborator the change touches, not only the unusual ones. No task
+        may invent a boundary this table does not name, and no dependency may be left
+        unstated — "real" and "replaced" are both answers, silence is not.
+      - **Test Strategy**: Map each behavior to the fastest tier its dependencies allow.
+        Consult the project context for this repository's tiers, what belongs in each,
+        and the command that runs each one. Include a verification matrix with one row
+        for every spec scenario and these columns:
+        | Spec Scenario | Verification | Tier | Collaborators | Command |
+        Every scenario must appear at least once. When one scenario needs multiple forms
+        of evidence, use multiple rows rather than hiding secondary checks in prose.
+        State here whether this change takes the outer-loop acceptance test, and if not,
+        why not.
+      - **Decisions**: Key technical choices with rationale (why X over Y?). Include
+        alternatives considered for each decision.
+      - **Risks / Trade-offs**: Known limitations, things that could go wrong.
+        Format: [Risk] → Mitigation
+      - **Migration Plan**: Deploy order, migration and backfill steps, rollback
+        strategy — or state why none are needed.
+      - **Open Questions**: Outstanding decisions or unknowns to resolve
+
+      **Visual design source (user-facing views and email templates only).**
+      When this change builds or modifies user-facing views OR email templates and a
+      design source exists for them, import the assets this change owns rather than
+      reinventing them: save each into the change at `design/<view>.html` or
+      `design/email/<template>.html`, add a **Visual Design** section mapping each
+      imported asset to the view or template it drives, and add a **Design ↔ contract
+      reconciliation** subsection listing every place the design diverges from the real
+      contract — extra or missing fields, omitted states, wrong copy, and especially
+      security-sensitive disclosures — and how each resolves. The behavioral specs
+      always win. If the change is non-visual or no design source exists, say so
+      explicitly and skip the section rather than inventing one.
+
+      Focus on architecture and approach, not line-by-line implementation. Reference the
+      proposal for motivation and specs for requirements.
+
+      Good design docs explain the "why" behind technical decisions.
+    requires:
+      - proposal
+      - specs
+  - id: tasks
+    generates: tasks.md
+    description: TDD implementation checklist — test first, outermost first, RED → GREEN → REFACTOR
+    template: tasks.md
+    instruction: |
+      Create the task list that breaks down the implementation work using test-driven
+      development.
+
+      **IMPORTANT: Follow the template below exactly.** The apply phase parses checkbox
+      format to track progress. Tasks not using `- [ ]` won't be tracked.
+
+      **Classify every task group.** On the line immediately after each `##` heading,
+      add exactly one of:
+
+      - `<!-- kind: behavior -->` for observable behavior changes
+      - `<!-- kind: refactor -->` for structure-only changes protected by existing behavior
+      - `<!-- kind: operational -->` for configuration, migration, external-system,
+        review, documentation, and final-verification work
+
+      A group that mixes kinds MUST be split. The classification selects its lifecycle
+      and prevents manufacturing a RED state for work that cannot honestly have one.
+
+      **Not everything earns a test.** TDD discipline applies to behavior, not to every
+      file a change touches. Dependency manifests, lockfiles, CI and build config,
+      formatter and linter settings, editor config, container files, and similar
+      plumbing are `operational` work, and their evidence is that the thing they
+      configure actually runs — the install resolves, the pipeline goes green, the
+      formatter reports clean, the image builds — not a bespoke test asserting a key
+      exists. A test that reads a manifest and asserts a dependency is listed proves
+      only that you typed the same string twice: it goes red when the value changes for
+      a good reason, and stays green when the value is wrong. Prefer the real command as
+      the check.
+
+      Write a test for configuration only when the value is load-bearing at runtime AND a
+      wrong value would fail silently rather than loudly — a routing table that silently
+      drops a case, a feature flag default that quietly disables a path, a serialization
+      setting that corrupts data without erroring. "Loudly" is the common case: if a bad
+      value crashes at boot or fails the build, the boot and the build are the test.
+
+      **TDD structure — every behavior-changing implementation group MUST follow this
+      pattern:**
+      1. RED: write the smallest failing tests that express the group's behavior. Derive
+         test names from spec scenarios where practical. Confirm the failure is caused by
+         the missing behavior, not by broken setup or a missing test double.
+      2. GREEN: implement only what is needed to pass those tests, with one task per
+         coherent function, type, or behavior.
+      3. REFACTOR: clean up while tests remain green. Include an explicit task when
+         meaningful; otherwise the verification task must state that no refactor was needed.
+      4. Last task: run the group's tests and confirm no regressions.
+
+      Refactor-only work starts from green characterization tests and keeps them
+      unchanged while the structure changes. Operational, migration, and configuration
+      work starts from a deterministic failing check when no executable test can express
+      the behavior. Label these tasks `CHARACTERIZE` or `CHECK` rather than inventing a
+      RED result that cannot honestly fail.
+
+      The lifecycle's evidence task MUST come before any change task in its group: RED
+      before GREEN for behavior, CHARACTERIZE before REFACTOR for refactors, and CHECK
+      before CHANGE for operational work.
+
+      **Optional outer loop — acceptance test first:**
+      When the change alters a client-visible interface whose end-to-end wiring is the
+      real risk, START with a group `## 0. Acceptance Test — Outer Loop RED`, classified
+      `<!-- kind: behavior -->`, that writes the failing end-to-end test for the change's
+      headline spec scenario before any implementation, honouring the real/replaced split
+      named in design.md → Test Boundaries. Confirm it fails because the behavior is
+      missing, not because the harness is misconfigured. Then work inward — outermost
+      collaborator first, deepest dependency last — and close with a group confirming the
+      acceptance test passes end to end.
+
+      This outer loop is OPT-IN. Take it when end-to-end wiring is the risk. Skip it —
+      and say so in design.md → Test Strategy — for migrations, indexing, tooling,
+      logging, and other work with no single outermost entry point to drive. Consult the
+      project context for what an acceptance test costs in this repository; where the
+      acceptance tier is slow or serialized, that cost is paid by every future run.
+
+      **Parallel groups**: when two or more groups operate on independent modules or
+      packages and share only an already-completed upstream group as a dependency, mark
+      them for parallel dispatch by adding `<!-- parallel-after: N -->` on the line
+      immediately after the `##` heading, where N is the last group both depend on. Only
+      mark groups as parallel if they are truly independent — touching different file
+      trees with no shared mutable state.
+
+      **Contract gate:**
+      Add a task before "Run the group tests" in any group that adds, changes, or removes
+      part of an interface a separate consumer depends on:
+      `- [ ] X.N CHECK: Regenerate or re-inspect the published interface and review the diff for breaking changes to every named consumer`
+
+      **Persistence gate:**
+      Add a task before "Run the group tests" in any group that changes stored data, an
+      index, or a cached read:
+      `- [ ] X.N CHECK: Confirm the migration, backfill, cache invalidation, and index rebuild steps this change requires — or record that none apply`
+
+      **Change Review group — always required before final verification:**
+      Review the implementation against proposal.md, every spec scenario, design.md, and
+      tasks.md for completeness, correctness, and coherence.
+
+      The finding pass MUST be delegated to a reviewer that did not write the
+      implementation, given only the change artifacts and the diff — not the implementing
+      session's reasoning. Do not fork the implementing session: a fork inherits the
+      reasoning that produced the code, which is the thing being reviewed. The reviewer
+      reports findings and changes nothing, assigning each a severity:
+      - **CRITICAL** — must fix: incomplete tasks, missing requirement implementations
+      - **WARNING** — should fix: spec or design divergence, missing scenario coverage
+      - **SUGGESTION** — nice to fix: pattern inconsistencies, minor improvements
+      When uncertain, prefer the lower severity. This session fixes every CRITICAL,
+      resolves or consciously accepts each WARNING with a one-line reason, notes
+      SUGGESTIONs, and re-runs affected tests.
+
+      Concentration points — where a reviewer should spend attention first. The project
+      rules add the failure modes specific to this repository; these are the general ones:
+
+      1. **Tests that cannot fail.** For every spec scenario, name the test that would go
+         red if the behavior were deleted. An assertion on a test double's own return
+         value, a test whose name describes a function it never invokes, and a step that
+         prints instead of asserting are all green by construction.
+      2. **Verification that stops short of the step it vouches for.** A probe is evidence
+         only about the steps it reached, and it must say where it stopped.
+      3. **Tier misplacement.** A rule tested through three layers of machinery to reuse a
+         fixture, or a fast-tier test reaching for global state or the wall clock.
+      4. **Contracts where several places must agree.** Identifiers, enums, and config
+         keys shared with another repository, an external service, or generated code fail
+         silently and totally when one site drifts. Check every site, not just the one
+         this change edited.
+      5. **Surfaces no test covers.** Boot paths, entrypoints, and build output that the
+         suite never exercises need their own deterministic check.
+      6. **Drift from the artifacts.** Implementation that changed a contract without
+         refreshing the owning artifact and planning-review.md.
+      7. **Leftovers.** Debug logging, commented-out code, scaffolding the change no
+         longer needs, and hardcoded values that belong in configuration.
+      8. **Tests invented for plumbing.** A test asserting a manifest key, a config
+         constant, or a literal the implementation also declares. It restates the code
+         instead of constraining it, and it will go red on a legitimate change. The
+         command that consumes the config is the check.
+
+      **Final group — always required, always last:**
+      ```
+      ## N. Lint & Verify
+      <!-- kind: operational -->
+
+      - [ ] N.1 CHECK: Inspect the intended verification commands and affected tiers
+      - [ ] N.2 VERIFY: Run the project's linter — 0 errors
+      - [ ] N.3 VERIFY: Run the project's formatter — clean
+      - [ ] N.4 VERIFY: Run the project's type checker — 0 errors
+      - [ ] N.5 VERIFY: Run the project's test suite — green
+      - [ ] N.6 VERIFY: Run the coverage gate when gated code is affected
+      - [ ] N.7 VERIFY: Run `openspec validate <change> --strict`
+      ```
+
+      Consult the project context and rules for this repository's exact commands, and
+      write them into the tasks rather than leaving them generic. Run them as SEPARATE
+      commands unless the project says otherwise. Fix unexpected failures before moving
+      on; if a failure is expected because work is intentionally incomplete, state that
+      explicitly. Keep this group to verification only — do not append unrelated work.
+
+      Add a Documentation group before Lint & Verify only when the change has durable
+      information to add or correct in a maintained document. Every documentation task
+      must name the document, audience, section, and durable reason. Classify the group
+      with `<!-- kind: operational -->`.
+
+      Agent-facing guidance (AGENTS.md and equivalents) is loaded into every session, so
+      it is a fixed attention budget, not an archive. Update it only for a durable
+      constraint, convention, verification requirement, recurring pitfall, or reusable
+      seam that a FUTURE change would get wrong without it. Where a repository keeps
+      nested agent guidance, write each rule into the NARROWEST file that covers it — a
+      rule concerning one package never belongs in the root file.
+
+      Prefer EDITING an existing rule over adding a new one. When this change supersedes,
+      narrows, or corrects something already written, rewrite that entry in place and
+      delete what is now false rather than appending a second entry beside it. A
+      documentation task that only adds is a warning sign: check first whether an
+      existing rule now needs correcting.
+
+      Each rule is the instruction plus the non-obvious reason it exists, in 1-5 lines.
+      Do NOT restate what the code already says, name which change or review discovered
+      it (git and the change archive hold that), quote signatures or file inventories
+      that will drift, or narrate the implementation. If a rule needs more than five
+      lines, it is carrying rationale that belongs in the change's own design.md.
+
+      Documentation tasks are net-size-aware: a maintained document that only ever grows
+      stops being read. Each task states whether it adds, rewrites, or removes, and a
+      group adding more than ~10 lines to a single document must say what it corrects or
+      replaces there — or justify why nothing existing is now stale.
+
+      Do not add generic documentation-review or changelog tasks, and do not edit
+      documentation merely to record that work happened.
+
+      Example:
+      ```
+      ## 0. Acceptance Test — Outer Loop RED    (opt-in; omit when end-to-end wiring is not the risk)
+      <!-- kind: behavior -->
+
+      - [ ] 0.1 Set up the harness and the replaced collaborators named in design.md → Test Boundaries
+      - [ ] 0.2 RED: Write the failing end-to-end test for the headline spec scenario
+      - [ ] 0.3 Confirm it fails because the behavior is missing, not because the harness is misconfigured
+
+      ## 1. <Outermost component>
+      <!-- kind: behavior -->
+
+      - [ ] 1.1 RED: Write failing tests for: <scenario-derived names>
+      - [ ] 1.2 GREEN: Implement <component>
+      - [ ] 1.3 REFACTOR: Remove duplication while tests remain green
+      - [ ] 1.4 Run the group tests — no regressions
+
+      ## 2. <Next component inward>
+      <!-- kind: behavior -->
+
+      - [ ] 2.1 RED: Write failing tests for: <scenario-derived names>
+      - [ ] 2.2 GREEN: Implement <component>
+      - [ ] 2.3 CHECK: Regenerate or re-inspect the published interface and review the diff for breaking changes
+      - [ ] 2.4 Run the group tests — no regressions
+
+      ## 3. <Independent module>
+      <!-- kind: behavior -->
+      <!-- parallel-after: 1 -->
+
+      - [ ] 3.1 RED: Write failing tests for: <scenario-derived names>
+      - [ ] 3.2 GREEN: Implement <component>
+      - [ ] 3.3 Run the group tests — no regressions
+
+      ## 4. <Structure-only cleanup>
+      <!-- kind: refactor -->
+
+      - [ ] 4.1 CHARACTERIZE: Confirm existing behavior is covered and green
+      - [ ] 4.2 REFACTOR: Change structure without changing the characterization tests
+      - [ ] 4.3 VERIFY: Run the unchanged tests — no regressions
+
+      ## 5. Acceptance Test — Outer Loop GREEN    (only with group 0)
+      <!-- kind: behavior -->
+
+      - [ ] 5.1 VERIFY: Confirm the acceptance test now passes end to end
+      - [ ] 5.2 REFACTOR: Clean up harness setup and replaced collaborators if warranted
+
+      ## 6. Change Review
+      <!-- kind: operational -->
+
+      - [ ] 6.1 CHECK: Dispatch an independent reviewer against proposal, specs, design, and tasks
+      - [ ] 6.2 CHANGE: Fix every CRITICAL, resolve or accept each WARNING, re-run affected tests
+      - [ ] 6.3 VERIFY: Confirm no blocking or unowned finding remains
+
+      ## 7. Lint & Verify
+      <!-- kind: operational -->
+
+      - [ ] 7.1 CHECK: Inspect the intended verification commands and affected tiers
+      - [ ] 7.2 VERIFY: Run the project's linter — 0 errors
+      - [ ] 7.3 VERIFY: Run the project's type checker — 0 errors
+      - [ ] 7.4 VERIFY: Run the project's test suite — green
+      - [ ] 7.5 VERIFY: Run the coverage gate when gated code is affected
+      - [ ] 7.6 VERIFY: Run strict OpenSpec validation
+      ```
+
+      Reference specs for WHAT to build, design for WHERE the boundaries sit and HOW to
+      verify, and the dependency graph for the correct outside-in ordering of groups.
+      Every spec scenario must have corresponding test or deterministic verification
+      work, using the tier selected in design.md. Commit each verified logical unit as
+      it lands.
+    requires:
+      - specs
+      - design
+  - id: planning-review
+    generates: planning-review.md
+    description: Pre-implementation review that repairs gaps across the complete planning package
+    template: planning-review.md
+    instruction: |
+      Review proposal.md, every specs/**/spec.md file, design.md, and tasks.md as one
+      implementation contract before coding starts. Find planning gaps, fix the artifact
+      that owns each gap, and use planning-review.md as the repair log rather than as a
+      second design document.
+
+      The finding pass MUST be delegated to reviewers that did not write the planning
+      package, each given the change directory and one slice of the review list below,
+      and told to report findings only. Do not fork the planning session: a fork inherits
+      the assumptions under audit and will confirm them. This session merges the findings,
+      repairs the owning artifact, and writes planning-review.md; the reviewers edit nothing.
+
+      Review all of the following:
+
+      - **Capability coverage**: every capability in proposal.md has the correct delta
+        spec, and no capability exists only in design.md or tasks.md. Capability names
+        match the live `openspec/specs/` tree.
+
+      - **Scenario quality and coverage**: every scenario has concrete inputs, observable
+        outcomes, and relevant side effects, and tasks.md contains a corresponding test
+        or deterministic verification. Authorization, error paths, empty state, and
+        boundary conditions are specified, not assumed. Do not require every scenario to
+        be an end-to-end acceptance test.
+
+      - **Design completeness**: module boundaries, data or migration shape, interface
+        contracts, external dependencies, error handling, security constraints,
+        concurrency, and rollout or rollback concerns are resolved when applicable.
+
+      - **Test boundaries**: design.md names every real and replaced collaborator the
+        change touches, and no task invents a boundary the table does not name. Confirm
+        the plan either opens with an outer-loop acceptance group or states in design.md
+        why it does not.
+
+      - **Test strategy**: each behavior uses the fastest meaningful tier. The
+        verification matrix contains every spec scenario and names its tier,
+        collaborators, and command.
+
+      - **Task alignment**: tasks cover every requirement, scenario, design decision,
+        migration, generated-code update, verification gate, and warranted documentation
+        update. Every group has exactly one valid kind marker. Behavior groups preserve
+        RED → GREEN → REFACTOR; refactors preserve CHARACTERIZE → REFACTOR → VERIFY;
+        operational groups preserve CHECK → CHANGE → VERIFY. Mixed groups are split
+        before implementation. Any `parallel-after` marker names groups that are truly
+        independent.
+
+      - **Contradictions and stale assumptions**: artifacts agree about scope, contracts,
+        names, persistence, dependencies, and verification expectations. Check the
+        current workspace and readable sibling repositories before treating an external
+        dependency as blocked.
+
+      Concentration points — the general ones; the project rules add this repository's own:
+
+      - **A prototype read as a specification.** Design assets are drawn in a medium with
+        its own artifacts. A plan that re-implements what the target platform already
+        provides is a blocking gap.
+
+      - **Scenarios whose verification cannot fail.** A scenario checked by printing
+        rather than asserting, by a snapshot of a state that is never settled, or by a
+        test that would still pass with the behavior removed.
+
+      - **Verification that stops short of the step it vouches for.** Each entry in the
+        verification matrix must reach the step it is evidence about.
+
+      - **Blocked-on-external claims.** Read the sibling repositories and their specs
+        before the plan records an external blocker; finished work has sat idle over a
+        contract the other side had already shipped.
+
+      - **Agreement sites.** When a name, identifier, enum, or config key must match
+        another repository, an external service, or generated code, the plan must name
+        every site and carry a task that checks them together. A change that touches
+        config or adds a service is often two repositories and two pull requests.
+
+      - **Tier and cost.** Every behavior belongs in the fastest tier that can express it,
+        and the matrix must name the command that runs it.
+
+      - **Tests demanded for plumbing.** A plan that schedules a RED task for a manifest,
+        lockfile, CI config, or formatter setting has mistaken a file change for a
+        behavior change. Reclassify the group as operational and let the real command —
+        install, build, pipeline, formatter — be the evidence.
+
+      Repair gaps in the owning artifact: proposal.md owns motivation, scope, capabilities,
+      and impact; specs own observable behavior; design.md owns technical decisions, test
+      boundaries, and verification; tasks.md owns ordered implementation and verification work.
+
+      Then record:
+
+      - **Reviewed Artifacts**: every artifact reviewed.
+
+      - **Reviewed Against**: the HEAD commit of this repository, the HEAD of every
+        sibling repository whose contract is relevant (otherwise `Not applicable`), and
+        whether the working tree was clean or which named planning files were
+        intentionally included. This makes later implementation drift visible.
+
+      - **Gaps Found and Fixed**: one row per gap with severity, source artifact, problem,
+        repair, and updated location. State "None" when no repair was necessary.
+
+      - **No Remaining Implementation-Blocking Gaps**: confirm none remain, or name the
+        unresolved decision that genuinely requires user input.
+
+      - **Deferred Non-Blocking Notes**: include only intentionally deferred work whose
+        resolution point is already recorded in design.md or tasks.md.
+
+      Implementation must not start until blocking planning gaps are repaired or
+      explicitly resolved.
+    requires:
+      - proposal
+      - specs
+      - design
+      - tasks
+apply:
+  requires:
+    - planning-review
+  tracks: tasks.md
+  instruction: |
+    Read the complete reviewed planning package and work through pending task groups in
+    order. Follow each group's declared lifecycle: behavior groups use
+    RED → GREEN → REFACTOR, refactor groups use CHARACTERIZE → REFACTOR → VERIFY, and
+    operational groups use CHECK → CHANGE → VERIFY. Mark completed tasks and commit each
+    verified logical unit.
+
+    Before the first implementation task, compare the current HEAD of this repository and
+    of any relevant sibling repository with planning-review.md → Reviewed Against. If any
+    moved after review, inspect the intervening diff and refresh the affected artifacts
+    and planning review before proceeding. Commits created by this change after
+    implementation starts are expected; later external commits that touch a planned
+    contract or implementation surface require the same refresh.
+
+    ## Gates
+
+    Check the result before starting the next group:
+    - After an outer-loop RED group: confirm the acceptance test *fails*, and fails
+      because the behavior is missing rather than because the harness is broken.
+    - After every behavior group: confirm all tests pass.
+    - After an outer-loop GREEN group: confirm all tests pass before Change Review.
+    If tests fail after a GREEN task, fix that group before proceeding.
+
+    ## Orchestration (only when the repository provides the agents)
+
+    If this repository defines implementer and reviewer subagent types, dispatch one
+    implementer per task group, run the gate between groups, and mark the group complete.
+    Pre-gather context before dispatching — the agent starts cold and must not explore
+    the codebase itself: include the proposal, the specs relevant to that group, design.md,
+    that group's task lines only, a short git state summary, the existing source files the
+    group will modify, and one similar existing implementation as a pattern reference.
+    Tell it to report NEEDS_CONTEXT rather than searching for anything not provided. After
+    completing group N, dispatch all remaining groups marked `<!-- parallel-after: N -->`
+    simultaneously, then gate each. Dispatch the Change Review group to the reviewer agent
+    with only the artifacts and the diff.
+
+    If the repository defines no such agents, implement each group inline in this session
+    and delegate only the Change Review finding pass. Never fork the implementing session
+    for that review.
+
+    ## Drift
+
+    If implementation reveals a material change to observable behavior, scope, contracts,
+    architecture, test boundaries, migration, or verification:
+
+    1. Stop the current group before further implementation.
+    2. Update the owning proposal, spec, design, and/or task artifact.
+    3. Refresh planning-review.md, including Reviewed Against and a repair-log row.
+    4. Re-run strict OpenSpec validation, then resume from the first affected task.
+
+    Minor source-level discoveries that do not alter those contracts may stay in the
+    current task, but record any resulting task clarification before marking it complete.
+    Never let a stale planning review silently authorize changed scope.
+
+    ## Recovery after context compaction
+
+    Re-read tasks.md and find the first group with any unchecked task. Before redoing it,
+    check the git log — if the commits look complete for that group's work, mark it done
+    and move on rather than re-implementing.
+
+    ## Other rules
+
+    Consult the project context and rules for this repository's package manager, commands,
+    conventions, and known failure modes; prefer them over any general assumption. Pause if
+    you hit a blocker or need clarification. Exhaust the workspace and readable sibling
+    repositories before reporting a blocker. Do not edit documentation merely because the
+    change is complete.
