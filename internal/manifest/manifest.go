@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/optioni/graft/internal/itemid"
 )
 
 // Manifest is a parsed graft.toml. Sources are ordered by name so that every error
@@ -129,7 +131,7 @@ func validate(filename, name string, s source) (Source, error) {
 
 	seen := make(map[string]struct{}, len(s.Install))
 	for _, sel := range s.Install {
-		if !validRef(sel) {
+		if !itemid.Valid(sel) {
 			return Source{}, fail(fmt.Sprintf("invalid selector %q: want kind:name", sel))
 		}
 		if _, dup := seen[sel]; dup {
@@ -162,12 +164,4 @@ func validate(filename, name string, s source) (Source, error) {
 		}
 	}
 	return out, nil
-}
-
-// validRef reports whether s is syntactically kind:name — exactly one colon with a
-// non-empty half on each side. Glob metacharacters in the name are accepted as
-// written; matching a selector against a catalog is not this package's job.
-func validRef(s string) bool {
-	kind, name, ok := strings.Cut(s, ":")
-	return ok && kind != "" && name != "" && !strings.Contains(name, ":")
 }

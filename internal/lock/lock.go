@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/optioni/graft/internal/itemid"
 )
 
 // Version is the graft.lock format version this binary understands. A lock carrying
@@ -207,7 +209,7 @@ func validate(filename string, s source) (Source, error) {
 	out := Source{Name: s.Name, Git: s.Git, Rev: s.Rev, Resolved: s.Resolved}
 	seen := make(map[string]struct{}, len(s.Items))
 	for _, it := range s.Items {
-		if !validRef(it.ID) {
+		if !itemid.Valid(it.ID) {
 			return Source{}, fail(fmt.Sprintf("invalid item id %q: want kind:name", it.ID))
 		}
 		if _, dup := seen[it.ID]; dup {
@@ -252,11 +254,4 @@ func isRepoRelative(p string) bool {
 		return false
 	}
 	return !slices.Contains(strings.Split(p, "/"), "..")
-}
-
-// validRef reports whether s is syntactically kind:name — exactly one colon with a
-// non-empty half on each side.
-func validRef(s string) bool {
-	kind, name, ok := strings.Cut(s, ":")
-	return ok && kind != "" && name != "" && !strings.Contains(name, ":")
 }

@@ -46,9 +46,9 @@
 ## 4. Shared `kind:name` grammar
 <!-- kind: refactor -->
 
-- [ ] 4.1 CHARACTERIZE: Confirm groups 2 and 3 are both green and that the selector-syntax and item-id tests already pin the grammar's accepted and rejected forms in each package
-- [ ] 4.2 REFACTOR: Move the duplicated `kind:name` check to one place both packages call, without editing a single characterization test — the two error strings differ and must stay differing, so only the predicate moves, not the message
-- [ ] 4.3 VERIFY: Run `go test -race ./internal/manifest/... ./internal/lock/...` — the unchanged tests stay green
+- [x] 4.1 CHARACTERIZE: Confirm groups 2 and 3 are both green and that the selector-syntax and item-id tests already pin the grammar's accepted and rejected forms in each package
+- [x] 4.2 REFACTOR: Move the duplicated `kind:name` check to one place both packages call, without editing a single characterization test — the two error strings differ and must stay differing, so only the predicate moves, not the message
+- [x] 4.3 VERIFY: Run `go test -race ./internal/manifest/... ./internal/lock/...` — the unchanged tests stay green
 
 ## 5. Canonical lock serialization
 <!-- kind: behavior -->
