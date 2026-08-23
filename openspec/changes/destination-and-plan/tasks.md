@@ -82,7 +82,7 @@ refused even for an item contributing no files.
 ## 4. `flatten` and a list-valued `to`
 <!-- kind: behavior -->
 
-- [ ] 4.1 RED: Write failing tests for: *Nested files are flattened into the destination
+- [x] 4.1 RED: Write failing tests for: *Nested files are flattened into the destination
       root*; *Without flatten the same item preserves its structure*; *Two files flattening
       onto one path is an error*; *One item lands in two destinations*; *Two entries
       interpolating to one destination is an error*; *One item producing the same path twice
@@ -90,14 +90,14 @@ refused even for an item contributing no files.
       `... flatten maps "a" and "b" to the same destination "d"` and
       `... destinations "a" and "b" both interpolate to "d"`, and assert that neither is the
       cross-item collision message
-- [ ] 4.2 GREEN: Apply `path.Base` to each listed path when the kind declares `flatten`,
+- [x] 4.2 GREEN: Apply `path.Base` to each listed path when the kind declares `flatten`,
       detecting a within-item flatten collision and reporting the two `from`-relative paths
       in ascending order
-- [ ] 4.3 GREEN: Iterate a kind's `to` list in declared order, refusing two entries that
+- [x] 4.3 GREEN: Iterate a kind's `to` list in declared order, refusing two entries that
       interpolate to the same destination for one item before any file is mapped
-- [ ] 4.4 REFACTOR: Keep the two within-item collision messages distinct from the cross-item
+- [x] 4.4 REFACTOR: Keep the two within-item collision messages distinct from the cross-item
       one (design.md → D9), or state that no refactor was needed
-- [ ] 4.5 Run `go test ./internal/plan/` — no regressions
+- [x] 4.5 Run `go test ./internal/plan/` — no regressions
 
 ## 5. Consumer overrides
 <!-- kind: behavior -->

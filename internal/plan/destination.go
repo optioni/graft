@@ -49,11 +49,19 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 	// destination that may not be used is refused even when the item contributes
 	// nothing to place under it.
 	to := make([]string, 0, len(kind.To))
+	declared := make(map[string]string, len(kind.To))
 	for _, entry := range kind.To {
 		dest := strings.ReplaceAll(entry, "{name}", it.Name)
 		if !insideRepo(strings.TrimSuffix(dest, "/")) {
 			return nil, escape(dest)
 		}
+		if first, dup := declared[dest]; dup {
+			// The catalog already refuses two identical `to` entries; these are two
+			// different ones that collapse onto the same path once {name} is filled
+			// in, which only shows up per item.
+			return nil, fail("destinations %q and %q both interpolate to %q", first, entry, dest)
+		}
+		declared[dest] = entry
 		to = append(to, dest)
 	}
 
@@ -63,10 +71,20 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 
 	var out []placement
 	for _, dest := range to {
+		// Scoped to one destination entry: the same base name under two entries of a
+		// list-valued `to` is two different paths, not a collision.
+		flattened := make(map[string]string, len(files))
 		for _, rel := range files {
 			final := place(dest, listing.Dir, kind.Flatten, rel)
 			if !insideRepo(final) {
 				return nil, escape(final)
+			}
+			if kind.Flatten {
+				if first, dup := flattened[final]; dup {
+					// files is sorted, so the two paths are named in ascending order.
+					return nil, fail("flatten maps %q and %q to the same destination %q", first, rel, final)
+				}
+				flattened[final] = rel
 			}
 			out = append(out, placement{From: sourcePath(it, listing.Dir, rel), Dest: final})
 		}
