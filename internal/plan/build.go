@@ -33,6 +33,19 @@ type Write struct {
 	Dest   string
 }
 
+// claim records which item took a destination, so the second item to reach it can name
+// the first. SPEC.md makes a collision an error rather than last-writer-wins: the loser
+// would be a file the lock claims and a later sync would delete.
+//
+// The walk is deterministic — sources by name, items by id, destinations in declared
+// order, files by ascending path — so the two items are named in a stable order and the
+// message is assertable. Only the first collision is reported; one message is the shape
+// of SPEC.md's failure-mode table.
+type claim struct {
+	source string
+	item   string
+}
+
 // Build turns each source's resolved inputs and the current lock into a plan. It reads
 // no file, stats no path, runs no command, opens no network connection, and creates,
 // modifies, or deletes nothing.
@@ -49,19 +62,6 @@ type Write struct {
 // on a file item's listing holding exactly its own base name. Nor does it check pins:
 // lock.CheckPins belongs to the caller, and must fire before anything is fetched
 // rather than after.
-// claim records which item took a destination, so the second item to reach it can name
-// the first. SPEC.md makes a collision an error rather than last-writer-wins: the loser
-// would be a file the lock claims and a later sync would delete.
-//
-// The walk is deterministic — sources by name, items by id, destinations in declared
-// order, files by ascending path — so the two items are named in a stable order and the
-// message is assertable. Only the first collision is reported; one message is the shape
-// of SPEC.md's failure-mode table.
-type claim struct {
-	source string
-	item   string
-}
-
 func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	p := &Plan{Lock: &lock.Lock{Version: lock.Version}}
 	// The one file set this build produces, shared between the prune diff and the
@@ -154,21 +154,23 @@ func pruneSet(lk *lock.Lock, produced map[string]struct{}) []string {
 		return nil
 	}
 
-	var out []string
-	seen := map[string]struct{}{}
+	// Collected as a set, so a lock that claimed one path from two items — which
+	// lock.Parse refuses, but a lock built in code could hold — cannot ask for the
+	// same deletion twice.
+	drop := map[string]struct{}{}
 	for _, s := range lk.Sources {
 		for _, it := range s.Items {
 			for _, f := range it.Files {
-				if _, kept := produced[f]; kept {
-					continue
+				if _, kept := produced[f]; !kept {
+					drop[f] = struct{}{}
 				}
-				if _, dup := seen[f]; dup {
-					continue
-				}
-				seen[f] = struct{}{}
-				out = append(out, f)
 			}
 		}
+	}
+
+	out := make([]string, 0, len(drop))
+	for f := range drop {
+		out = append(out, f)
 	}
 	slices.Sort(out)
 	return out

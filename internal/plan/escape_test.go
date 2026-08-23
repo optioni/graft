@@ -84,3 +84,19 @@ func TestEscape_AcceptsTheRepoRootItself(t *testing.T) {
 		t.Errorf("destinations:\n got %q\nwant %q", dests(got), want)
 	}
 }
+
+// TestEscape_FailsThePlanAndPrunesNothing: the boundary is enforced before any plan
+// value leaves the package, so a lock that claims files is not acted on either.
+func TestEscape_FailsThePlanAndPrunesNothing(t *testing.T) {
+	in := sourceInput(
+		"shared",
+		map[string]catalog.Kind{"agent": {To: []string{"../outside/agents/"}}},
+		[]catalog.Item{agentX},
+		map[string]Listing{agentX.ID: {Files: []string{"x.md"}}},
+		nil,
+	)
+	lk := lockOf(lockSource("shared", lockItem("agent:x", ".claude/agents/x.md")))
+
+	p, err := Build([]Input{in}, lk)
+	assertNoPlan(t, p, err, `source "shared": item "agent:x": destination "../outside/agents/" escapes the repo root`)
+}

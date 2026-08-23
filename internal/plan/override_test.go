@@ -175,3 +175,13 @@ func TestOverride_ADeclaredKindWithNoItemsIsFine(t *testing.T) {
 		t.Errorf("checkOverrides: unexpected error: %v", err)
 	}
 }
+
+// TestOverride_AnUndeclaredKindFailsThePlan: the check reaches the user through
+// planning, and a plan that fails produces no writes and no deletions at all.
+func TestOverride_AnUndeclaredKindFailsThePlan(t *testing.T) {
+	in := agentSource("shared", map[string]string{"agnet": ".codex/agents/"}, agentX)
+	lk := lockOf(lockSource("shared", lockItem("agent:x", ".claude/agents/x.md")))
+
+	p, err := Build([]Input{in}, lk)
+	assertNoPlan(t, p, err, `source "shared": kind override "agnet" names a kind the catalog does not declare`)
+}

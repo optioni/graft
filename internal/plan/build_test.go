@@ -193,3 +193,16 @@ func assertLockRecords(t *testing.T, p *Plan, source, id string, files []string)
 	}
 	t.Fatalf("next lock: no source %q", source)
 }
+
+// TestBuild_ANilLockIsAnEmptyOne: Build is total over its inputs, and a caller that has
+// no lock to hand it is the repo that has never synced.
+func TestBuild_ANilLockIsAnEmptyOne(t *testing.T) {
+	p, err := Build([]Input{schemaSource(Listing{Dir: true, Files: []string{"schema.yaml"}})}, nil)
+	if err != nil {
+		t.Fatalf("Build: unexpected error: %v", err)
+	}
+	if len(p.Prune) != 0 {
+		t.Errorf("Prune: want nothing pruned against no lock, got %q", p.Prune)
+	}
+	assertWrites(t, p, "openspec/schemas/tdd/schema.yaml")
+}
