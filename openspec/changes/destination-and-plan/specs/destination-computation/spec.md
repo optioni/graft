@@ -264,7 +264,7 @@ naming the first offending path in destination order, and SHALL return no plan.
 #### Scenario: A listing entry climbing out of its item is refused
 
 - **WHEN** the kind `schema` declares `to: "openspec/schemas/{name}"` and the item
-  `schema:tdd` in source `shared` has the listing `["../../../etc/passwd"]`
+  `schema:tdd` in source `shared` has the listing `["../../../../../etc/passwd"]`
 - **THEN** planning fails with
   `source "shared": item "schema:tdd": destination "../../etc/passwd" escapes the repo root`
 - **AND** no plan is returned, so a malformed listing cannot aim a write outside the tree

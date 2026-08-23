@@ -81,6 +81,19 @@ Checks that found nothing, named because they are where this repository fails:
 - No RED task is scheduled for plumbing. Group 1 is operational and its evidence is a guard
   watched to fail against a real `import "os"`, not a test asserting a constant.
 
+## Gaps Found During Implementation
+
+| Severity | Source Artifact | Problem | Repair | Updated Location |
+|---|---|---|---|---|
+| WARNING | specs/destination-computation/spec.md | The escaping-listing-entry scenario was internally inconsistent. Its listing `["../../../etc/passwd"]` joined under `openspec/schemas/tdd` — three segments, three `..` — cleans to `etc/passwd`, which is *inside* the repo root and therefore raises no error at all, while the scenario's asserted message names `../../etc/passwd`. Implemented as written, the scenario could never go green; implemented to match the message, the input had to change. | Corrected the WHEN's listing to `["../../../../../etc/passwd"]`, the input that actually produces the asserted destination, leaving the error text — the asserted contract — untouched. The alternative, weakening the THEN to `etc/passwd`, was rejected: that path does not escape, so it would have turned an invariant scenario into an acceptance one. | specs/destination-computation/spec.md → *No destination escapes the repo root* |
+
+A consequence worth naming rather than discovering later: a listing entry with *fewer*
+`..` segments than its destination has path segments is absorbed by `path.Join` and lands
+somewhere else **inside** the repo. That is not refused, and deliberately so — SPEC.md's
+invariant is only "no destination escapes the repo root", and narrowing it here would be
+the same kind of invented rule design.md → Q2 declines for `.git/`. The fidelity of a
+listing is `git-fetch`'s contract, recorded in design.md → Risks.
+
 ## No Remaining Implementation-Blocking Gaps
 
 None remain. Every gap above is repaired in the artifact that owns it, and the change

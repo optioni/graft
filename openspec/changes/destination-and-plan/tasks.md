@@ -62,22 +62,22 @@ SPEC.md's invariant: no destination escapes the repo root. Checked on the interp
 destination itself as well as on every path computed under it, so an escaping `to` is
 refused even for an item contributing no files.
 
-- [ ] 3.1 RED: Write failing tests for: *A `to` climbing out of the repo is refused*; *An
+- [x] 3.1 RED: Write failing tests for: *A `to` climbing out of the repo is refused*; *An
       absolute `to` is refused*; *A listing entry climbing out of its item is refused*; *A
       `to` escaping with no files to place is still refused*; *A destination at the repo root
       itself is accepted*. Assert the exact message
       `source "s": item "agent:x": destination "..." escapes the repo root` — error strings
       are an asserted contract, and changing one later is a deliberate contract change
-- [ ] 3.2 GREEN: Add the unexported `insideRepo` predicate — reject empty, absolute, `.`, any
+- [x] 3.2 GREEN: Add the unexported `insideRepo` predicate — reject empty, absolute, `.`, any
       `..` segment, and any path not in `path.Clean` form — written in this package with its
       own wording, per design.md → D10
-- [ ] 3.3 GREEN: Apply the check to the interpolated destination and to every computed file
+- [x] 3.3 GREEN: Apply the check to the interpolated destination and to every computed file
       path, returning the first offending path in destination order so the message is
       deterministic
-- [ ] 3.4 REFACTOR: Ensure the escape error is constructed in exactly one place, as
+- [x] 3.4 REFACTOR: Ensure the escape error is constructed in exactly one place, as
       `catalog.errf` and `manifest`'s `fail` closure already do, or state that no refactor
       was needed
-- [ ] 3.5 Run `go test ./internal/plan/` — no regressions
+- [x] 3.5 Run `go test ./internal/plan/` — no regressions
 
 ## 4. `flatten` and a list-valued `to`
 <!-- kind: behavior -->
