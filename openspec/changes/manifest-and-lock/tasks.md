@@ -11,19 +11,19 @@
 ## 2. `internal/manifest` — parse and validate `graft.toml`
 <!-- kind: behavior -->
 
-- [ ] 2.1 RED: Write failing tests for the loading scenarios — `Minimal valid manifest loads`, `Manifest with no sources is valid`, `Malformed TOML is an error` (prefix `graft.toml: ` only), and `Missing manifest is an error` in a `t.TempDir()` asserting the exact text `graft.toml not found`
-- [ ] 2.2 RED: Write failing table tests for the required-field scenarios — `Missing git is an error`, `Missing rev is an error`, `Empty install list is an error` (both `install = []` and absent), `Empty source name is an error` — each asserting the exact message from specs/manifest-format/spec.md
-- [ ] 2.3 RED: Write failing tests for the selector scenarios — `Plain and glob selectors are accepted` (verbatim, unexpanded, unreordered), `A selector with no kind separator is an error`, `A selector with an empty half is an error` (`schema:`, `:tdd`, `schema:tdd:extra`), `A duplicate selector is an error`
-- [ ] 2.4 RED: Write failing tests for `An override is carried verbatim`, `No kinds table means no overrides`, `An empty override destination is an error`, `A misspelled source field is an error`, `An unknown top-level key is an error`, `Shorthand is not expanded`, `A full URL is not rewritten`
-- [ ] 2.5 Confirm every test above fails because `internal/manifest` does not exist, not because a fixture is malformed
-- [ ] 2.6 GREEN: Add `Manifest`, `Source`, and `Parse([]byte, filename string) (*Manifest, error)` decoding with `toml.Decode` and rejecting `MetaData.Undecoded()` keys
-- [ ] 2.7 GREEN: Add field validation — non-empty source name, `git`, `rev`, and at least one selector — producing the exact error strings the spec names
-- [ ] 2.8 GREEN: Add selector syntax validation (`kind:name`, exactly one colon, both halves non-empty, `*`/`?` allowed in the name) and duplicate-selector detection, preserving declared order
-- [ ] 2.9 GREEN: Add `kinds` override decoding with verbatim destinations and the empty-destination error
-- [ ] 2.10 GREEN: Add `Load(path string) (*Manifest, error)` — read the file, return `graft.toml not found` when absent, otherwise delegate to `Parse`. It reads only; it creates, modifies, and deletes nothing
-- [ ] 2.11 REFACTOR: Collapse the repeated `graft.toml: source "%s": ...` formatting into one helper while tests stay green, or record that no refactor was warranted
-- [ ] 2.12 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm every field, its optionality, and the selector grammar still match what `Parse` accepts, and that no consumer-visible field was added or dropped
-- [ ] 2.13 Run `go test -race ./internal/manifest/...` — green, no regressions
+- [x] 2.1 RED: Write failing tests for the loading scenarios — `Minimal valid manifest loads`, `Manifest with no sources is valid`, `Malformed TOML is an error` (prefix `graft.toml: ` only), and `Missing manifest is an error` in a `t.TempDir()` asserting the exact text `graft.toml not found`
+- [x] 2.2 RED: Write failing table tests for the required-field scenarios — `Missing git is an error`, `Missing rev is an error`, `Empty install list is an error` (both `install = []` and absent), `Empty source name is an error` — each asserting the exact message from specs/manifest-format/spec.md
+- [x] 2.3 RED: Write failing tests for the selector scenarios — `Plain and glob selectors are accepted` (verbatim, unexpanded, unreordered), `A selector with no kind separator is an error`, `A selector with an empty half is an error` (`schema:`, `:tdd`, `schema:tdd:extra`), `A duplicate selector is an error`
+- [x] 2.4 RED: Write failing tests for `An override is carried verbatim`, `No kinds table means no overrides`, `An empty override destination is an error`, `A misspelled source field is an error`, `An unknown top-level key is an error`, `Shorthand is not expanded`, `A full URL is not rewritten`
+- [x] 2.5 Confirm every test above fails because `internal/manifest` does not exist, not because a fixture is malformed
+- [x] 2.6 GREEN: Add `Manifest`, `Source`, and `Parse([]byte, filename string) (*Manifest, error)` decoding with `toml.Decode` and rejecting `MetaData.Undecoded()` keys
+- [x] 2.7 GREEN: Add field validation — non-empty source name, `git`, `rev`, and at least one selector — producing the exact error strings the spec names
+- [x] 2.8 GREEN: Add selector syntax validation (`kind:name`, exactly one colon, both halves non-empty, `*`/`?` allowed in the name) and duplicate-selector detection, preserving declared order
+- [x] 2.9 GREEN: Add `kinds` override decoding with verbatim destinations and the empty-destination error
+- [x] 2.10 GREEN: Add `Load(path string) (*Manifest, error)` — read the file, return `graft.toml not found` when absent, otherwise delegate to `Parse`. It reads only; it creates, modifies, and deletes nothing
+- [x] 2.11 REFACTOR: Collapse the repeated `graft.toml: source "%s": ...` formatting into one helper while tests stay green, or record that no refactor was warranted
+- [x] 2.12 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm every field, its optionality, and the selector grammar still match what `Parse` accepts, and that no consumer-visible field was added or dropped
+- [x] 2.13 Run `go test -race ./internal/manifest/...` — green, no regressions
 
 ## 3. `internal/lock` — parse and validate `graft.lock`
 <!-- kind: behavior -->
