@@ -21,14 +21,14 @@ import (
 // schema:tdd-workflwo, and typo protection is the point of the rule.
 func Expand(c *Catalog, source string, selectors []string) ([]Item, error) {
 	var out []Item
-	seen := make(map[string]struct{}, len(c.Items))
+	seen := make(map[string]struct{}, len(c.items()))
 	for _, sel := range selectors {
 		match, ok := matcher(sel)
 		if !ok {
 			return nil, fmt.Errorf("source %q: invalid selector pattern %q", source, sel)
 		}
 		matched := false
-		for _, it := range c.Items {
+		for _, it := range c.items() {
 			if !match(it) {
 				continue
 			}
@@ -84,13 +84,24 @@ func matcher(sel string) (func(Item) bool, bool) {
 // items sorted; sorting here too means the listing holds for a catalog Expand did not
 // build.
 func provided(c *Catalog) string {
-	if len(c.Items) == 0 {
+	if len(c.items()) == 0 {
 		return "no items"
 	}
-	ids := make([]string, 0, len(c.Items))
-	for _, it := range c.Items {
+	ids := make([]string, 0, len(c.items()))
+	for _, it := range c.items() {
 		ids = append(ids, it.ID)
 	}
 	sort.Strings(ids)
 	return strings.Join(ids, ", ")
+}
+
+// items reads a catalog's items through a nil check, so Expand is total: a caller that
+// reaches it with a nil catalog — a parse error whose error return went unchecked — gets
+// the ordinary no-match error naming an empty vocabulary instead of a panic. The failure
+// stays loud, because every selector that caller wrote still matches nothing.
+func (c *Catalog) items() []Item {
+	if c == nil {
+		return nil
+	}
+	return c.Items
 }
