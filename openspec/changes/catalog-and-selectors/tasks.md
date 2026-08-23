@@ -97,11 +97,26 @@
 ## 9. Change Review
 <!-- kind: operational -->
 
-- [ ] 9.1 CHECK: Dispatch an independent reviewer — one that did not write the implementation and is given only proposal.md, both spec files, design.md, tasks.md, and the diff
-- [ ] 9.2 CHECK: Point the reviewer at this repository's concentration points — (a) every asserted error string matches the spec text character for character, and any deviation is a deliberate contract change rather than a typo; (b) `internal/plan` gained no code and no test needs a real directory to exercise parse or expansion logic; (c) this change computes no prune set and deletes nothing, so no foreign-file test applies — confirm that is still true rather than assuming it; (d) item order is by id and is asserted, because the lock's determinism depends on the ids arriving in that order; (e) no fixture git repository was introduced, so no `user.name`/`user.email` hazard exists here; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it; (g) no code path lets a source repository cause anything to execute — the catalog is read and validated, never run
-- [ ] 9.3 CHECK: Confirm no test asserts a `go.mod` key or restates a literal the implementation also declares — the build is the check for the dependency
-- [ ] 9.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
-- [ ] 9.5 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 9.1 CHECK: Dispatch an independent reviewer — one that did not write the implementation and is given only proposal.md, both spec files, design.md, tasks.md, and the diff. Two passes ran, neither by the implementer: the first over `git diff 80f839c..HEAD` with the artifacts, the second over `internal/catalog` at high effort. Both delivered by editing the working tree rather than reporting, so each edit was read, judged, and either narrowed, taken, or reverted here — nothing was accepted as applied
+- [x] 9.2 CHECK: Point the reviewer at this repository's concentration points — (a) every asserted error string matches the spec text character for character, and any deviation is a deliberate contract change rather than a typo; (b) `internal/plan` gained no code and no test needs a real directory to exercise parse or expansion logic; (c) this change computes no prune set and deletes nothing, so no foreign-file test applies — confirm that is still true rather than assuming it; (d) item order is by id and is asserted, because the lock's determinism depends on the ids arriving in that order; (e) no fixture git repository was introduced, so no `user.name`/`user.email` hazard exists here; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it; (g) no code path lets a source repository cause anything to execute — the catalog is read and validated, never run
+- [x] 9.3 CHECK (confirmed: no test file mentions `go.mod`, `goccy`, or a version string; `task build` is the only check that the dependency resolves): Confirm no test asserts a `go.mod` key or restates a literal the implementation also declares — the build is the check for the dependency
+- [x] 9.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
+
+  **Fixed** (commit `fix(catalog): refuse item names that misbehave downstream`, tests written red first):
+  - An item name holding `/` is invisible to a `kind:*` selector, because `path.Match`'s `*` does not cross a separator — and the selector still matches its siblings, so the no-match guard never fires. A silent under-install, and the one failure mode this change exists to prevent.
+  - An item named `.` or `..` steers `{name}` interpolation above the destination its own kind declared, defeating SPEC.md's "`add` shows the destination before writing" mitigation.
+  - A glob metacharacter in a name makes an exact selector match a neighbour, or makes the item unselectable.
+
+  **Rejected, with reason:**
+  - Moving that rule into `internal/itemid`. Selectors and ids share `itemid.Valid`, so an allowlist there rejects `agent:*` in `graft.toml` — verified: 6 `internal/manifest` tests fail on that patch. It would also modify `manifest-format` and `lock-format`, which proposal.md declares unchanged.
+  - Reordering `inSource` ahead of the undeclared-kind check. Nothing needs it, and it silently changes which message a doubly-faulty entry reports — the kind of edit this repo asserts against.
+  - A nil-receiver guard making `Expand` total on a nil `*Catalog`. `Expand(nil, src, nil)` would then return success, hiding the caller's bug outright; `manifest` and `lock` expose the same shape with no such guard; and no file a source or consumer writes can produce that state.
+
+  **Accepted, with reason:**
+  - `yaml.Unmarshal` decodes only the first document, so a second one in `catalog.yaml` is dropped silently. Accepted: it cannot cause a silent under-install, because anything the dropped document declared surfaces as the no-match error or as "kind is not declared".
+  - A `from` is checked as a string, so a symlink inside a source tree could still point out of it. Accepted and recorded in design.md → Risks: nothing here opens a file from a source tree, so there is no point at which a link could be resolved.
+  - Probed rather than assumed: a nested-alias YAML bomb does not amplify (goccy shares structure; 443µs at depth 8) and the unknown-key walk is depth-bounded, so an untrusted catalog has no expansion attack.
+- [x] 9.5 VERIFY: Confirm no blocking or unowned finding remains — every finding above is fixed, rejected with a reason, or accepted with a reason; `go test -race ./...` is green and the working tree is committed
 
 ## 10. Lint & Verify
 <!-- kind: operational -->
