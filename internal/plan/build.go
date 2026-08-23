@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -48,11 +49,26 @@ type Write struct {
 // on a file item's listing holding exactly its own base name. Nor does it check pins:
 // lock.CheckPins belongs to the caller, and must fire before anything is fetched
 // rather than after.
+// claim records which item took a destination, so the second item to reach it can name
+// the first. SPEC.md makes a collision an error rather than last-writer-wins: the loser
+// would be a file the lock claims and a later sync would delete.
+//
+// The walk is deterministic — sources by name, items by id, destinations in declared
+// order, files by ascending path — so the two items are named in a stable order and the
+// message is assertable. Only the first collision is reported; one message is the shape
+// of SPEC.md's failure-mode table.
+type claim struct {
+	source string
+	item   string
+}
+
 func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	p := &Plan{Lock: &lock.Lock{Version: lock.Version}}
 	// The one file set this build produces, shared between the prune diff and the
 	// next lock rather than derived twice from two walks that could disagree.
 	produced := map[string]struct{}{}
+	// Filled as the walk proceeds; the first second claimant is the error.
+	owner := map[string]claim{}
 
 	// Sorted here rather than assumed sorted because manifest.Parse happens to sort:
 	// Build takes a slice a caller assembled, and an unsorted one would churn every
@@ -89,6 +105,16 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 
 			files := make([]string, 0, len(places))
 			for _, pl := range places {
+				// Checked before the write is appended, so a build that fails has
+				// produced nothing a caller could act on.
+				if first, taken := owner[pl.Dest]; taken {
+					return nil, fmt.Errorf(
+						"source %q item %q and source %q item %q both resolve to %q",
+						first.source, first.item, in.Source.Name, it.ID, pl.Dest,
+					)
+				}
+				owner[pl.Dest] = claim{source: in.Source.Name, item: it.ID}
+
 				p.Writes = append(p.Writes, Write{
 					Source: in.Source.Name,
 					Item:   it.ID,

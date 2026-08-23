@@ -205,17 +205,17 @@ SPEC.md: no two items share a destination path, within a source or across source
 Collisions are an error, not last-writer-wins — the loser would be a file the lock claims
 and a later sync would delete.
 
-- [ ] 9.1 RED: Write failing tests for: *Two items of one source colliding is an error*; *Two
+- [x] 9.1 RED: Write failing tests for: *Two items of one source colliding is an error*; *Two
       sources colliding is an error*; *A path claimed by the lock and by another item is still
       a collision*. Assert the exact message
       `source "a" item "agent:x" and source "b" item "agent:y" both resolve to ".claude/agents/x.md"`
       and assert the returned plan is nil
-- [ ] 9.2 GREEN: Fill a destination-to-owner map during the single deterministic walk
+- [x] 9.2 GREEN: Fill a destination-to-owner map during the single deterministic walk
       (sources by name, items by id, destinations in declared order, files by path) and fail
       on the first second claimant, naming both owners in walk order (design.md → D8)
-- [ ] 9.3 REFACTOR: Confirm the collision check runs before any write is appended to the
+- [x] 9.3 REFACTOR: Confirm the collision check runs before any write is appended to the
       plan, so a failed build has produced nothing, or state that no refactor was needed
-- [ ] 9.4 Run `go test ./internal/plan/` — no regressions
+- [x] 9.4 Run `go test ./internal/plan/` — no regressions
 
 ## 10. Determinism
 <!-- kind: behavior -->
