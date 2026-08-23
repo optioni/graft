@@ -222,6 +222,51 @@ parsed items SHALL be ordered by item id regardless of the order they appear in 
 - **AND** no catalog is returned, because `from` staying inside the source tree is an
   invariant, and requiring cleaned form removes the aliases that would slip past it
 
+### Requirement: An item name is restricted to what a selector and a destination can carry
+
+An item's `name` SHALL be a single segment of letters, digits, `.`, `-`, or `_`, and
+SHALL NOT be `.` or `..`. The name is chosen by the source repository and is read three
+different ways downstream — as a `path.Match` target when a selector is expanded, as the
+`{name}` fragment of a destination, and as half of the id the lock records — so a name
+that misbehaves in any of them SHALL be refused where the catalog mints it rather than
+where a later package meets it.
+
+#### Scenario: A name holding a path separator is an error
+
+- **WHEN** a `provides` entry holds `{ kind: agent, name: "nested/thing", from: a.md }`
+- **THEN** the error message is exactly
+  `catalog.yaml: provides[0]: invalid name "nested/thing": want letters, digits, dot, dash, or underscore`
+- **AND** no catalog is returned, because `path.Match`'s `*` does not cross `/`: such an
+  item would be invisible to an `agent:*` selector while that same selector matched its
+  siblings, so the install would silently drop it and the no-match error would never fire
+
+#### Scenario: A name holding a glob metacharacter is an error
+
+- **WHEN** a `provides` entry holds a name of `a*b`, or of `[x]`
+- **THEN** the error message is exactly
+  `catalog.yaml: provides[0]: invalid name "<value>": want letters, digits, dot, dash, or underscore`
+  with `<value>` the name as written
+- **AND** no catalog is returned, because a consumer's exact selector `agent:a*b` would
+  otherwise also select `agent:ab`, and a name of `[x]` could not be selected at all
+
+#### Scenario: A name of dot or dot-dot is an error
+
+- **WHEN** a `provides` entry holds a name of `.`, or of `..`
+- **THEN** the error message is exactly
+  `catalog.yaml: provides[0]: invalid name "<value>": a name may not be "." or ".."`
+  with `<value>` the name as written
+- **AND** no catalog is returned, because `{name}` is interpolated into a destination by
+  a later package, and such a name would aim a write above the directory the item's own
+  kind declared — defeating the guarantee that the destination shown before install is
+  the destination written
+
+#### Scenario: Ordinary names are accepted
+
+- **WHEN** a catalog provides items named `tdd`, `apply-orchestrator`, `outside_in`,
+  `v1.2`, and `TDD9`
+- **THEN** every one of them parses, so the rule that closes the holes above does not
+  also reject the vocabulary a source is expected to use
+
 ### Requirement: Unknown keys are rejected
 
 Decoding SHALL be strict: any key the catalog format does not define SHALL be an error
