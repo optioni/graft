@@ -64,15 +64,15 @@
 ## 6. Selector expansion and the no-match error
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing table tests for `A plain selector selects exactly one item`, `Several selectors produce the union ordered by id` (selectors given in reverse id order), `Overlapping selectors yield each item once` (asserting length as well as ids), `An empty selector list expands to nothing`
-- [ ] 6.2 RED: Write failing table tests for `A misspelled selector is an error listing what the catalog provides`, `One selector matching does not excuse another that does not` (asserting no items are returned even though the first selector matched), `Any selector against a catalog providing zero items is an error` — each asserting the exact message including the ordered provides list
-- [ ] 6.3 Confirm the failures come from the missing `Expand`, not from a hand-built `*Catalog` whose items are out of order
-- [ ] 6.4 GREEN: Implement `Expand(c *Catalog, source string, selectors []string) ([]Item, error)` — match each selector, union the results, deduplicate by id, and return sorted by id
-- [ ] 6.5 GREEN: Implement the no-match error — checked per selector so one match cannot excuse another, naming the source and the selector, and listing every provided id in ascending order, or `no items` when the catalog provides none
-- [ ] 6.6 CHECK: Concentration point — confirm `Expand` reads no file, runs no command, and touches no global state; every test builds its `*Catalog` in memory. A test that needs a real directory to exercise expansion is a signal the boundary moved
-- [ ] 6.7 REFACTOR: Reduce the provides listing to one formatting helper shared by every no-match path, or record that no refactor was warranted
-- [ ] 6.8 CHECK: Contract gate — re-read SPEC.md's `install` bullet and the failure-mode row "A selector matches no item", and confirm the error lists what the catalog provides rather than only naming the selector
-- [ ] 6.9 Run `go test -race ./internal/catalog/...` — green, no regressions
+- [x] 6.1 RED: Write failing table tests for `A plain selector selects exactly one item`, `Several selectors produce the union ordered by id` (selectors given in reverse id order), `An empty selector list expands to nothing`. `Overlapping selectors yield each item once` moved to group 7: its selectors are `["agent:*", "agent:tdd-reviewer"]`, so it cannot pass until globs match, and writing it here would leave this group red at 6.9. Same reason moves `One selector matching does not excuse another that does not` out of 6.2 — its first selector is `agent:*`
+- [x] 6.2 RED: Write failing table tests for `A misspelled selector is an error listing what the catalog provides`, `Any selector against a catalog providing zero items is an error` (see 6.1 for the one case that moved to group 7) — each asserting the exact message including the ordered provides list
+- [x] 6.3 Confirm the failures come from the missing `Expand`, not from a hand-built `*Catalog` whose items are out of order
+- [x] 6.4 GREEN: Implement `Expand(c *Catalog, source string, selectors []string) ([]Item, error)` — match each selector, union the results, deduplicate by id, and return sorted by id
+- [x] 6.5 GREEN: Implement the no-match error — checked per selector so one match cannot excuse another, naming the source and the selector, and listing every provided id in ascending order, or `no items` when the catalog provides none
+- [x] 6.6 CHECK (confirmed: `expand.go` imports only `fmt`, `sort`, and `strings`; every test builds its catalog with the in-memory `fixture` helper): Concentration point — confirm `Expand` reads no file, runs no command, and touches no global state; every test builds its `*Catalog` in memory. A test that needs a real directory to exercise expansion is a signal the boundary moved
+- [x] 6.7 REFACTOR: Reduce the provides listing to one formatting helper shared by every no-match path, or record that no refactor was warranted — done: `provided(c)` is the only place the listing and the `no items` wording are built, and there is one no-match error site calling it
+- [x] 6.8 CHECK: Contract gate — re-read SPEC.md's `install` bullet and the failure-mode row "A selector matches no item", and confirm the error lists what the catalog provides rather than only naming the selector
+- [x] 6.9 Run `go test -race ./internal/catalog/...` — green, no regressions
 
 ## 7. Globs in the name position
 <!-- kind: behavior -->
