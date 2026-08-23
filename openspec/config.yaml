@@ -6,7 +6,10 @@ context: |
   See PRD.md for motivation, SPEC.md for behavior, ENGINEERING.md for conventions.
 
   Tech stack: Go 1.27, no runtime dependency beyond `git` on PATH. Cobra is the
-  intended command surface but is not added yet — the module has no dependencies. Built and tested through `task`; released with GoReleaser.
+  intended command surface but is not added yet. Read `go.mod` for the module's current
+  dependencies rather than assuming a count; a new one is a decision to argue in the
+  proposal, not a rule to obey. Built and tested through `task`; released with
+  GoReleaser.
 
   Domain concepts: a *source* is a git repo publishing a `catalog.yaml`; the catalog
   declares *kinds* (where a class of thing belongs) and *provides* (the items it offers).
