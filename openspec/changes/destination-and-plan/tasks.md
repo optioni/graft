@@ -175,28 +175,28 @@ directory to list, which is exactly why this is the right place for the rule.
 ## 8. The next lock
 <!-- kind: behavior -->
 
-- [ ] 8.1 RED: Write failing tests for: *An item contributing no files still appears in the
+- [x] 8.1 RED: Write failing tests for: *An item contributing no files still appears in the
       lock*; *An item placed in two destinations records both files*; *The next lock carries
       rev and resolved separately*; *The next lock round-trips through the lock parser*.
       Assert against `lock.Marshal` output, not against struct fields, so the assertion is
       about what a consumer will actually read in a diff
-- [ ] 8.2 GREEN: Build `*lock.Lock` from the plan: sources sorted by name — sorted here, not
+- [x] 8.2 GREEN: Build `*lock.Lock` from the plan: sources sorted by name — sorted here, not
       assumed sorted because `manifest.Parse` happens to sort, since `Build` takes a slice a
       caller assembled — `git` and `rev` verbatim from `manifest.Source`, `resolved` from
       `Input.Resolved`, one `lock.Item` per installed item with its destinations sorted by
       path, and no entry for a source the manifest no longer declares
-- [ ] 8.3 GREEN: Round-trip the result: `lock.Parse(lock.Marshal(p.Lock), "graft.lock")`
+- [x] 8.3 GREEN: Round-trip the result: `lock.Parse(lock.Marshal(p.Lock), "graft.lock")`
       succeeds and yields the same sources, items, and files. This is what checks, without a
       second validator in this package, that everything `graft.lock` enforces on load holds
       of what `plan` built — the sha shape, unique source names and item ids, and no path
       claimed twice (design.md → Contracts, Preconditions on `Input`)
-- [ ] 8.4 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm the
+- [x] 8.4 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm the
       constructed lock still matches the documented format: `version = 1`, `rev` records the
       request and `resolved` the sha, `files` is the per-item list that authorises deletion,
       and no content hashes
-- [ ] 8.5 REFACTOR: Confirm nothing here duplicates `lock.Marshal`'s normalization — `plan`
+- [x] 8.5 REFACTOR: Confirm nothing here duplicates `lock.Marshal`'s normalization — `plan`
       supplies ordered values, `lock` owns the bytes — or state that no refactor was needed
-- [ ] 8.6 Run `go test ./internal/plan/` — no regressions
+- [x] 8.6 Run `go test ./internal/plan/` — no regressions
 
 ## 9. The collision invariant
 <!-- kind: behavior -->

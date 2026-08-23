@@ -54,7 +54,15 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	// next lock rather than derived twice from two walks that could disagree.
 	produced := map[string]struct{}{}
 
-	for _, in := range inputs {
+	// Sorted here rather than assumed sorted because manifest.Parse happens to sort:
+	// Build takes a slice a caller assembled, and an unsorted one would churn every
+	// consumer's lock diff on every sync. The copy keeps the caller's slice its own.
+	sorted := slices.Clone(inputs)
+	slices.SortFunc(sorted, func(a, b Input) int {
+		return strings.Compare(a.Source.Name, b.Source.Name)
+	})
+
+	for _, in := range sorted {
 		// Returned unchanged: typo protection has to reach the user through planning
 		// rather than being swallowed by it.
 		items, err := catalog.Expand(in.Catalog, in.Source.Name, in.Source.Install)
@@ -93,6 +101,11 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 			slices.Sort(files)
 			src.Items = append(src.Items, lock.Item{ID: it.ID, Files: files})
 		}
+		// catalog.Expand documents this order, but the plan's own ordering is asserted
+		// against and read by internal/apply, so it is established here rather than
+		// inherited. lock.Marshal normalizes on its way out; relying on that would let
+		// an unsorted plan hide behind the bytes.
+		slices.SortFunc(src.Items, func(a, b lock.Item) int { return strings.Compare(a.ID, b.ID) })
 		p.Lock.Sources = append(p.Lock.Sources, src)
 	}
 
