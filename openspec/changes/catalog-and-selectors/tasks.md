@@ -121,11 +121,11 @@
 ## 10. Lint & Verify
 <!-- kind: operational -->
 
-- [x] 10.1 CHECK: Inspect the intended verification commands and affected tiers — the new package is under `./internal/...`, so the coverage gate applies; there is no acceptance tier in this change
-- [x] 10.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
-- [x] 10.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` at or above the 80% floor
-- [x] 10.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
-- [x] 10.5 VERIFY: Run `openspec validate catalog-and-selectors --strict` — valid
+- [x] 10.1 CHECK (confirmed: `internal/catalog` sits under the `./internal/...` coverage scope; there is no acceptance tier, so `task lint`, `task cover`, and `task build` are the whole gate): Inspect the intended verification commands and affected tiers — the new package is under `./internal/...`, so the coverage gate applies; there is no acceptance tier in this change
+- [x] 10.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing (exit 0)
+- [x] 10.3 VERIFY: Run `task cover` — suite green under `-race`, total coverage 99.8% over `./internal/...` against the 80% floor (exit 0)
+- [x] 10.4 VERIFY: Run `task build` — the binary compiles with the version ldflags (exit 0); `task ci` also green end to end
+- [x] 10.5 VERIFY: Run `openspec validate catalog-and-selectors --strict` — `Change 'catalog-and-selectors' is valid`
 
 ### Change Review outcome
 
