@@ -2,6 +2,7 @@ package plan_test
 
 import (
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
@@ -17,10 +18,18 @@ import (
 // is where that stops being a comment.
 var impure = []string{"os", "io/fs", "path/filepath", "os/exec", "net", "net/http"}
 
+// impureCalls lists the filesystem entry points of the packages plan legitimately
+// imports. Banning imports alone is not enough: internal/catalog, internal/manifest,
+// and internal/lock each read a file on request, so plan could reach the filesystem
+// through a collaborator while importing nothing forbidden — exactly the regression
+// this guard exists to catch. Everything plan needs from those packages arrives as a
+// parsed value in Input.
+var impureCalls = []string{"catalog.Load", "manifest.Load", "lock.Load"}
+
 // TestPackageImportsNothingImpure is a lint written as a test. The rule it enforces —
 // internal/plan never reaches the filesystem — is the whole reason the package exists,
 // and no ordinary red-green cycle can express it: a filesystem read would make every
-// behavioural test pass just as well. Parsing the package's own imports fails the build
+// behavioural test pass just as well. Parsing the package's own source fails the build
 // instead of relying on a reviewer noticing.
 func TestPackageImportsNothingImpure(t *testing.T) {
 	entries, err := os.ReadDir(".")
@@ -39,7 +48,7 @@ func TestPackageImportsNothingImpure(t *testing.T) {
 			t.Fatalf("reading %s: %v", name, err)
 		}
 		checked++
-		for _, bad := range impureImports(t, name, string(src)) {
+		for _, bad := range impurities(t, name, string(src)) {
 			t.Error(bad)
 		}
 	}
@@ -51,38 +60,76 @@ func TestPackageImportsNothingImpure(t *testing.T) {
 }
 
 // TestPackageImportsNothingImpure_ReportsTheOffender pins what the guard says when it
-// fires. A guard nobody has watched fail is not a guard.
+// fires, for both halves of the rule. A guard nobody has watched fail is not a guard.
 func TestPackageImportsNothingImpure_ReportsTheOffender(t *testing.T) {
-	src := "package plan\n\nimport (\n\t\"os\"\n\t\"path\"\n)\n\nvar _ = os.Getenv\nvar _ = path.Join\n"
+	tests := []struct {
+		name string
+		src  string
+		want []string
+	}{
+		{
+			name: "a forbidden import",
+			src:  "package plan\n\nimport (\n\t\"os\"\n\t\"path\"\n)\n\nvar _ = os.Getenv\nvar _ = path.Join\n",
+			want: []string{`leaky.go imports "os": internal/plan is pure and may not reach the filesystem`},
+		},
+		{
+			// Imports nothing forbidden, and still reads a file.
+			name: "a collaborator's filesystem entry point",
+			src: "package plan\n\nimport \"github.com/optioni/graft/internal/catalog\"\n\n" +
+				"func leak(p string) { _, _ = catalog.Load(p) }\n",
+			want: []string{`leaky.go calls catalog.Load: internal/plan is pure and may not reach the filesystem`},
+		},
+	}
 
-	got := impureImports(t, "leaky.go", src)
-	want := []string{`leaky.go imports "os": internal/plan is pure and may not reach the filesystem`}
-	if !slices.Equal(got, want) {
-		t.Errorf("impureImports:\n got %q\nwant %q", got, want)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := impurities(t, "leaky.go", tc.src); !slices.Equal(got, tc.want) {
+				t.Errorf("impurities:\n got %q\nwant %q", got, tc.want)
+			}
+		})
 	}
 }
 
-// impureImports parses one file's import block and reports every forbidden import,
-// naming the file and the import path. Only imports are parsed: the guard has no
-// business type-checking the package it protects.
-func impureImports(t *testing.T, filename, src string) []string {
+// impurities parses one file and reports every forbidden import and every call to a
+// collaborator's filesystem entry point, naming the file and what it found.
+func impurities(t *testing.T, filename, src string) []string {
 	t.Helper()
 
-	f, err := parser.ParseFile(token.NewFileSet(), filename, src, parser.ImportsOnly)
+	f, err := parser.ParseFile(token.NewFileSet(), filename, src, parser.SkipObjectResolution)
 	if err != nil {
 		t.Fatalf("parsing %s: %v", filename, err)
 	}
 
-	var found []string
+	found := []string{}
 	for _, spec := range f.Imports {
 		p, err := strconv.Unquote(spec.Path.Value)
 		if err != nil {
 			t.Fatalf("%s: unquoting import %s: %v", filename, spec.Path.Value, err)
 		}
 		if slices.Contains(impure, p) {
-			found = append(found, fmt.Sprintf(
-				"%s imports %q: internal/plan is pure and may not reach the filesystem", filename, p))
+			found = append(found, fmt.Sprintf("%s imports %q: %s", filename, p, why))
 		}
+	}
+
+	ast.Inspect(f, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		pkg, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		if call := pkg.Name + "." + sel.Sel.Name; slices.Contains(impureCalls, call) {
+			found = append(found, fmt.Sprintf("%s calls %s: %s", filename, call, why))
+		}
+		return true
+	})
+
+	if len(found) == 0 {
+		return nil
 	}
 	return found
 }
+
+const why = "internal/plan is pure and may not reach the filesystem"

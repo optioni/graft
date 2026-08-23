@@ -143,7 +143,26 @@ item, planning SHALL fail with
 source "<source>": item "<id>": destinations "<a>" and "<b>" both interpolate to "<dest>"
 ```
 
-naming the two entries in declared order, and SHALL return no plan.
+naming the two entries in declared order and the destination in cleaned form, and SHALL
+return no plan.
+
+Two entries SHALL be the same destination when they *mean* the same destination, not only
+when they are spelled alike. Because a trailing `/` is a no-op for a directory item and
+significant for a file item, `a/{name}` and `a/{name}/` SHALL be one destination for an
+item whose `from` names a directory and two for one whose `from` names a file. Comparing
+the entries as written would let the first case through, and the item would then produce
+one path twice.
+
+Two entries that are genuinely different destinations may still place a file at one path,
+when one destination lies inside another. Planning SHALL fail with
+
+```
+source "<source>": item "<id>": destinations "<a>" and "<b>" both place a file at "<dest>"
+```
+
+naming the two entries in declared order, and SHALL return no plan. Together with the two
+rules above this leaves no way for one item to produce a path twice, which is what keeps
+the cross-item collision message from ever naming an item as its own partner.
 
 #### Scenario: One item lands in two destinations
 
@@ -161,6 +180,33 @@ naming the two entries in declared order, and SHALL return no plan.
   computed against it
 - **THEN** planning fails with
   `source "shared": item "schema:tdd": destinations "openspec/schemas/{name}" and "openspec/schemas/tdd" both interpolate to "openspec/schemas/tdd"`
+- **AND** no plan is returned
+
+#### Scenario: Two entries differing only by a trailing slash are one destination
+
+- **WHEN** the kind `schema` in source `shared` declares `to: ["a/{name}", "a/{name}/"]`
+  and the item `schema:tdd`, whose `from` names a directory, has the listing
+  `["schema.yaml"]`
+- **THEN** planning fails with
+  `source "shared": item "schema:tdd": destinations "a/{name}" and "a/{name}/" both interpolate to "a/tdd"`
+- **AND** the failure is this within-item error rather than the cross-item collision one,
+  which would name `schema:tdd` twice and give no cause
+
+#### Scenario: The same pair is two destinations for a file item
+
+- **WHEN** the kind `doc` declares `to: ["docs/{name}", "docs/{name}/"]` and the item
+  `doc:notes`, whose `from` names the file `extras/notes.md`, has the listing
+  `["notes.md"]`
+- **THEN** the destinations are `docs/notes` and `docs/notes/notes.md`, and planning
+  succeeds — one entry names the file, the other a directory to put it in
+
+#### Scenario: Two entries meeting on one file is an error
+
+- **WHEN** the kind `schema` in source `shared` declares `to: ["a", "a/b"]` and the item
+  `schema:tdd` from a directory has the listing `["b/x.md", "x.md"]`, so `a` places
+  `a/b/x.md` and `a/b` places it again
+- **THEN** planning fails with
+  `source "shared": item "schema:tdd": destinations "a" and "a/b" both place a file at "a/b/x.md"`
 - **AND** no plan is returned
 
 ### Requirement: A consumer override beats the catalog
@@ -223,11 +269,87 @@ the manifest claims otherwise.
 - **AND** no plan is returned, so no file is written at the catalog's destination while the
   manifest appears to have moved it
 
+### Requirement: A listed path stays inside its item
+
+`internal/plan` SHALL reject a listing entry that is not a relative path inside the item's
+`from`. An entry SHALL be refused when it is empty, absolute, equal to `.`, contains a `..`
+segment, or is not in cleaned form. On refusal planning SHALL fail with
+
+```
+source "<source>": item "<id>": file "<path>" is not a relative path inside the item
+```
+
+naming the first offending entry in ascending path order, and SHALL return no plan.
+
+The repo-root boundary does not cover this, in either direction. Joining absorbs leading
+`..` segments, so an entry with fewer of them than its destination has path segments lands
+somewhere else **inside** the repository — `.git/hooks/` among them — while every
+repo-root check passes; and under `flatten` the destination is contained whatever the
+entry said, because only its base name survives. The same entry is also joined to `from`
+to name the **file to read**, which nothing downstream re-checks, so an unchecked one aims
+a read outside the source's fetched tree and at whatever sits beside it in the cache.
+
+Refusing the entry rather than the path it produces closes both halves at one point, and
+names what a source actually wrote rather than a path derived from it.
+
+#### Scenario: An entry climbing out of its item is refused
+
+- **WHEN** the kind `schema` declares `to: "openspec/schemas/{name}"` and the item
+  `schema:tdd` in source `shared` has the listing `["../../../etc/passwd"]`, which joins
+  and cleans to `etc/passwd` — inside the repository, so the repo-root check passes
+- **THEN** planning fails with
+  `source "shared": item "schema:tdd": file "../../../etc/passwd" is not a relative path inside the item`
+- **AND** no plan is returned, and no write names `etc/passwd`
+
+#### Scenario: An entry reaching `.git/` under an unrelated destination is refused
+
+- **WHEN** the kind `agent` declares `to: ".claude/agents/"` and the item `agent:pack` in
+  source `shared` has the listing `["../../.git/hooks/pre-commit"]`
+- **THEN** planning fails with
+  `source "shared": item "agent:pack": file "../../.git/hooks/pre-commit" is not a relative path inside the item`
+- **AND** the catalog's `to` never named `.git`, so no rule about what a destination may
+  *name* would have caught it
+
+#### Scenario: An entry climbing into a sibling directory is refused
+
+- **WHEN** the kind `agent` declares `to: ".claude/agents/"` and the item `agent:pack` in
+  source `shared` has the listing `["../hooks/x.md"]`
+- **THEN** planning fails with
+  `source "shared": item "agent:pack": file "../hooks/x.md" is not a relative path inside the item`
+- **AND** the consumer agreed to `.claude/agents/`, not to `.claude/hooks/`, so a file
+  landing there would defeat the one mitigation an untrusted source has — that the
+  destination is shown before install
+
+#### Scenario: A flattened entry whose source path leaves the item is refused
+
+- **WHEN** the kind `agent` declares `to: ".claude/agents/"` with `flatten: true` and the
+  item `agent:pack` in source `shared`, with `from: extras/agents/pack`, has the listing
+  `["../../secret.md"]`
+- **THEN** planning fails with
+  `source "shared": item "agent:pack": file "../../secret.md" is not a relative path inside the item`
+- **AND** the destination `.claude/agents/secret.md` was contained, because `flatten`
+  keeps only the base name — what escaped is the file graft would have read
+
+#### Scenario: An absolute or uncleaned entry is refused
+
+- **WHEN** the item `schema:tdd` in source `shared` has the listing `["/etc/passwd"]`
+- **THEN** planning fails with
+  `source "shared": item "schema:tdd": file "/etc/passwd" is not a relative path inside the item`
+- **AND** the same holds for `["./schema.yaml"]`, which names the same file as
+  `schema.yaml` while looking different to every later comparison
+
+#### Scenario: A repeated entry is one write, not a collision
+
+- **WHEN** the item `schema:tdd` has the listing `["schema.yaml", "schema.yaml"]`
+- **THEN** the single destination is `openspec/schemas/tdd/schema.yaml` and planning
+  succeeds — a repeated entry names one file, so it is one write
+
 ### Requirement: No destination escapes the repo root
 
 `internal/plan` SHALL reject any destination that is not a relative path inside the
 consumer's repository. A destination SHALL be refused when it is empty, absolute, equal to
-`.`, contains a `..` segment, or is not in cleaned form. The interpolated destination
+`.`, contains a `..` segment, or is not in cleaned form apart from at most one trailing
+`/`, which a `to` uses to mean "into this directory". The interpolated destination
 itself SHALL be checked as well as every file path computed under it, so a `to` that
 escapes is refused even for an item contributing no files. On refusal planning SHALL fail
 with
@@ -261,13 +383,16 @@ naming the first offending path in destination order, and SHALL return no plan.
 - **AND** the override being the consumer's own words does not exempt it — the repo root is
   the boundary, not the source
 
-#### Scenario: A listing entry climbing out of its item is refused
+#### Scenario: A listing entry aiming outside the repository is refused
 
 - **WHEN** the kind `schema` declares `to: "openspec/schemas/{name}"` and the item
-  `schema:tdd` in source `shared` has the listing `["../../../../../etc/passwd"]`
+  `schema:tdd` in source `shared` has the listing `["../../../../../etc/passwd"]`, whose
+  five `..` segments outrun the destination's three
 - **THEN** planning fails with
   `source "shared": item "schema:tdd": destination "../../etc/passwd" escapes the repo root`
-- **AND** no plan is returned, so a malformed listing cannot aim a write outside the tree
+- **AND** no plan is returned, so a malformed listing cannot aim a write outside the tree.
+  An entry that stays inside the repository is refused too, by *A listed path stays inside
+  its item* — the repo-root boundary is the floor, not the whole rule
 
 #### Scenario: A `to` escaping with no files to place is still refused
 

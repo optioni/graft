@@ -195,6 +195,12 @@ These hold or the run aborts before writing:
 - **graft deletes only what the lock claims.** Any other file in a destination directory is
   invisible to it.
 - **No destination escapes the repo root.** A `to` or `from` resolving outside is an error.
+- **Every file an item places stays inside that item's own destination**, and every file it
+  reads stays inside that item's own `from`. The repo-root rule is the floor rather than the
+  whole of it: a listing that climbs out of a `to` of `.claude/agents/` into `.claude/hooks/`
+  or `.git/hooks/` never leaves the repository, and is still an error. The destination shown
+  before install is the only thing a consumer agrees to, so a file landing anywhere else
+  defeats the one mitigation an untrusted source has.
 - **No two items share a destination path**, within a source or across sources. Collisions
   are an error, not last-writer-wins.
 - **`from` stays inside the source tree.**
@@ -216,6 +222,7 @@ is why the destination is shown before install and why a consumer override alway
 | `add` without selectors and without a TTY | Error naming the selectors it needed. Never hangs, never guesses. |
 | Two items resolve to one path | Error naming both items and the path. |
 | Destination outside the repo root | Error. |
+| A source's file listing climbs out of the item | Error naming the entry. It could otherwise place a file elsewhere in the repo, or read one outside the source. |
 | Network unavailable, cache hit | Proceeds. |
 | Network unavailable, cache miss | Error naming what it needed to fetch. |
 | Manifest `rev` differs from the lock's | Error naming both, and pointing at `graft update`. |

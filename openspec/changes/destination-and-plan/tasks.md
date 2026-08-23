@@ -261,7 +261,7 @@ semantic equality.
 ## 12. Change Review
 <!-- kind: operational -->
 
-- [ ] 12.1 CHECK: Dispatch an independent reviewer — a fresh subagent given only
+- [x] 12.1 CHECK: Dispatch an independent reviewer — a fresh subagent given only
       proposal.md, both spec files, design.md, tasks.md, and the diff, never a fork of the
       implementing session — with these concentration points named: (a) no file absent from
       `graft.lock` can enter the prune set, and the foreign-file test would go red if it
@@ -271,20 +271,20 @@ semantic equality.
       nothing was added to `cmd/graft`, where the coverage gate cannot see it; (f) no code
       path lets a source repository cause anything to execute or place a file outside the
       repo root
-- [ ] 12.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
+- [x] 12.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
       one-line reason, note each SUGGESTION, and re-run the affected tests
-- [ ] 12.3 VERIFY: Confirm no blocking or unowned finding remains, and that any contract
+- [x] 12.3 VERIFY: Confirm no blocking or unowned finding remains, and that any contract
       changed while fixing findings was written back into the owning artifact and
       planning-review.md
 
 ## 13. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 13.1 CHECK: Inspect the intended verification commands and affected tiers — one tier
+- [x] 13.1 CHECK: Inspect the intended verification commands and affected tiers — one tier
       only here (unit, `./internal/plan/`), no integration tier, no fixture git repositories
-- [ ] 13.2 VERIFY: Run `task lint` — golangci-lint clean and `gofumpt -l` silent, 0 errors
-- [ ] 13.3 VERIFY: Run `task test` — `go test -race ./...` green
-- [ ] 13.4 VERIFY: Run `task cover` — at or above the 80% floor measured over
+- [x] 13.2 VERIFY: Run `task lint` — golangci-lint clean and `gofumpt -l` silent, 0 errors
+- [x] 13.3 VERIFY: Run `task test` — `go test -race ./...` green
+- [x] 13.4 VERIFY: Run `task cover` — at or above the 80% floor measured over
       `./internal/...`
-- [ ] 13.5 VERIFY: Run `task build` — the binary builds, which is Go's type check
-- [ ] 13.6 VERIFY: Run `openspec validate destination-and-plan --strict` — clean
+- [x] 13.5 VERIFY: Run `task build` — the binary builds, which is Go's type check
+- [x] 13.6 VERIFY: Run `openspec validate destination-and-plan --strict` — clean

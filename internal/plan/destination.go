@@ -54,6 +54,15 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 		entries = []string{override}
 	}
 
+	// The listing is read before the destinations, because whether `from` names a
+	// directory decides when two `to` entries are the same destination.
+	listing := in.Items[it.ID]
+	files := slices.Clone(listing.Files)
+	slices.Sort(files)
+	// A repeated listing entry names one file, so it is one write. Collapsing it here
+	// keeps a malformed listing from surfacing later as an item colliding with itself.
+	files = slices.Compact(files)
+
 	// Every entry is interpolated and checked before any file is mapped, so a
 	// destination that may not be used is refused even when the item contributes
 	// nothing to place under it.
@@ -64,29 +73,41 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 		if !insideRepo(strings.TrimSuffix(dest, "/")) {
 			return nil, escape(dest)
 		}
-		if first, dup := declared[dest]; dup {
+		// Keyed on what the destination will actually mean rather than on the string,
+		// so "a/{name}" and "a/{name}/" are recognised as one destination for a
+		// directory item — which by D4 they are — and as two for a file item, which
+		// they also are: one names the file, the other a directory to put it in.
+		if first, dup := declared[destKey(dest, listing.Dir)]; dup {
 			// The catalog already refuses two identical `to` entries; these are two
 			// different ones that collapse onto the same path once {name} is filled
 			// in, which only shows up per item.
-			return nil, fail("destinations %q and %q both interpolate to %q", first, entry, dest)
+			return nil, fail("destinations %q and %q both interpolate to %q", first, entry, path.Clean(dest))
 		}
-		declared[dest] = entry
+		declared[destKey(dest, listing.Dir)] = entry
 		to = append(to, dest)
 	}
 
-	listing := in.Items[it.ID]
-	files := slices.Clone(listing.Files)
-	slices.Sort(files)
-
 	var out []placement
-	for _, dest := range to {
+	// Spans every destination entry, so one item can never become its own collision
+	// partner in the cross-item check, which would print its id twice and name no
+	// cause.
+	placed := make(map[string]string, len(files)*len(to))
+	for i, dest := range to {
 		// Scoped to one destination entry: the same base name under two entries of a
 		// list-valued `to` is two different paths, not a collision.
 		flattened := make(map[string]string, len(files))
 		for _, rel := range files {
 			final := place(dest, listing.Dir, kind.Flatten, rel)
+			// The repo-root boundary first, because it is the invariant SPEC.md
+			// states. An entry that survives it has still to stay inside its own
+			// item: joining absorbs leading ".." segments, so an entry shallower
+			// than its destination lands elsewhere inside the repo rather than
+			// outside it — and the same entry names the file to read.
 			if !insideRepo(final) {
 				return nil, escape(final)
+			}
+			if !insideItem(rel) {
+				return nil, fail("file %q is not a relative path inside the item", rel)
 			}
 			if kind.Flatten {
 				if first, dup := flattened[final]; dup {
@@ -95,6 +116,10 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 				}
 				flattened[final] = rel
 			}
+			if first, dup := placed[final]; dup {
+				return nil, fail("destinations %q and %q both place a file at %q", first, entries[i], final)
+			}
+			placed[final] = entries[i]
 			out = append(out, placement{From: sourcePath(it, listing.Dir, rel), Dest: final})
 		}
 	}
@@ -140,6 +165,41 @@ func sourcePath(it catalog.Item, dir bool, rel string) string {
 		return it.From
 	}
 	return path.Join(it.From, rel)
+}
+
+// destKey is the identity of an interpolated destination: what it will actually mean
+// once files are placed under it, rather than how it was spelled. Two `to` entries that
+// differ only in a trailing slash are one destination for a directory item and two for a
+// file item, and comparing the raw strings would miss the first case — letting one item
+// produce the same path twice and surface as its own collision partner.
+func destKey(dest string, dir bool) string {
+	if !dir && !strings.HasSuffix(dest, "/") {
+		// The destination names the file itself.
+		return "=" + path.Clean(dest)
+	}
+	// The destination names a directory to place into.
+	return "/" + path.Clean(dest)
+}
+
+// insideItem reports whether a listing entry names something below the item's `from`.
+// It is the same shape as insideRepo and kept separate for the same reason internal/
+// catalog and internal/lock keep their own copies: a different subject, a different
+// reason, and its own wording.
+//
+// The reason here is that an entry is used twice. Joined to the destination it aims a
+// write, and joining absorbs leading ".." segments — so an entry with fewer of them
+// than its destination has segments lands somewhere else inside the repo, .git/ among
+// them, while every repo-root check still passes. Joined to `from` it names the file to
+// read, and nothing downstream re-checks that, so an unchecked entry aims a read outside
+// the source's fetched tree and at whatever sits beside it in the fetch cache.
+func insideItem(p string) bool {
+	if p == "" || p == "." || strings.HasPrefix(p, "/") {
+		return false
+	}
+	if slices.Contains(strings.Split(p, "/"), "..") {
+		return false
+	}
+	return path.Clean(p) == p
 }
 
 // insideRepo reports whether p is a path graft may write inside the consumer's

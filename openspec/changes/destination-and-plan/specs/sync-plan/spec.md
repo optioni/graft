@@ -182,7 +182,33 @@ holding every destination that item produces. Sources SHALL be ordered by name, 
 id, and files by path. A source present in the lock but absent from the manifest SHALL NOT
 appear. Serializing the next lock twice from the same inputs SHALL produce byte-identical
 output, and the serialized bytes SHALL parse back through `graft.lock`'s own parser without
-error — a plan may never build a lock a later `sync` would refuse to read.
+error. A plan may never build a lock a later `sync` would refuse to read.
+
+Because `graft.lock` requires a 40-character lowercase hex `resolved`, `internal/plan`
+SHALL refuse a source whose resolved sha is not one, before anything is planned for that
+source, failing with
+
+```
+source "<source>": resolved "<value>" is not a 40-character hex sha
+```
+
+and returning no plan. This one constraint is checked rather than assumed because it is
+the only one a caller can violate silently: every *other* constraint `graft.lock` enforces
+on load — unique source names, unique item ids, no path claimed twice — is a consequence of
+what this specification already requires, and the round-trip scenario below is what
+verifies them. Trusting the caller here instead would leave two packages disagreeing about
+what a valid `graft.lock` is, and the disagreement would surface one run later, in a
+different package, against a file the user is told not to edit.
+
+#### Scenario: A resolved sha that is not a sha fails the plan
+
+- **WHEN** source `shared` is supplied with `resolved` empty, or `v1.2.0`, or a
+  40-character hex string written in upper case
+- **THEN** planning fails with
+  `source "shared": resolved "" is not a 40-character hex sha` — naming the value it was
+  given — and no plan is returned
+- **AND** the check runs before anything is planned for that source, so a lock
+  `lock.Parse` would refuse is never built
 
 #### Scenario: An item placed in two destinations records both files
 
@@ -234,6 +260,18 @@ items by id, destinations in declared order, files by path — and SHALL return 
 Collisions SHALL be an error rather than last-writer-wins, because the loser would be a
 file the lock claims and a later sync would delete.
 
+Two items SHALL also be refused when one writes a path that another needs as a directory,
+since a path cannot be both a file and a directory. Planning SHALL fail with
+
+```
+source "<a>" item "<a-id>" writes "<a-path>" and source "<b>" item "<b-id>" writes "<b-path>": one cannot contain the other
+```
+
+naming both paths in walk order, and SHALL return no plan. Left undetected this is worse
+than a plain collision: applying it fails partway through, and because the lock is written
+last the file already written is absent from `graft.lock` — outside anything a later prune
+could reach, which is the one state this design exists to make unreachable.
+
 #### Scenario: Two items of one source colliding is an error
 
 - **WHEN** source `shared` installs `agent:review` from a file and `agent:pack` from a
@@ -259,6 +297,23 @@ file the lock claims and a later sync would delete.
   `source "shared" item "agent:x" and source "shared" item "agent:y" both resolve to ".claude/agents/x.md"`
 - **AND** the lock having previously claimed the path grants no precedence, and nothing in
   the lock is pruned, because a failed build produces no plan at all
+
+#### Scenario: One item's file inside another item's directory is an error
+
+- **WHEN** source `shared` installs `doc:api`, a file item landing at `docs/api`, and
+  `schema:api`, a directory item whose listing `["index.md"]` lands at `docs/api/index.md`
+- **THEN** planning fails with
+  `source "shared" item "doc:api" writes "docs/api" and source "shared" item "schema:api" writes "docs/api/index.md": one cannot contain the other`
+- **AND** no plan is returned, so the run cannot get as far as writing one of them and
+  leaving it outside `graft.lock`
+
+#### Scenario: The same clash reached from the other side of the walk
+
+- **WHEN** the directory item is `agent:api` and so is reached first, its file landing at
+  `docs/api/index.md`, and `doc:api` then lands at `docs/api`
+- **THEN** planning fails with
+  `source "shared" item "agent:api" writes "docs/api/index.md" and source "shared" item "doc:api" writes "docs/api": one cannot contain the other`
+- **AND** neither walk order lets the clash through
 
 #### Scenario: One item producing the same path twice is not this error
 

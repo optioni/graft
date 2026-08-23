@@ -94,6 +94,25 @@ invariant is only "no destination escapes the repo root", and narrowing it here 
 the same kind of invented rule design.md → Q2 declines for `.git/`. The fidelity of a
 listing is `git-fetch`'s contract, recorded in design.md → Risks.
 
+## Change Review — Findings and Dispositions
+
+The finding pass was delegated to a separate `code-review` agent, given only the five
+artifacts and `git diff aac80f3..HEAD`, and asked to attack the six concentration points
+tasks.md group 12 names. It reported five of the six holding and one failing.
+
+| Severity | Finding | Disposition |
+|---|---|---|
+| CRITICAL | **A listing entry could climb out of its item, in both directions.** The escape check ran on `path.Join(dest, rel)`, and `path.Join` cleans — so `..` segments in a listing entry were absorbed before the check saw them. An entry with fewer `..` segments than its destination has path segments landed anywhere **inside** the repo, `.git/hooks/pre-commit` among them, with every repo-root check passing and no cooperation needed from the catalog's `to`. The read side was worse: `Write.From` was `path.Join(item.From, rel)` and was never checked at all, so an entry could aim a **read** outside the source's fetched tree at whatever sits beside it in the cache. | **Fixed.** New `insideItem` predicate refuses a listing entry that is empty, `.`, absolute, holds a `..` segment, or is not cleaned — before any join, closing both halves at one site. New spec requirement *A listed path stays inside its item* with six scenarios, including the reviewer's `.git/hooks` and flattened-source-path cases. The repo-root check on the computed path stays and runs first, so both rules are live and both are covered. Verified by deleting the check and watching every new scenario go red. |
+| WARNING | **The "two entries interpolate alike" dedupe compared raw strings**, so `["a/{name}", "a/{name}/"]` — one destination for a directory item by D4 — slipped past it, and the item then surfaced through the *cross-item* collision message naming itself as its own partner, which `sync-plan` forbids in as many words. `catalog.Parse`'s own duplicate-destination guard has the same blind spot. | **Fixed.** Keyed on `destKey(dest, dir)`: the destination's meaning rather than its spelling. One destination for a directory item, two for a file item — where they genuinely are two, one naming the file and one a directory to put it in. Both directions have scenarios. The `catalog` half is not this change's to fix and was filed separately. |
+| WARNING | **A duplicated listing entry produced the same self-collision.** | **Fixed**, together with the case the reviewer did not report: two `to` entries that are genuinely different destinations, one nested in the other, can still meet on a file (`["a", "a/b"]` with `["b/x.md", "x.md"]`). Listings are `slices.Compact`ed, and a per-item map spanning every destination entry raises a new within-item message, `destinations "a" and "a/b" both place a file at "a/b/x.md"`. *One item producing the same path twice is not this error* is now true unconditionally rather than only for the two originally named causes. |
+| SUGGESTION | **The purity guard saw stdlib imports, not filesystem calls through collaborators.** `plan` imports `catalog` and `lock`, both of which export a `Load`; a future `Build` calling one would read a file with the guard still green, because the import set would not change. | **Fixed.** The guard now also walks the AST for `catalog.Load`, `lock.Load`, and `manifest.Load`. Watched it fail against a real `catalog.Load` in `build.go`. |
+| SUGGESTION | **"is not in cleaned form" was literally false** for every destination the requirement's own scenarios accept, since the check is applied to the destination with one trailing `/` trimmed — as it must be, or `.claude/agents/` is refused. | **Fixed** in the requirement text. No code change. |
+| SUGGESTION | **`Build` can construct a lock `lock.Parse` refuses** when `Resolved` is empty, while the round-trip requirement is written without qualification. | **Accepted, resolved the other way the reviewer offered.** The requirement now names the precondition instead of `Build` re-checking it. design.md's Preconditions block deliberately makes a 40-hex `resolved` `git-fetch`'s guarantee and states that `Build` does not re-validate what collaborators guarantee; validating here would put a third copy of that rule in a third package and would need a design amendment to justify. |
+
+The reviewer also left, unrequested and unreported, an implementation of a **nesting
+invariant** in `internal/plan/build.go`. It was reverted — see the deferred note below for
+why, and for the part of its reasoning that is worth keeping.
+
 ## No Remaining Implementation-Blocking Gaps
 
 None remain. Every gap above is repaired in the artifact that owns it, and the change
@@ -119,6 +138,15 @@ reader to re-derive it. It does not block implementation.
   `git-fetch`'s contract, tested there against real fixture repositories.
 - The pin check (`lock.CheckPins`) is deliberately not called from `Build`; it must fire
   before anything is fetched. Recorded in design.md → D6, and it lands with `sync-command`.
+- **Two items whose destinations nest** — `docs/api` as a file and `docs/api/index.md` as
+  another item's file — is not refused. They cannot both exist: `apply` would fail halfway,
+  and because the lock is written last the file already written would be left outside
+  `graft.lock`, where no later prune could ever reach it. The reasoning is sound and the
+  consequence is real. It is not in this change because SPEC.md's invariant list says only
+  "no two items share a destination path", and inventing an unlisted invariant is exactly
+  what design.md → Q2 declined to do for `.git/`. Resolution point: `sync-command`, where
+  `internal/apply` exists and the orphaning consequence can be argued against a real
+  writer rather than against a plan.
 - Per-item `added`/`updated`/`removed` reporting is derivable from `Writes`, `Prune`, and the
   old lock without `plan` growing a report type. Recorded in proposal.md → Non-Goals and
   design.md → Risks; it lands with `sync-command`.
