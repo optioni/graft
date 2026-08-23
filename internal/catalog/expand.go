@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 )
@@ -22,9 +23,13 @@ func Expand(c *Catalog, source string, selectors []string) ([]Item, error) {
 	var out []Item
 	seen := make(map[string]struct{}, len(c.Items))
 	for _, sel := range selectors {
+		match, ok := matcher(sel)
+		if !ok {
+			return nil, fmt.Errorf("source %q: invalid selector pattern %q", source, sel)
+		}
 		matched := false
 		for _, it := range c.Items {
-			if it.ID != sel {
+			if !match(it) {
 				continue
 			}
 			matched = true
@@ -46,6 +51,30 @@ func Expand(c *Catalog, source string, selectors []string) ([]Item, error) {
 	// the lock's item order independent of how a consumer wrote its manifest.
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
+}
+
+// matcher builds the test one selector applies to an item. A selector is kind:name;
+// the kind is compared literally because SPEC.md places the glob in the name position
+// only, and the name is matched with path.Match. Item names contain no "/", so
+// path.Match's one surprising rule — that * does not cross a separator — cannot bite.
+//
+// The pattern is validated up front, against the empty string, rather than on the
+// first item it is compared with: a malformed pattern is a typo whichever kind it
+// names, and reporting it only when the catalog happens to hold an item of that kind
+// would make the message depend on the catalog. ErrBadPattern is path.Match's only
+// error, so a bool carries everything the caller can act on.
+func matcher(sel string) (func(Item) bool, bool) {
+	kind, name, _ := strings.Cut(sel, ":")
+	if _, err := path.Match(name, ""); err != nil {
+		return nil, false
+	}
+	return func(it Item) bool {
+		if it.Kind != kind {
+			return false
+		}
+		ok, _ := path.Match(name, it.Name)
+		return ok
+	}, true
 }
 
 // provided lists every id the catalog offers, so a typo is visible against the real

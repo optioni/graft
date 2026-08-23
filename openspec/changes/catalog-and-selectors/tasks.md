@@ -77,14 +77,14 @@
 ## 7. Globs in the name position
 <!-- kind: behavior -->
 
-- [ ] 7.1 RED: Write failing table tests for `A trailing star selects every item of a kind`, `A prefix glob selects a subset`, `A question mark matches exactly one character` (the catalog holds both `schema:td` and `schema:tdd`)
-- [ ] 7.2 RED: Write failing table tests for `A glob matching nothing is an error` (`hook:*` against a catalog with no `hook` items), `The kind position is matched literally` (asserting the exact no-match message for `*:tdd`), and `A malformed glob pattern is an error` (asserting the exact message for `agent:[tdd` and that no items are returned)
-- [ ] 7.3 Confirm the glob cases fail because matching is still literal, and the malformed case fails because the pattern error is still swallowed into a no-match
-- [ ] 7.4 GREEN: Split each selector at its single colon, compare the kind literally, and match the name with `path.Match`
-- [ ] 7.5 GREEN: Surface `path.ErrBadPattern` as the exact invalid-pattern message instead of treating the selector as a literal name — a bad pattern is a typo, and typo protection is the whole point of the no-match rule
-- [ ] 7.6 REFACTOR: Fold the plain-selector path into the glob path if a literal name is now just a pattern with no metacharacters, keeping group 6's tests unchanged, or record that no refactor was warranted
-- [ ] 7.7 CHECK: Contract gate — re-read SPEC.md's `install` bullet and confirm the glob lives in the name position only, and that the resolved reading recorded in design.md → Open Questions still matches the rest of SPEC.md
-- [ ] 7.8 Run `go test -race ./internal/catalog/...` — green, no regressions
+- [x] 7.1 RED: Write failing table tests for `A trailing star selects every item of a kind`, `A prefix glob selects a subset`, `A question mark matches exactly one character` (the catalog holds both `schema:td` and `schema:tdd`), plus `Overlapping selectors yield each item once` and `One selector matching does not excuse another that does not`, both moved here from group 6 because their selectors need globs to match (see 6.1)
+- [x] 7.2 RED: Write failing table tests for `A glob matching nothing is an error` (`hook:*` against a catalog with no `hook` items), `The kind position is matched literally` (asserting the exact no-match message for `*:tdd`), and `A malformed glob pattern is an error` (asserting the exact message for `agent:[tdd` and that no items are returned)
+- [x] 7.3 Confirm the glob cases fail because matching is still literal, and the malformed case fails because the pattern error is still swallowed into a no-match
+- [x] 7.4 GREEN: Split each selector at its single colon, compare the kind literally, and match the name with `path.Match`
+- [x] 7.5 GREEN: Surface `path.ErrBadPattern` as the exact invalid-pattern message instead of treating the selector as a literal name — a bad pattern is a typo, and typo protection is the whole point of the no-match rule
+- [x] 7.6 REFACTOR: Fold the plain-selector path into the glob path if a literal name is now just a pattern with no metacharacters, keeping group 6's tests unchanged, or record that no refactor was warranted — done: there is one path. `matcher` handles literal and globbed names alike, the literal `it.ID != sel` comparison is gone, and group 6's tests are unchanged and green
+- [x] 7.7 CHECK (confirmed: the kind is compared with `!=` and only the name reaches `path.Match`, so `*:tdd` falls out as the ordinary no-match error, which is the reading design.md → Open Questions recorded): Contract gate — re-read SPEC.md's `install` bullet and confirm the glob lives in the name position only, and that the resolved reading recorded in design.md → Open Questions still matches the rest of SPEC.md
+- [x] 7.8 Run `go test -race ./internal/catalog/...` — green, no regressions
 
 ## 8. Documentation
 <!-- kind: operational -->
