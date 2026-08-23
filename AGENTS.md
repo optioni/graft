@@ -63,10 +63,13 @@ internal/apply/     the only package that writes to the working tree
   point of pinning.
 - **Error strings are asserted by tests.** For a CLI this small the failure-mode table is
   the product. Changing a message is a deliberate contract change.
-- **graft executes nothing from a source.** It reads `catalog.yaml` and copies files —
-  no build step, no hook, no script a source can cause to run. This is why the tool needs
-  no sandboxing. Any feature that would run source-provided content changes the threat
-  model and needs to be argued for explicitly.
+- **graft executes nothing from a source, but it does place.** It reads `catalog.yaml`
+  and copies files — no build step, no hook, no script a source can cause to run. The
+  claim stops there: kinds are arbitrary, so a catalog can name a destination that
+  something *else* executes (`.github/workflows/` runs in CI, `.claude/agents/` is
+  instructions an agent follows). That is why `add` shows every item's destination before
+  writing and why a consumer override beats the catalog. Any feature that would run
+  source-provided content changes the threat model and needs arguing for explicitly.
 - **Coverage is measured over `./internal/...` only.** Logic in `cmd/graft` is invisible
   to the gate — which is the reason to keep it out of there.
 - **Fixture git repos need `user.name` and `user.email` set on the repo**, not the

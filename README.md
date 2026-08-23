@@ -22,10 +22,10 @@ install = ["schema:tdd", "agent:*"]
 ```
 
 ```sh
-graft sync      # make the tree match the lock
-graft update    # move the pins, then sync
-graft list      # what is installed here, and at which SHA
-graft search    # what a source offers
+graft add <repo>  # pick what to install, write the manifest, sync
+graft sync        # make the tree match the lock
+graft update      # move the pins, then sync
+graft list        # what is installed here, and at which SHA
 ```
 
 Commit the synced files and `graft.lock` alongside your own code.

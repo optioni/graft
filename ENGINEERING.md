@@ -115,10 +115,17 @@ auto-updater.
 ## Security
 
 **graft executes nothing from a source.** It reads `catalog.yaml` and copies files. There
-is no build step, no hook, no script a source repo can cause to run. That property is the
-reason no audit or sandboxing subsystem is needed, and it is worth defending in review:
-any feature that would run source-provided content changes the tool's threat model
-entirely.
+is no build step, no hook, no script a source repo can cause to run. Any feature that
+would run source-provided content changes the tool's threat model entirely and must be
+argued for on its own.
+
+The claim stops at execution, though, and should not be stretched into a general safety
+guarantee. graft **places** files, and kinds are arbitrary, so a catalog may name a
+destination something else executes — `.github/workflows/` is run by CI, `.claude/agents/`
+is instructions an agent follows. Trusting a source means trusting what it places. The
+mitigations are ergonomic rather than technical: `add` shows every item's destination
+before writing, a consumer override beats the catalog, and no destination may escape the
+repo root.
 
 Dependabot covers Go modules and Actions. Releases carry provenance attestations.
 

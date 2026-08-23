@@ -49,6 +49,15 @@ provides:
 - Item identity is `kind:name`. It is stable across restructuring: `from` may move freely
   without touching any consumer.
 
+**Kinds are arbitrary.** graft holds no list of valid kinds and never will — a source may
+declare `skill`, `hook`, `command`, or anything else, and adding a new kind of asset must
+never require a graft release. Naming is convention, not enforcement: a source shipping
+agents should call the kind `agent` so consumers of several sources see one vocabulary.
+
+Because the kind name is arbitrary it carries no guarantee, so **the destination is what a
+consumer actually agrees to**. `add` shows the destination for every item before writing,
+and a consumer override in `graft.toml` beats whatever the catalog proposed.
+
 ## `graft.toml` — the consumer's request
 
 ```toml
@@ -115,9 +124,9 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 | `graft sync` | Make the tree match the lock. Fetch, write, prune. Never re-resolves a pin. Idempotent. **v1** |
 | `graft update [source]` | Re-resolve each `rev` to its current SHA, rewrite the lock, then sync. **v1** |
 | `graft update --to <rev> <source>` | Move the pin in `graft.toml`, then sync. **v1** |
+| `graft add <source>[@rev] [selector...]` | Add or amend a source in `graft.toml`, then sync. **v1** |
+| `graft add <source> --list` | Print the source's catalog and exit, writing nothing. **v1** |
 | `graft list` | Items installed here, with source and resolved SHA. **v1** |
-| `graft search <source>` | Print a source's catalog. Requires no `graft.toml`. **v1** |
-| `graft init` | Write a starter `graft.toml`. Later. |
 
 There is no `--force`. Sync always overwrites; a flag to make it do its job is the bug it
 is meant to prevent.
@@ -127,6 +136,34 @@ says. Moving a pin is `graft update`, always explicit — so `rev = "main"` cann
 under you between syncs.
 
 `--dry-run` prints the plan and touches nothing — including creating no directories.
+
+## `graft add`
+
+With selectors, `add` is non-interactive: it writes them to `graft.toml` and syncs.
+
+```sh
+graft add optioni/openspec-schemas@v1.3.0 schema:tdd 'agent:*'
+```
+
+Without selectors, and on a TTY, it presents the source's catalog as a multi-select list
+showing each item's **destination**, and writes what was chosen. Without selectors and
+without a TTY, it is an error naming the selectors it needed — never a hang, never a
+default guess.
+
+**The picker chooses selectors and has no other powers.** Everything it can do, a flag can
+do; every effect it has runs through the same code path as the non-interactive form. This
+is what keeps the interactive layer a thin, separately tested widget rather than a second
+implementation of the tool.
+
+Two behaviors worth naming:
+
+- When every item of a kind is selected, `add` offers to collapse the selection to
+  `kind:*`. This is a semantic choice, not a confirmation: `agent:*` adopts agents the
+  source adds later, an explicit list does not.
+- `rev` defaults to the source's latest semver tag, falling back to default-branch HEAD
+  when it has none. `@rev` overrides.
+
+`add` syncs on success. `--no-sync` writes the manifest only.
 
 ## Resolution
 
@@ -159,6 +196,12 @@ These hold or the run aborts before writing:
 - **`from` stays inside the source tree.**
 - **The lock is written last**, after every file operation succeeds.
 
+graft executes nothing a source provides — it reads `catalog.yaml` and copies files. It
+does, however, **place** files, and some destinations are executable by something else: a
+catalog naming `.github/workflows/` gets its YAML run by CI, and `.claude/agents/` is
+instructions an agent will follow. Trusting a source means trusting what it places, which
+is why the destination is shown before install and why a consumer override always wins.
+
 ## Failure modes
 
 | Condition | Behavior |
@@ -166,6 +209,7 @@ These hold or the run aborts before writing:
 | `rev` not found in the source | Error, naming the rev and the source. |
 | `catalog.yaml` missing or invalid | Error: the repo is not graftable. No fallback. |
 | A selector matches no item | Error listing what the catalog does provide. Typo protection. |
+| `add` without selectors and without a TTY | Error naming the selectors it needed. Never hangs, never guesses. |
 | Two items resolve to one path | Error naming both items and the path. |
 | Destination outside the repo root | Error. |
 | Network unavailable, cache hit | Proceeds. |
@@ -176,6 +220,28 @@ These hold or the run aborts before writing:
 ## Exit codes
 
 `0` success · `1` error
+
+## Output
+
+Machine-readable output goes to stdout; progress, summaries, and errors to stderr, so a
+pipe is never corrupted. Color is dropped when stdout is not a TTY or `NO_COLOR` is set.
+There are no spinners, no progress bars, and no behavior that exists only on a TTY apart
+from the `add` picker.
+
+Changes are reported per item with the words `added`, `updated`, and `removed` — not
+symbols — at item granularity:
+
+```
+openspec-schemas  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
+
+  updated  schema:tdd                6 files
+  removed  agent:phase-orchestrator  1 file   no longer provided
+
+6 files written, 1 removed - review with `git diff`
+```
+
+A sync with nothing to do prints `up to date` and nothing else. Output that appears when
+nothing happened trains the reader to stop reading it.
 
 ## Reviewing a sync
 
