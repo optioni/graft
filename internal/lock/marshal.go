@@ -2,6 +2,7 @@ package lock
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -26,7 +27,7 @@ func Marshal(l *Lock) []byte {
 	b.WriteString(header)
 	fmt.Fprintf(&b, "version = %d\n", Version)
 
-	for _, s := range l.Sources {
+	for _, s := range normalized(l.Sources) {
 		b.WriteString("\n[[source]]\n")
 		writeKey(&b, "", sourceKeyWidth, "name", quote(s.Name))
 		writeKey(&b, "", sourceKeyWidth, "git", quote(s.Git))
@@ -40,6 +41,28 @@ func Marshal(l *Lock) []byte {
 		}
 	}
 	return []byte(b.String())
+}
+
+// normalized returns a deep-enough copy of sources ordered the way SPEC.md requires:
+// sources by name, items by id, files by path, each by byte-wise string comparison.
+// Ordering is applied here and nowhere else, so a field added to one code path cannot
+// end up sorted in another and unsorted in this one. The copy matters twice over —
+// Marshal must not reorder a lock its caller still holds, and sorting in place would
+// make the result depend on how often Marshal had been called.
+func normalized(sources []Source) []Source {
+	out := slices.Clone(sources)
+	for i := range out {
+		items := slices.Clone(out[i].Items)
+		for j := range items {
+			files := slices.Clone(items[j].Files)
+			slices.Sort(files)
+			items[j].Files = files
+		}
+		slices.SortFunc(items, func(a, b Item) int { return strings.Compare(a.ID, b.ID) })
+		out[i].Items = items
+	}
+	slices.SortFunc(out, func(a, b Source) int { return strings.Compare(a.Name, b.Name) })
+	return out
 }
 
 // writeKey emits one aligned `key = value` line under the given indent.

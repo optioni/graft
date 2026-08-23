@@ -67,16 +67,16 @@
 ## 6. Determinism and byte-stable round trip
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write `TestMarshal_OrderIndependent` for `Input order does not change output` — build two locks with identical content, one ascending and one with sources, items, and files all reversed, and assert the marshalled bytes are equal and ordered name-, id-, and path-ascending
-- [ ] 6.2 RED: Write `TestMarshal_Twice` for `Serializing the same lock twice is byte-identical`, asserting with `bytes.Equal` rather than comparing parsed values
-- [ ] 6.3 RED: Write `TestRoundTrip_Canonical` for `Canonical bytes survive a parse and serialize` against `testdata/canonical.lock`
-- [ ] 6.4 RED: Add `internal/lock/testdata/scrambled.lock` — same content, reversed order, single-space padding, no header comment — and write `TestRoundTrip_Normalizes` for `Non-canonical input is normalized, then stable`, asserting the first marshal equals `canonical.lock` and a second parse-and-marshal returns the identical bytes
-- [ ] 6.5 Confirm these fail on ordering and normalization, not on a golden file that disagrees with itself
-- [ ] 6.6 GREEN: Sort sources by name, items by id, and files by path with byte-wise string comparison inside `Marshal`, so ordering cannot depend on map iteration, locale, or platform
-- [ ] 6.7 REFACTOR: Hoist the three sorts into one normalization step so a future field cannot be sorted in one code path and not another, or record that no refactor was warranted
-- [ ] 6.8 CHECK: Concentration point — confirm the determinism assertions compare bytes, not parsed values; a semantic comparison here would pass while every sync churned the git diff
-- [ ] 6.9 CHECK: Contract gate — re-read SPEC.md's ordering bullet and confirm `Marshal` implements "sources by name, items by id, files by path", and that the SPEC example's item order is reconciled in the documentation group below
-- [ ] 6.10 Run `go test -race ./internal/lock/...` — green, no regressions
+- [x] 6.1 RED: Write `TestMarshal_OrderIndependent` for `Input order does not change output` — build two locks with identical content, one ascending and one with sources, items, and files all reversed, and assert the marshalled bytes are equal and ordered name-, id-, and path-ascending
+- [x] 6.2 RED: Write `TestMarshal_Twice` for `Serializing the same lock twice is byte-identical`, asserting with `bytes.Equal` rather than comparing parsed values
+- [x] 6.3 RED: Write `TestRoundTrip_Canonical` for `Canonical bytes survive a parse and serialize` against `testdata/canonical.lock`
+- [x] 6.4 RED: Add `internal/lock/testdata/scrambled.lock` — same content, reversed order, single-space padding, no header comment — and write `TestRoundTrip_Normalizes` for `Non-canonical input is normalized, then stable`, asserting the first marshal equals `canonical.lock` and a second parse-and-marshal returns the identical bytes
+- [x] 6.5 Confirm these fail on ordering and normalization, not on a golden file that disagrees with itself
+- [x] 6.6 GREEN: Sort sources by name, items by id, and files by path with byte-wise string comparison inside `Marshal`, so ordering cannot depend on map iteration, locale, or platform
+- [x] 6.7 REFACTOR: Hoist the three sorts into one normalization step so a future field cannot be sorted in one code path and not another, or record that no refactor was warranted
+- [x] 6.8 CHECK: Concentration point — confirm the determinism assertions compare bytes, not parsed values; a semantic comparison here would pass while every sync churned the git diff
+- [x] 6.9 CHECK: Contract gate — re-read SPEC.md's ordering bullet and confirm `Marshal` implements "sources by name, items by id, files by path", and that the SPEC example's item order is reconciled in the documentation group below
+- [x] 6.10 Run `go test -race ./internal/lock/...` — green, no regressions
 
 ## 7. Manifest and lock pin agreement
 <!-- kind: behavior -->
