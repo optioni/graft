@@ -70,6 +70,7 @@ func TestExpand_GlobErrors(t *testing.T) {
 
 	tests := []struct {
 		name      string
+		items     []string
 		selectors []string
 		want      string
 	}{
@@ -77,18 +78,23 @@ func TestExpand_GlobErrors(t *testing.T) {
 			// A glob that adopts items a source adds later still has to match one
 			// today.
 			name:      "a glob matching nothing",
+			items:     three,
 			selectors: []string{"hook:*"},
 			want:      `source "openspec-schemas": selector "hook:*" matches no item; ` + provides,
 		},
 		{
 			// The kind is compared literally, so *:tdd is not a way to select both
-			// kinds — it is a selector naming a kind no catalog has.
+			// kinds — it is a selector naming a kind no catalog has. Both items here
+			// have the name tdd, and neither is selected.
 			name:      "the kind position is matched literally",
+			items:     []string{"agent:tdd-reviewer", "schema:tdd"},
 			selectors: []string{"*:tdd"},
-			want:      `source "openspec-schemas": selector "*:tdd" matches no item; ` + provides,
+			want: `source "openspec-schemas": selector "*:tdd" matches no item; ` +
+				`catalog provides agent:tdd-reviewer, schema:tdd`,
 		},
 		{
 			name:      "one selector matching does not excuse another that does not",
+			items:     three,
 			selectors: []string{"agent:*", "schema:missing"},
 			want:      `source "openspec-schemas": selector "schema:missing" matches no item; ` + provides,
 		},
@@ -96,6 +102,7 @@ func TestExpand_GlobErrors(t *testing.T) {
 			// A bad pattern is a typo, and typo protection is the point of the
 			// no-match rule, so it is reported rather than swallowed into "no match".
 			name:      "a malformed glob pattern",
+			items:     three,
 			selectors: []string{"agent:[tdd"},
 			want:      `source "openspec-schemas": invalid selector pattern "agent:[tdd"`,
 		},
@@ -103,6 +110,7 @@ func TestExpand_GlobErrors(t *testing.T) {
 			// Reported even though no item could have been compared against it: the
 			// message must not depend on what the catalog happens to hold.
 			name:      "a malformed pattern under a kind with no items",
+			items:     three,
 			selectors: []string{"hook:[tdd"},
 			want:      `source "openspec-schemas": invalid selector pattern "hook:[tdd"`,
 		},
@@ -112,7 +120,7 @@ func TestExpand_GlobErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := catalog.Expand(fixture(three...), source, tt.selectors)
+			got, err := catalog.Expand(fixture(tt.items...), source, tt.selectors)
 			if got != nil {
 				t.Errorf("Expand() items = %q, want nil", ids(got))
 			}
