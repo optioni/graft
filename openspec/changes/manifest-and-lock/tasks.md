@@ -53,16 +53,16 @@
 ## 5. Canonical lock serialization
 <!-- kind: behavior -->
 
-- [ ] 5.1 RED: Add `internal/lock/testdata/canonical.lock` holding the exact bytes from `A populated lock serializes to the documented layout`, and write `TestMarshal_Golden` comparing `Marshal` output to that file byte for byte
-- [ ] 5.2 RED: Write failing tests for `A files list of one is inline and a list of many is exploded` (0, 1, and 2 files), `An empty lock serializes to header and version only`, and `A path needing escaping round-trips`
-- [ ] 5.3 Confirm the failures come from the missing serializer, not from a stale or mis-encoded golden file (check the golden file is UTF-8, LF-only, and ends in exactly one newline)
-- [ ] 5.4 GREEN: Implement `Marshal(*Lock) []byte` — header comment, `version = 1`, one `[[source]]` block per source with `name`/`git`/`rev`/`resolved` padded to align on `=`, each `[[source.item]]` indented two spaces with `id`/`files` aligned, exactly one blank line between blocks, LF endings, one trailing newline
-- [ ] 5.5 GREEN: Implement the `files` layout rule — `[]` when empty, inline when one, exploded with four-space-indented entries and a trailing comma after the last when two or more
-- [ ] 5.6 GREEN: Implement TOML basic-string quoting for every emitted value so a path containing `"` or `\` is escaped
-- [ ] 5.7 CHECK: Confirm `Marshal` returns bytes and writes nothing — no `os.Create`, `os.WriteFile`, or `io.Writer` sink anywhere in `internal/lock`; `internal/apply` is the only package permitted to write, and it does so in `sync-command`
-- [ ] 5.8 REFACTOR: Reduce the writer to one `strings.Builder` pass with no per-line intermediate allocation, or record that no refactor was warranted
-- [ ] 5.9 CHECK: Contract gate — re-read SPEC.md's `graft.lock` example and confirm the emitted layout matches it field for field, including key alignment, the two-space `[[source.item]]` indent, and the trailing comma in an exploded `files` array
-- [ ] 5.10 Run `go test -race ./internal/lock/...` — green, no regressions
+- [x] 5.1 RED: Add `internal/lock/testdata/canonical.lock` holding the exact bytes from `A populated lock serializes to the documented layout`, and write `TestMarshal_Golden` comparing `Marshal` output to that file byte for byte
+- [x] 5.2 RED: Write failing tests for `A files list of one is inline and a list of many is exploded` (0, 1, and 2 files), `An empty lock serializes to header and version only`, and `A path needing escaping round-trips`
+- [x] 5.3 Confirm the failures come from the missing serializer, not from a stale or mis-encoded golden file (check the golden file is UTF-8, LF-only, and ends in exactly one newline)
+- [x] 5.4 GREEN: Implement `Marshal(*Lock) []byte` — header comment, `version = 1`, one `[[source]]` block per source with `name`/`git`/`rev`/`resolved` padded to align on `=`, each `[[source.item]]` indented two spaces with `id`/`files` aligned, exactly one blank line between blocks, LF endings, one trailing newline
+- [x] 5.5 GREEN: Implement the `files` layout rule — `[]` when empty, inline when one, exploded with four-space-indented entries and a trailing comma after the last when two or more
+- [x] 5.6 GREEN: Implement TOML basic-string quoting for every emitted value so a path containing `"` or `\` is escaped
+- [x] 5.7 CHECK: Confirm `Marshal` returns bytes and writes nothing — no `os.Create`, `os.WriteFile`, or `io.Writer` sink anywhere in `internal/lock`; `internal/apply` is the only package permitted to write, and it does so in `sync-command`
+- [x] 5.8 REFACTOR: Reduce the writer to one `strings.Builder` pass with no per-line intermediate allocation, or record that no refactor was warranted
+- [x] 5.9 CHECK: Contract gate — re-read SPEC.md's `graft.lock` example and confirm the emitted layout matches it field for field, including key alignment, the two-space `[[source.item]]` indent, and the trailing comma in an exploded `files` array
+- [x] 5.10 Run `go test -race ./internal/lock/...` — green, no regressions
 
 ## 6. Determinism and byte-stable round trip
 <!-- kind: behavior -->
