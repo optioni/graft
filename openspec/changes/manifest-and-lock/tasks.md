@@ -29,19 +29,19 @@
 <!-- kind: behavior -->
 <!-- parallel-after: 1 -->
 
-- [ ] 3.1 RED: Write failing tests for `An absent lock loads as an empty lock` in a `t.TempDir()` — version 1, zero sources, nil error, and assert no `graft.lock` was created — plus `A lock with zero sources loads`, `A populated lock loads`, and `Malformed TOML is an error` (prefix `graft.lock: ` only)
-- [ ] 3.2 RED: Write failing table tests for `A missing version is an error`, `A newer version fails and says to upgrade` (also asserting no source is returned), `A version below 1 is an error`
-- [ ] 3.3 RED: Write failing table tests for `A missing resolved sha is an error`, `A malformed resolved sha is an error`, `A duplicate source name is an error`, `A malformed item id is an error`, `A duplicate item id within a source is an error`, `An unknown key is an error`
-- [ ] 3.4 RED: Write failing tests for `An item with no files is valid`, `A duplicate file within an item is an error`, and `An escaping file path is an error` for both `../outside.md` and `/etc/passwd`
-- [ ] 3.5 Confirm every test above fails because `internal/lock` does not exist, not because a fixture is malformed
-- [ ] 3.6 GREEN: Add `Lock`, `Source`, `Item`, and `Parse([]byte, filename string) (*Lock, error)` with strict decoding
-- [ ] 3.7 GREEN: Add version gating — required, `0` rejected, `> 1` rejected with the upgrade message, and no partially decoded lock returned on any of them
-- [ ] 3.8 GREEN: Add source validation — non-empty `name`, `git`, `rev`, uniqueness by name, and `resolved` as 40 lowercase hex characters
-- [ ] 3.9 GREEN: Add item validation — `id` in `kind:name` form, unique within its source, `files` entries non-empty, relative, free of any `..` segment, and unique within the item; an empty `files` list is accepted
-- [ ] 3.10 GREEN: Add `Load(path string) (*Lock, error)` returning an empty lock at version 1 when the file is absent, reading only
-- [ ] 3.11 REFACTOR: Collapse the repeated `graft.lock: source "%s": ...` formatting inside this package while tests stay green, or record that no refactor was warranted — cross-package extraction waits for group 4, so this group stays independent of group 2
-- [ ] 3.12 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm the accepted fields, the `version = 1` value, and the meaning of `files` still match; confirm the escaping-path rule protects the prune mechanism without duplicating `destination-and-plan`'s invariant over computed destinations
-- [ ] 3.13 Run `go test -race ./internal/lock/...` — green, no regressions
+- [x] 3.1 RED: Write failing tests for `An absent lock loads as an empty lock` in a `t.TempDir()` — version 1, zero sources, nil error, and assert no `graft.lock` was created — plus `A lock with zero sources loads`, `A populated lock loads`, and `Malformed TOML is an error` (prefix `graft.lock: ` only)
+- [x] 3.2 RED: Write failing table tests for `A missing version is an error`, `A newer version fails and says to upgrade` (also asserting no source is returned), `A version below 1 is an error`
+- [x] 3.3 RED: Write failing table tests for `A missing resolved sha is an error`, `A malformed resolved sha is an error`, `A duplicate source name is an error`, `A malformed item id is an error`, `A duplicate item id within a source is an error`, `An unknown key is an error`
+- [x] 3.4 RED: Write failing tests for `An item with no files is valid`, `A duplicate file within an item is an error`, and `An escaping file path is an error` for both `../outside.md` and `/etc/passwd`
+- [x] 3.5 Confirm every test above fails because `internal/lock` does not exist, not because a fixture is malformed
+- [x] 3.6 GREEN: Add `Lock`, `Source`, `Item`, and `Parse([]byte, filename string) (*Lock, error)` with strict decoding
+- [x] 3.7 GREEN: Add version gating — required, `0` rejected, `> 1` rejected with the upgrade message, and no partially decoded lock returned on any of them
+- [x] 3.8 GREEN: Add source validation — non-empty `name`, `git`, `rev`, uniqueness by name, and `resolved` as 40 lowercase hex characters
+- [x] 3.9 GREEN: Add item validation — `id` in `kind:name` form, unique within its source, `files` entries non-empty, relative, free of any `..` segment, and unique within the item; an empty `files` list is accepted
+- [x] 3.10 GREEN: Add `Load(path string) (*Lock, error)` returning an empty lock at version 1 when the file is absent, reading only
+- [x] 3.11 REFACTOR: Collapse the repeated `graft.lock: source "%s": ...` formatting inside this package while tests stay green, or record that no refactor was warranted — cross-package extraction waits for group 4, so this group stays independent of group 2
+- [x] 3.12 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm the accepted fields, the `version = 1` value, and the meaning of `files` still match; confirm the escaping-path rule protects the prune mechanism without duplicating `destination-and-plan`'s invariant over computed destinations
+- [x] 3.13 Run `go test -race ./internal/lock/...` — green, no regressions
 
 ## 4. Shared `kind:name` grammar
 <!-- kind: refactor -->
