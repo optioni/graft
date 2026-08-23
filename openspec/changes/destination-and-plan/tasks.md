@@ -126,25 +126,25 @@ beats the catalog.
 ## 6. `Build`: expansion and writes
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing tests for: *A first plan against no lock*; *A plan for a
+- [x] 6.1 RED: Write failing tests for: *A first plan against no lock*; *A plan for a
       manifest with no sources*; *A write carries the source path and the destination*; *A
       file item's write names the file itself, not a path below it*; *A selector matching
       nothing fails the plan*; *A catalog providing zero items fails the plan*; *A failing
       plan is returned as no plan at all*. The last is asserted in every error case in this
       change: on error the returned `*Plan` is nil
-- [ ] 6.2 GREEN: Add `Input`, `Write`, `Plan`, and `Build(inputs []Input, lk *lock.Lock)
+- [x] 6.2 GREEN: Add `Input`, `Write`, `Plan`, and `Build(inputs []Input, lk *lock.Lock)
       (*Plan, error)` with the shapes design.md → Contracts specifies
-- [ ] 6.3 GREEN: Expand each source's `install` against its catalog with `catalog.Expand`,
+- [x] 6.3 GREEN: Expand each source's `install` against its catalog with `catalog.Expand`,
       returning its error unchanged, and walk sources by name and items by id so every later
       error and every ordering is independent of map iteration
-- [ ] 6.4 GREEN: Emit one `Write` per planned file carrying source name, item id, the source
+- [x] 6.4 GREEN: Emit one `Write` per planned file carrying source name, item id, the source
       path, and the destination; sort writes by destination. The source path is
       `path.Join(item.From, rel)` for a **directory** item and `item.From` itself for a
       **file** item — joining in the file case yields `extras/agents/x.md/x.md`, which the
       dedicated scenario exists to catch (design.md → Contracts)
-- [ ] 6.5 REFACTOR: Extract the per-source and per-item error prefix into one closure, or
+- [x] 6.5 REFACTOR: Extract the per-source and per-item error prefix into one closure, or
       state that no refactor was needed
-- [ ] 6.6 Run `go test ./internal/plan/` — no regressions
+- [x] 6.6 Run `go test ./internal/plan/` — no regressions
 
 ## 7. The prune set
 <!-- kind: behavior -->
