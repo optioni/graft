@@ -236,8 +236,10 @@ put destination semantics in two packages.
 **Globs are `path.Match` over the name only.** SPEC.md places the glob "in the name
 position", so the kind is compared literally. `path.Match` is the standard library's
 answer, needs no dependency, and gives `*`, `?`, and character classes with documented
-semantics. Item names contain no `/`, so `path.Match`'s one surprising rule — that `*` does
-not cross a separator — cannot bite. Its `ErrBadPattern` becomes the malformed-pattern
+semantics. `path.Match`'s one surprising rule — that `*` does not cross a separator —
+cannot bite here, but only because parsing makes it so: `plainName` in `items.go` refuses
+an item name holding `/`, so the premise this matcher rests on is enforced at the point a
+catalog mints an id rather than assumed. Its `ErrBadPattern` becomes the malformed-pattern
 error rather than being swallowed into a silent no-match, because a selector like
 `agent:[tdd` is a typo and typo protection is the point of the no-match rule.
 *Alternative rejected:* treating a bad pattern as a literal name, which would report "no
@@ -279,6 +281,20 @@ item has no destination and could never be installed.
   either matches items or produces the no-match error.
 - **The second module dependency arrives here** → maintained, single-purpose, zero
   transitive dependencies, pinned in `go.mod`, covered by Dependabot.
+- **An item name is chosen by the source repository and reaches three places that read it
+  differently** — `path.Match` as a selector target, `{name}` as a destination fragment, and
+  the lock as an id → `plainName` restricts a name to letters, digits, dot, dash, and
+  underscore, and refuses `.` and `..` outright, so a name can neither hide from a `kind:*`
+  selector, nor collide with a neighbour through a glob metacharacter, nor steer a write
+  above the destination its own `kind` declared. The rule lives in `internal/catalog`
+  rather than `internal/itemid`: `itemid` says what an id *is*, and all three files that
+  carry one have to agree on that, whereas this says what a source may *publish* — and a
+  catalog is the only thing that ever mints an id.
+- **A `from` path could still leave the source tree through a symlink**, since containment is
+  checked on the string and nothing has stat'd the repository → not addressed here, and
+  deliberately: this change reads no file from a source tree, so there is no point at which a
+  link could be resolved. It belongs to whichever change first opens a `from` path, alongside
+  `destination-and-plan`'s repo-root invariant.
 - **`catalog.yaml` is source-controlled input**, so a hostile catalog is the realistic threat
   → this change executes nothing from it, and the containment rule on `from` plus the
   undeclared-kind rule are checked before any consumer sees a value. The destination side of

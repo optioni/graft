@@ -55,8 +55,10 @@ func Expand(c *Catalog, source string, selectors []string) ([]Item, error) {
 
 // matcher builds the test one selector applies to an item. A selector is kind:name;
 // the kind is compared literally because SPEC.md places the glob in the name position
-// only, and the name is matched with path.Match. Item names contain no "/", so
-// path.Match's one surprising rule — that * does not cross a separator — cannot bite.
+// only, and the name is matched with path.Match. plainName in items.go is what makes
+// path.Match's one surprising rule — that * does not cross a separator — unable to
+// bite: a name holding "/" never survives parsing, so a kind:* selector cannot skip
+// silently past an item its catalog declared.
 //
 // The pattern is validated up front, against the empty string, rather than on the
 // first item it is compared with: a malformed pattern is a typo whichever kind it
