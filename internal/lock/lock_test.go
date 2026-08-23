@@ -504,3 +504,140 @@ func TestParse_WrongTypes(t *testing.T) {
 		})
 	}
 }
+
+// TestParse_UnknownKeyInlineTable covers [[source]] written as an array of inline
+// tables. It is the same document to a TOML reader, so it must reject an unknown key
+// the same way — a decode path that silently drops one is exactly the misspelling the
+// strictness rule exists to catch.
+func TestParse_UnknownKeyInlineTable(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		in   string
+		want string
+	}{
+		"unknown source key": {
+			in: "version = 1\n" +
+				`source = [{name = "openspec-schemas", git = "g", rev = "v1.2.0", resolved = "` + sha + `", sha = "x"}]` + "\n",
+			want: `graft.lock: source "openspec-schemas": unknown key "sha"`,
+		},
+		"unknown item key": {
+			in: "version = 1\n" +
+				`source = [{name = "openspec-schemas", git = "g", rev = "v1.2.0", resolved = "` + sha + `", ` +
+				`item = [{id = "schema:tdd", files = [], hashes = []}]}]` + "\n",
+			want: `graft.lock: source "openspec-schemas": item "schema:tdd": unknown key "hashes"`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			l, err := lock.Parse([]byte(tc.in), "graft.lock")
+			if err == nil {
+				t.Fatalf("Parse() error = nil, want %q", tc.want)
+			}
+			if got := err.Error(); got != tc.want {
+				t.Errorf("Parse() error = %q, want %q", got, tc.want)
+			}
+			if l != nil {
+				t.Errorf("Parse() lock = %+v, want nil", l)
+			}
+		})
+	}
+}
+
+// TestParse_NonCanonicalFilePath covers paths that stay inside the repo but are not in
+// cleaned form. "." is the repo root itself, so a lock claiming it would authorise
+// deleting the whole worktree; the rest are aliases that would slip past the
+// duplicate-file check.
+func TestParse_NonCanonicalFilePath(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []string{".", "./a.md", "a//b.md", "a/./b.md", "a/"} {
+		t.Run(p, func(t *testing.T) {
+			t.Parallel()
+			in := oneSource("\n  [[source.item]]\n  id    = \"schema:tdd\"\n  files = [\"" + p + "\"]\n")
+			want := `graft.lock: source "openspec-schemas": item "schema:tdd": file "` + p +
+				`" is not a relative path inside the repo`
+			l, err := lock.Parse([]byte(in), "graft.lock")
+			if err == nil {
+				t.Fatalf("Parse() error = nil, want %q", want)
+			}
+			if got := err.Error(); got != want {
+				t.Errorf("Parse() error = %q, want %q", got, want)
+			}
+			if l != nil {
+				t.Errorf("Parse() lock = %+v, want nil", l)
+			}
+		})
+	}
+}
+
+// TestParse_DuplicateFileAcrossItems covers one path claimed by two items. SPEC.md's
+// invariants say no two items share a destination path, within a source or across
+// sources — and the lock is what authorises deletion, so a path owned twice means
+// dropping one item from `install` hands the prune set a path the other still owns.
+func TestParse_DuplicateFileAcrossItems(t *testing.T) {
+	t.Parallel()
+
+	const dup = "openspec/schemas/tdd/schema.yaml"
+
+	sameSource := oneSource(`
+  [[source.item]]
+  id    = "schema:first"
+  files = ["` + dup + `"]
+
+  [[source.item]]
+  id    = "schema:second"
+  files = ["` + dup + `"]
+`)
+
+	crossSource := `version = 1
+
+[[source]]
+name     = "alpha"
+git      = "github.com/optioni/alpha"
+rev      = "v1.0.0"
+resolved = "` + sha + `"
+
+  [[source.item]]
+  id    = "schema:tdd"
+  files = ["` + dup + `"]
+
+[[source]]
+name     = "beta"
+git      = "github.com/optioni/beta"
+rev      = "v1.0.0"
+resolved = "` + sha + `"
+
+  [[source.item]]
+  id    = "schema:other"
+  files = ["` + dup + `"]
+`
+
+	for name, tc := range map[string]struct {
+		in   string
+		want string
+	}{
+		"two items in one source": {
+			in:   sameSource,
+			want: `graft.lock: source "openspec-schemas": item "schema:second": duplicate file "` + dup + `"`,
+		},
+		"two items across sources": {
+			in:   crossSource,
+			want: `graft.lock: source "beta": item "schema:other": duplicate file "` + dup + `"`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			l, err := lock.Parse([]byte(tc.in), "graft.lock")
+			if err == nil {
+				t.Fatalf("Parse() error = nil, want %q", tc.want)
+			}
+			if got := err.Error(); got != tc.want {
+				t.Errorf("Parse() error = %q, want %q", got, tc.want)
+			}
+			if l != nil {
+				t.Errorf("Parse() lock = %+v, want nil", l)
+			}
+		})
+	}
+}

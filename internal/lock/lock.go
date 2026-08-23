@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -108,8 +109,11 @@ func Parse(data []byte, filename string) (*Lock, error) {
 
 	l := &Lock{Version: Version}
 	seen := make(map[string]struct{}, len(f.Sources))
+	// claimed spans the whole lock, not one item or one source: SPEC.md's invariants
+	// say no two items share a destination path, within a source or across sources.
+	claimed := map[string]struct{}{}
 	for _, s := range f.Sources {
-		src, err := validate(filename, s)
+		src, err := validate(filename, s, claimed)
 		if err != nil {
 			return nil, err
 		}
@@ -179,15 +183,30 @@ func unknownKey(m map[string]any, allowed ...string) (string, bool) {
 	return found[0], true
 }
 
-// tables reads an array of tables out of the generically decoded document. The
-// decoder renders [[source]] and [[source.item]] as []map[string]any; anything else
-// there is a shape the typed decode has already rejected.
+// tables reads an array of tables out of the generically decoded document. The two
+// TOML spellings decode to different Go types — [[source]] gives []map[string]any and
+// source = [{...}] gives []any — and they are the same document to a reader, so both
+// have to be walked. Handling only the first silently accepted an unknown key written
+// as an inline table, which is precisely the misspelling strict decoding exists for.
 func tables(v any) []map[string]any {
-	ts, _ := v.([]map[string]any)
-	return ts
+	switch ts := v.(type) {
+	case []map[string]any:
+		return ts
+	case []any:
+		out := make([]map[string]any, 0, len(ts))
+		for _, e := range ts {
+			if m, ok := e.(map[string]any); ok {
+				out = append(out, m)
+			}
+		}
+		return out
+	}
+	return nil
 }
 
-func validate(filename string, s source) (Source, error) {
+// validate checks one [[source]] block. claimed carries every file path already taken
+// by an earlier item anywhere in the lock, and validate adds this source's to it.
+func validate(filename string, s source, claimed map[string]struct{}) (Source, error) {
 	if s.Name == "" {
 		return Source{}, fmt.Errorf("%s: source name is empty", filename)
 	}
@@ -218,15 +237,14 @@ func validate(filename string, s source) (Source, error) {
 		seen[it.ID] = struct{}{}
 
 		files := make([]string, 0, len(it.Files))
-		inItem := make(map[string]struct{}, len(it.Files))
 		for _, p := range it.Files {
 			if !isRepoRelative(p) {
 				return Source{}, fail(fmt.Sprintf("item %q: file %q is not a relative path inside the repo", it.ID, p))
 			}
-			if _, dup := inItem[p]; dup {
+			if _, dup := claimed[p]; dup {
 				return Source{}, fail(fmt.Sprintf("item %q: duplicate file %q", it.ID, p))
 			}
-			inItem[p] = struct{}{}
+			claimed[p] = struct{}{}
 			files = append(files, p)
 		}
 		out.Items = append(out.Items, Item{ID: it.ID, Files: files})
@@ -248,10 +266,19 @@ func isSHA(s string) bool {
 
 // isRepoRelative reports whether p is a path graft could have written inside the repo.
 // The lock's files list is what authorises deletion, so a hand-edited or corrupt lock
-// must not be able to aim a removal outside the tree.
+// must not be able to aim a removal anywhere graft did not put a file.
+//
+// Escaping the tree is the obvious danger and ".." and a leading "/" cover it. Two
+// quieter ones need the same rule: "." is the repo root, so a lock claiming it would
+// authorise deleting the whole worktree, and an uncleaned alias like "./a.md" names the
+// same file as "a.md" while slipping past the duplicate check. graft only ever writes
+// cleaned paths, so requiring cleaned form rejects no lock graft produced.
 func isRepoRelative(p string) bool {
-	if p == "" || strings.HasPrefix(p, "/") {
+	if p == "" || p == "." || strings.HasPrefix(p, "/") {
 		return false
 	}
-	return !slices.Contains(strings.Split(p, "/"), "..")
+	if slices.Contains(strings.Split(p, "/"), "..") {
+		return false
+	}
+	return path.Clean(p) == p
 }

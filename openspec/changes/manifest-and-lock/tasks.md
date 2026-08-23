@@ -99,17 +99,17 @@
 ## 9. Change Review
 <!-- kind: operational -->
 
-- [ ] 9.1 CHECK: Dispatch an independent reviewer — one that did not write the implementation and is given only proposal.md, both spec files, design.md, tasks.md, and the diff
-- [ ] 9.2 CHECK: Point the reviewer at this repository's concentration points — (a) lock serialization determinism is asserted as byte equality across two runs, not semantic equality; (b) every asserted error string matches the spec text character for character, and any deviation is a deliberate contract change rather than a typo; (c) `internal/plan` gained no code and no test needs a real directory to exercise parse logic; (d) this change computes no prune set and deletes nothing, and the lock's relative-path rule is what keeps a corrupt lock from aiming a future deletion outside the repo; (e) no fixture git repository was introduced, so no `user.name`/`user.email` hazard exists here; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it
-- [ ] 9.3 CHECK: Confirm no test asserts a `go.mod` key or restates a literal the implementation also declares — the build and the round-trip tests are the checks
-- [ ] 9.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
-- [ ] 9.5 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 9.1 CHECK: Dispatch an independent reviewer — one that did not write the implementation and is given only proposal.md, both spec files, design.md, tasks.md, and the diff
+- [x] 9.2 CHECK: Point the reviewer at this repository's concentration points — (a) lock serialization determinism is asserted as byte equality across two runs, not semantic equality; (b) every asserted error string matches the spec text character for character, and any deviation is a deliberate contract change rather than a typo; (c) `internal/plan` gained no code and no test needs a real directory to exercise parse logic; (d) this change computes no prune set and deletes nothing, and the lock's relative-path rule is what keeps a corrupt lock from aiming a future deletion outside the repo; (e) no fixture git repository was introduced, so no `user.name`/`user.email` hazard exists here; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it
+- [x] 9.3 CHECK: Confirm no test asserts a `go.mod` key or restates a literal the implementation also declares — the build and the round-trip tests are the checks
+- [x] 9.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
+- [x] 9.5 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 10. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 10.1 CHECK: Inspect the intended verification commands and affected tiers — both new packages are under `./internal/...`, so the coverage gate applies; there is no acceptance tier in this change
-- [ ] 10.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
-- [ ] 10.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` at or above the 80% floor
-- [ ] 10.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
-- [ ] 10.5 VERIFY: Run `openspec validate manifest-and-lock --strict` — valid
+- [x] 10.1 CHECK: Inspect the intended verification commands and affected tiers — both new packages are under `./internal/...`, so the coverage gate applies; there is no acceptance tier in this change
+- [x] 10.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
+- [x] 10.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` at or above the 80% floor
+- [x] 10.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
+- [x] 10.5 VERIFY: Run `openspec validate manifest-and-lock --strict` — valid

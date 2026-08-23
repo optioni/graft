@@ -242,6 +242,33 @@ invariant over *computed* destinations, which still needs its own check.
 as the versioned formats and pointedly omits `graft.toml`. Strict decoding therefore rejects
 a top-level `version` key rather than accepting and ignoring it.
 
+**Three rules landed stricter than specs/lock-format/spec.md states, all recorded during
+the Change Review rather than decided at planning time.** None contradicts the spec text —
+each is a strictly narrower acceptance of the same field — and each closes a hole an
+independent reviewer demonstrated with a parsing lock.
+
+- **`files` paths are unique across the whole lock, not within an item.** The spec delta
+  says "unique within its item"; SPEC.md's invariants say "No two items share a
+  destination path, within a source or across sources." The wider rule wins, and it is
+  enforced at parse time because the reason is the lock's own: the file list is what makes
+  deletion safe, and a path owned by two items means dropping one from `install` hands the
+  prune set a path the other still owns. The error keeps the message the spec defines,
+  attributed to the second item to claim the path.
+- **A `files` entry must be in cleaned form, and `.` is rejected.** The spec delta names
+  only non-empty, no leading `/`, and no `..` segment — all of which `.` satisfies, while
+  being the repo root. A lock claiming it would authorise a future prune over the whole
+  worktree. Requiring `path.Clean(p) == p` rejects that along with aliases like `./a.md`
+  that would otherwise slip past the duplicate check as a different string. graft only
+  ever writes cleaned paths, so no lock graft produced is refused.
+- **`internal/lock` finds unknown keys by walking a generic decode, while
+  `internal/manifest` uses `MetaData.Undecoded()`.** The two are not interchangeable here:
+  `Undecoded()` reports an array-of-tables key as `source.sha`, with no index, so it cannot
+  say *which* source a stray key appeared in — and the error contract requires the source
+  name. The walk covers every TOML spelling of a table, including `source = [{...}]`, which
+  decodes to `[]any` rather than `[]map[string]any`; handling only the latter made the
+  documented "unknown keys SHALL be rejected" a no-op for that syntax. Both spellings now
+  carry a regression test at the source and item level.
+
 ## Risks / Trade-offs
 
 - **The hand-written writer and the library-backed parser could disagree**, producing a lock
