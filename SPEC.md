@@ -41,7 +41,11 @@ provides:
 ```
 
 - `kinds.<kind>.to` — destination, relative to the consumer's repo root. `{name}`
-  interpolates the item name. A trailing `/` means "into this directory".
+  interpolates the item name. A trailing `/` means "into this directory", which only a
+  `from` naming a **file** can obey: the file lands inside that directory under its own
+  base name, where a slashless `to` would have named the file itself. For a `from` naming
+  a **directory** the slash is a no-op — `to` names the destination directory either way,
+  and the tree below `from` is placed under it without repeating the item's own name.
 - `kinds.<kind>.to` may also be a list, to place one item in several destinations.
 - `kinds.<kind>.flatten` — copy files from nested directories into the destination root
   rather than preserving structure.

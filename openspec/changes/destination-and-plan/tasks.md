@@ -242,17 +242,17 @@ semantic equality.
 ## 11. Documentation
 <!-- kind: operational -->
 
-- [ ] 11.1 CHECK: Re-read SPEC.md's `catalog.yaml` bullet list and confirm the `to` bullet
+- [x] 11.1 CHECK: Re-read SPEC.md's `catalog.yaml` bullet list and confirm the `to` bullet
       still says only "A trailing `/` means 'into this directory'" — a sentence that does not
       say whether a directory item's own leaf name is appended (design.md → Q1)
-- [ ] 11.2 CHANGE: **Rewrite that bullet in place** in SPEC.md (audience: anyone writing a
+- [x] 11.2 CHANGE: **Rewrite that bullet in place** in SPEC.md (audience: anyone writing a
       `catalog.yaml`; section: `catalog.yaml` — the source's offer) to state the rule the
       implementation now fixes: a trailing `/` places a *file* item inside the directory under
       its own base name, and is a no-op for a *directory* item, whose `to` names the
       destination directory either way. Net addition to SPEC.md: ~2 lines, replacing an
       ambiguous half-sentence rather than appending beside it. Durable reason: the ambiguity
       is what forced design.md → D4, and the next reader of SPEC.md would have to re-derive it
-- [ ] 11.3 VERIFY: Confirm SPEC.md's two worked examples and its `graft.lock` example still
+- [x] 11.3 VERIFY: Confirm SPEC.md's two worked examples and its `graft.lock` example still
       read correctly under the rewritten bullet, and that no other section of SPEC.md, PRD.md,
       ENGINEERING.md, or AGENTS.md now contradicts it. Add nothing to AGENTS.md: its
       `internal/plan` purity rule and the coverage rule already cover this change, and no new

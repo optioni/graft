@@ -358,7 +358,8 @@ SPEC.md says "A trailing `/` means 'into this directory'" without saying whether
 own leaf name is appended. Resolved as D4: a trailing slash is a no-op for a directory item
 and appends `base(from)` for a file item. This is the reading under which both SPEC.md
 examples and its `from`-mobility claim hold simultaneously. Recorded rather than silently
-chosen, and worth a sentence in SPEC.md when the tool is first released.
+chosen, and written back into SPEC.md's `to` bullet by this change's group 11, so the next
+reader does not have to re-derive it.
 
 **Q2 — May a destination land inside `.git/`?**
 SPEC.md's invariant is only "no destination escapes the repo root", and `.git/` is inside
