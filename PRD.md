@@ -55,8 +55,8 @@ reproducibly, on any machine, in CI, with no global state.
 
 1. Adopting the shared assets in a fresh repo is one file and one command.
 2. `graft sync` on any machine, from a clean checkout, produces a byte-identical tree.
-3. A stale or locally-edited repo fails CI with no bespoke tooling — `graft sync && git
-   diff --exit-code`.
+3. A pin never moves on its own. `sync` reproduces the lock; only `graft update` changes
+   it, and the move is a reviewable diff.
 4. Which version a repo holds is answerable by reading one committed file.
 5. Adding a new kind of asset — a skill, a slash command, a hook — requires no release of
    graft.
@@ -72,9 +72,6 @@ install. Run `graft sync`. Commit the synced files and `graft.lock`.
 **Roll a repo forward.** `graft update` re-resolves the pins and rewrites the lock. The
 git diff shows exactly which files changed, and which were removed because the source
 stopped providing them.
-
-**Enforce.** CI runs `graft sync --frozen && git diff --exit-code`. A repo that is behind,
-or whose synced files were edited in place, fails.
 
 **Drop something.** Remove it from `install` and sync. Its files are deleted, because the
 lockfile recorded which ones were ours. Nothing else in the directory is touched.

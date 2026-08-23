@@ -112,9 +112,8 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 
 | Command | Behavior |
 |---|---|
-| `graft sync` | Resolve, fetch, write, prune, rewrite the lock. Idempotent. **v1** |
-| `graft sync --frozen` | Fail if the lock would change. For CI. **v1** |
-| `graft update [source]` | Re-resolve each `rev` to its current SHA and rewrite the lock. **v1** |
+| `graft sync` | Make the tree match the lock. Fetch, write, prune. Never re-resolves a pin. Idempotent. **v1** |
+| `graft update [source]` | Re-resolve each `rev` to its current SHA, rewrite the lock, then sync. **v1** |
 | `graft update --to <rev> <source>` | Move the pin in `graft.toml`, then sync. **v1** |
 | `graft list` | Items installed here, with source and resolved SHA. **v1** |
 | `graft search <source>` | Print a source's catalog. Requires no `graft.toml`. **v1** |
@@ -123,13 +122,18 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 There is no `--force`. Sync always overwrites; a flag to make it do its job is the bug it
 is meant to prevent.
 
+There is no `--frozen` either, because `sync` is always frozen. It installs what the lock
+says. Moving a pin is `graft update`, always explicit — so `rev = "main"` cannot drift
+under you between syncs.
+
 `--dry-run` prints the plan and touches nothing — including creating no directories.
 
 ## Resolution
 
-1. Read and validate `graft.toml`.
-2. For each source, resolve `rev` to a SHA (`git ls-remote` for tags and branches; a
-   full SHA passes through).
+1. Read and validate `graft.toml` and `graft.lock`.
+2. For each source in the manifest, take its SHA from the lock. A source with no lock entry
+   is resolved once — `git ls-remote` for tags and branches, a full SHA passes through —
+   and recorded. An existing pin is never re-resolved by `sync`.
 3. Fetch that SHA into `~/.cache/graft/<host>/<owner>/<repo>/<sha>/`, a content-addressed
    cache. An existing entry is reused, so a resolved sync works offline.
 4. Read `catalog.yaml` from the fetched tree. Its absence means the repo is not graftable —
@@ -166,21 +170,19 @@ These hold or the run aborts before writing:
 | Destination outside the repo root | Error. |
 | Network unavailable, cache hit | Proceeds. |
 | Network unavailable, cache miss | Error naming what it needed to fetch. |
-| Lock would change under `--frozen` | Exit 2 with the diff. |
+| Manifest `rev` differs from the lock's | Error naming both, and pointing at `graft update`. |
 | A synced file was edited in place | Silently overwritten. `git diff` is the report. |
 
 ## Exit codes
 
-`0` success · `1` error · `2` `--frozen` would have changed the lock
+`0` success · `1` error
 
-## CI
+## Reviewing a sync
 
-```sh
-graft sync --frozen && git diff --exit-code
-```
-
-Catches both failure directions: a repo behind its manifest, and a synced file edited in
-place. No graft-specific check command, because git already is one.
+Every sync's effect is a git diff. What changed, what was added, and what was deleted
+because the source stopped providing it are all visible in the same review as any other
+change. There is no verification command, because there is nothing for one to check that
+`git status` does not already show.
 
 ## Testing
 
