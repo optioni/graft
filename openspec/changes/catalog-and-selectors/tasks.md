@@ -4,10 +4,10 @@
 ## 1. YAML decoder dependency
 <!-- kind: operational -->
 
-- [ ] 1.1 CHECK: Confirm the module's current dependency set (`go list -m all` shows only `github.com/optioni/graft` and `github.com/BurntSushi/toml`) and confirm the latest published version with `go list -m -versions github.com/goccy/go-yaml`
-- [ ] 1.2 CHECK: Confirm the chosen decoder has no transitive dependencies — `go mod graph` after the install must add exactly one line — because design.md → Decisions rests on that
-- [ ] 1.3 CHANGE: `go get github.com/goccy/go-yaml@v1.19.2` (or the newer latest found in 1.1), then `go mod tidy` — this is the one step in the change that reaches the Go module proxy, as design.md → Test Boundaries records
-- [ ] 1.4 VERIFY: `task build` succeeds and `go.sum` is committed alongside `go.mod` — the real build is the check; do not write a test asserting the dependency is listed
+- [x] 1.1 CHECK: Confirm the module's current dependency set (`go list -m all` shows only `github.com/optioni/graft` and `github.com/BurntSushi/toml`) and confirm the latest published version with `go list -m -versions github.com/goccy/go-yaml`
+- [x] 1.2 CHECK: Confirm the chosen decoder has no transitive dependencies — `go mod graph` after the install must add exactly one line — because design.md → Decisions rests on that
+- [x] 1.3 CHANGE: `go get github.com/goccy/go-yaml@v1.19.2` (the latest published version, confirmed in 1.1), this is the one step in the change that reaches the Go module proxy, as design.md → Test Boundaries records. `go mod tidy` is deferred to group 2: with no importer yet it would drop the dependency again, so the require line lands marked `// indirect` and tidy promotes it once `internal/catalog` imports it
+- [x] 1.4 VERIFY: `task build` succeeds and `go.sum` is committed alongside `go.mod` — the real build is the check; do not write a test asserting the dependency is listed
 
 ## 2. `internal/catalog` — document shape, version gating, and loading
 <!-- kind: behavior -->
