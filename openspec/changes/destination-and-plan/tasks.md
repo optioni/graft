@@ -11,19 +11,19 @@ The concentration point this whole package exists to hold is that `internal/plan
 reaches the filesystem. It is enforced by a guard, and a guard nobody has watched fail is
 not a guard.
 
-- [ ] 1.1 CHECK: Create `internal/plan/plan.go` with only the package doc comment stating
+- [x] 1.1 CHECK: Create `internal/plan/plan.go` with only the package doc comment stating
       that `plan` is pure — values in, a plan value out, no file read, no command run,
       nothing created, modified, or deleted — and confirm `go build ./internal/plan/`
       succeeds
-- [ ] 1.2 CHANGE: Add `internal/plan/purity_test.go` with `TestPackageImportsNothingImpure`,
+- [x] 1.2 CHANGE: Add `internal/plan/purity_test.go` with `TestPackageImportsNothingImpure`,
       parsing every non-test `.go` file in the package directory with `go/parser` and failing
       on any import of `os`, `io/fs`, `path/filepath`, `os/exec`, `net`, or `net/http`.
       Assert the failure message names the offending file and import
-- [ ] 1.3 VERIFY: Temporarily add `import "os"` (with a `var _ = os.Getenv`) to `plan.go`,
+- [x] 1.3 VERIFY: Temporarily add `import "os"` (with a `var _ = os.Getenv`) to `plan.go`,
       run `go test ./internal/plan/ -run Impure` and confirm it FAILS naming that import,
       then remove the import and confirm it passes. Record that this is the CHECK step for
       an invariant no ordinary RED can express
-- [ ] 1.4 VERIFY: Run `go test ./internal/plan/` — green
+- [x] 1.4 VERIFY: Run `go test ./internal/plan/` — green
 
 *Covers spec scenario* **Computing destinations touches nothing** — the "touches nothing"
 half; its destination table case lands in group 2.
