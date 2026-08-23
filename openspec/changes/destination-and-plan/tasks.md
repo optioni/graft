@@ -105,23 +105,23 @@ refused even for an item contributing no files.
 SPEC.md: the destination is what a consumer actually agrees to, and a consumer override
 beats the catalog.
 
-- [ ] 5.1 RED: Write failing tests for: *An override moves a kind's items*; *An override
+- [x] 5.1 RED: Write failing tests for: *An override moves a kind's items*; *An override
       replaces a list-valued destination entirely*; *An override keeps the catalog's
       flatten*; *An override applies to its own source only*; *An override for an undeclared
       kind is an error*; *An escaping consumer override is refused*. Assert the exact message
       `source "shared": kind override "agnet" names a kind the catalog does not declare`
-- [ ] 5.2 GREEN: Resolve each item's destination list as `manifest.Source.Kinds[kind]` when
+- [x] 5.2 GREEN: Resolve each item's destination list as `manifest.Source.Kinds[kind]` when
       present, falling back to `catalog.Kind.To`, carrying `catalog.Kind.Flatten` unchanged
       either way
-- [ ] 5.3 GREEN: Refuse an override naming a kind the catalog does not declare, reporting the
+- [x] 5.3 GREEN: Refuse an override naming a kind the catalog does not declare, reporting the
       lowest-sorting such kind so the message never depends on map iteration order
-- [ ] 5.4 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm the
+- [x] 5.4 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm the
       `[sources.<name>.kinds]` override still means what this group implements: one
       destination string per kind, per source, beating the catalog, with no `flatten` of its
       own
-- [ ] 5.5 REFACTOR: Ensure the override lookup happens once per item rather than once per
+- [x] 5.5 REFACTOR: Ensure the override lookup happens once per item rather than once per
       destination, or state that no refactor was needed
-- [ ] 5.6 Run `go test ./internal/plan/` — no regressions
+- [x] 5.6 Run `go test ./internal/plan/` — no regressions
 
 ## 6. `Build`: expansion and writes
 <!-- kind: behavior -->

@@ -45,12 +45,21 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 	}
 	kind := in.Catalog.Kinds[it.Kind]
 
-	// Every `to` entry is interpolated and checked before any file is mapped, so a
+	// The consumer's override wins, and replaces the whole `to` — including a
+	// list-valued one. It carries no flatten of its own: graft.toml declares a
+	// destination and nothing else, so the catalog's flatten survives. Looked up once
+	// per item rather than once per destination, since it is a property of the kind.
+	entries := kind.To
+	if override, ok := in.Source.Kinds[it.Kind]; ok {
+		entries = []string{override}
+	}
+
+	// Every entry is interpolated and checked before any file is mapped, so a
 	// destination that may not be used is refused even when the item contributes
 	// nothing to place under it.
-	to := make([]string, 0, len(kind.To))
-	declared := make(map[string]string, len(kind.To))
-	for _, entry := range kind.To {
+	to := make([]string, 0, len(entries))
+	declared := make(map[string]string, len(entries))
+	for _, entry := range entries {
 		dest := strings.ReplaceAll(entry, "{name}", it.Name)
 		if !insideRepo(strings.TrimSuffix(dest, "/")) {
 			return nil, escape(dest)
@@ -157,4 +166,32 @@ func insideRepo(p string) bool {
 		return false
 	}
 	return path.Clean(p) == p
+}
+
+// checkOverrides refuses a [sources.<name>.kinds] entry naming a kind the source's
+// catalog does not declare. It is typo protection, and the same trade SPEC.md makes
+// for selectors: an override that silently did nothing would leave files at the
+// catalog's destination while the manifest reads as though they had moved. The
+// lowest-sorting offender is reported, so a manifest with two typos always names the
+// same one rather than whichever Go's map iteration reached first.
+//
+// An override for a declared kind the source provides no items of is fine — the kind
+// exists, so it is not a typo, and overriding `hook` before installing any hook is a
+// legitimate thing to write.
+func checkOverrides(in Input) error {
+	kinds := make([]string, 0, len(in.Source.Kinds))
+	for kind := range in.Source.Kinds {
+		kinds = append(kinds, kind)
+	}
+	slices.Sort(kinds)
+
+	for _, kind := range kinds {
+		if _, declared := in.Catalog.Kinds[kind]; !declared {
+			return fmt.Errorf(
+				"source %q: kind override %q names a kind the catalog does not declare",
+				in.Source.Name, kind,
+			)
+		}
+	}
+	return nil
 }
