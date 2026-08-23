@@ -26,11 +26,22 @@ func asInt(v any) (int, bool) {
 	return 0, false
 }
 
-// sequence reads a list out of the decoded document, treating an absent or null value
-// as empty.
-func sequence(v any) []any {
-	s, _ := v.([]any)
-	return s
+// field reads a required string. An absent, null, or empty value is "required" rather
+// than "wrong type": a key written but left blank is the same mistake as one omitted,
+// and saying so twice two different ways helps nobody.
+func field(m map[string]any, key string, at func(string, ...any) error) (string, error) {
+	v, ok := m[key]
+	if !ok || v == nil {
+		return "", at("%s is required", key)
+	}
+	s, ok := v.(string)
+	if !ok {
+		return "", at("%s must be a string", key)
+	}
+	if s == "" {
+		return "", at("%s is required", key)
+	}
+	return s, nil
 }
 
 // sortedKeys returns m's keys in ascending byte order, so validation reports the same

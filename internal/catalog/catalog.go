@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/goccy/go-yaml"
 )
@@ -89,21 +88,11 @@ func Parse(data []byte, filename string) (*Catalog, error) {
 		return nil, err
 	}
 
-	c := &Catalog{Version: version, Kinds: kinds}
-	for _, e := range sequence(raw["provides"]) {
-		p, _ := e.(map[string]any)
-		kind, _ := p["kind"].(string)
-		itemName, _ := p["name"].(string)
-		from, _ := p["from"].(string)
-		c.Items = append(c.Items, Item{
-			ID:   kind + ":" + itemName,
-			Kind: kind,
-			Name: itemName,
-			From: from,
-		})
+	items, err := parseItems(raw, kinds, filename)
+	if err != nil {
+		return nil, err
 	}
-	sort.Slice(c.Items, func(i, j int) bool { return c.Items[i].ID < c.Items[j].ID })
-	return c, nil
+	return &Catalog{Version: version, Kinds: kinds, Items: items}, nil
 }
 
 // errf builds an error prefixed with the file it came from. Every message this

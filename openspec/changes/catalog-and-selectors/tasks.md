@@ -39,17 +39,17 @@
 ## 4. Provided items
 <!-- kind: behavior -->
 
-- [ ] 4.1 RED: Write failing tests for `Items are carried with kind, name, and from` and `Items are ordered by id` — the latter building the `provides` list in a deliberately wrong order and asserting the sorted ids
-- [ ] 4.2 RED: Write failing table tests for `A missing field is an error` (three inputs, three exact messages, each naming the 0-based `provides[0]`), `A kind or name containing a colon is an error`, `An item naming an undeclared kind is an error`, `A duplicate item is an error`
-- [ ] 4.3 RED: Write a failing table test for `A from outside the source tree is an error` covering `../outside`, `/etc/passwd`, `.`, and `./extras/tdd`, each asserting the exact message with the value as written
-- [ ] 4.4 Confirm the failures come from missing item parsing, not from a fixture whose kind is undeclared when the case is about something else
-- [ ] 4.5 GREEN: Add item extraction — `kind`, `name`, and `from` required, the id built as `kind:name` and checked with `internal/itemid.Valid` rather than a second grammar, and the undeclared-kind and duplicate-id checks
-- [ ] 4.6 GREEN: Add the `from` containment rule — non-empty, relative, cleaned, and free of any `..` segment, with `.` rejected because it names the whole source tree
-- [ ] 4.7 GREEN: Sort the parsed items by id with byte-wise string comparison, so ordering cannot depend on map iteration, locale, or platform
-- [ ] 4.8 REFACTOR: Collapse the repeated `catalog.yaml: item %q: ...` and `catalog.yaml: provides[%d]: ...` formatting into helpers while tests stay green, or record that no refactor was warranted
-- [ ] 4.9 CHECK: Concentration point — confirm the item id grammar is `internal/itemid`'s and is not restated here. `graft.toml` selectors, `graft.lock` item ids, and catalog items must agree on the grammar or a selector will silently fail to match an id the lock happily records
-- [ ] 4.10 CHECK: Contract gate — re-read SPEC.md's `provides` bullets and the "Item identity is `kind:name`" claim, and confirm the accepted fields and the containment rule on `from` still match
-- [ ] 4.11 Run `go test -race ./internal/catalog/...` — green, no regressions
+- [x] 4.1 RED: Write failing tests for `Items are carried with kind, name, and from` and `Items are ordered by id` — the latter building the `provides` list in a deliberately wrong order and asserting the sorted ids
+- [x] 4.2 RED: Write failing table tests for `A missing field is an error` (three inputs, three exact messages, each naming the 0-based `provides[0]`), `A kind or name containing a colon is an error`, `An item naming an undeclared kind is an error`, `A duplicate item is an error`
+- [x] 4.3 RED: Write a failing table test for `A from outside the source tree is an error` covering `../outside`, `/etc/passwd`, `.`, and `./extras/tdd`, each asserting the exact message with the value as written
+- [x] 4.4 Confirm the failures come from missing item parsing, not from a fixture whose kind is undeclared when the case is about something else
+- [x] 4.5 GREEN: Add item extraction — `kind`, `name`, and `from` required, the id built as `kind:name` and checked with `internal/itemid.Valid` rather than a second grammar, and the undeclared-kind and duplicate-id checks
+- [x] 4.6 GREEN: Add the `from` containment rule — non-empty, relative, cleaned, and free of any `..` segment, with `.` rejected because it names the whole source tree
+- [x] 4.7 GREEN: Sort the parsed items by id with byte-wise string comparison, so ordering cannot depend on map iteration, locale, or platform
+- [x] 4.8 REFACTOR: Collapse the repeated `catalog.yaml: item %q: ...` and `catalog.yaml: provides[%d]: ...` formatting into helpers while tests stay green, or record that no refactor was warranted — done: the two prefixes are built by the `at` and `item` closures, one per entry, and the required-string read moved to `values.go`'s `field` so kinds and items read a value the same way
+- [x] 4.9 CHECK (confirmed: `internal/catalog` calls `itemid.Valid` and contains no colon-splitting of its own outside the selector matcher): Concentration point — confirm the item id grammar is `internal/itemid`'s and is not restated here. `graft.toml` selectors, `graft.lock` item ids, and catalog items must agree on the grammar or a selector will silently fail to match an id the lock happily records
+- [x] 4.10 CHECK: Contract gate — re-read SPEC.md's `provides` bullets and the "Item identity is `kind:name`" claim, and confirm the accepted fields and the containment rule on `from` still match
+- [x] 4.11 Run `go test -race ./internal/catalog/...` — green, no regressions
 
 ## 5. Unknown-key rejection
 <!-- kind: behavior -->
