@@ -12,16 +12,16 @@
 ## 2. `internal/catalog` — document shape, version gating, and loading
 <!-- kind: behavior -->
 
-- [ ] 2.1 RED: Write failing tests for the loading scenarios — `A valid catalog loads` (SPEC.md's own example, written into a `t.TempDir()`, asserting the tree is unchanged), `A missing catalog is the not-graftable error` asserting the exact text `catalog.yaml not found: the source is not graftable`, and `Malformed YAML is an error` asserting the `catalog.yaml: ` prefix only
-- [ ] 2.2 RED: Write failing table tests for the document-shape scenarios — `A catalog that is not a mapping is an error`, `An empty catalog file is a missing-version error`, `A catalog with zero provides loads`, `A catalog with neither kinds nor provides loads` — each asserting the exact message or the empty result from specs/catalog-format/spec.md
-- [ ] 2.3 RED: Write failing table tests for `A missing version is an error`, `A newer version fails and says to upgrade` (input also carries an unknown top-level key, and the test asserts the upgrade message wins and no catalog is returned), `A version below 1 is an error`
-- [ ] 2.4 Confirm every test above fails because `internal/catalog` does not exist, not because a YAML literal is malformed in a way the test did not intend
-- [ ] 2.5 GREEN: Add `Catalog`, `Kind`, `Item`, and `Parse([]byte, filename string) (*Catalog, error)` decoding the document into `map[string]any` with `yaml.Unmarshal`, treating an empty document as an empty mapping and any non-mapping document as an error
-- [ ] 2.6 GREEN: Add version gating ahead of every other check — required, `0` and below rejected, `> 1` rejected with the upgrade message, and no partially decoded catalog returned on any of them; accept the integer kinds the decoder actually produces (`uint64`, `int64`, `int`) and reject non-integers
-- [ ] 2.7 GREEN: Add `Load(path string) (*Catalog, error)` — read the file, return `catalog.yaml not found: the source is not graftable` when absent, otherwise delegate to `Parse`. It reads only; it creates, modifies, and deletes nothing
-- [ ] 2.8 REFACTOR: Collapse the repeated `catalog.yaml: ...` formatting into one helper while tests stay green, or record that no refactor was warranted
-- [ ] 2.9 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and ENGINEERING.md's Compatibility section, and confirm the accepted `version` value and the never-half-read-a-newer-file rule still match what `Parse` does
-- [ ] 2.10 Run `go test -race ./internal/catalog/...` — green, no regressions
+- [x] 2.1 RED: Write failing tests for the loading scenarios — `A valid catalog loads` (SPEC.md's own example, written into a `t.TempDir()`, asserting the tree is unchanged), `A missing catalog is the not-graftable error` asserting the exact text `catalog.yaml not found: the source is not graftable`, and `Malformed YAML is an error` asserting the `catalog.yaml: ` prefix only
+- [x] 2.2 RED: Write failing table tests for the document-shape scenarios — `A catalog that is not a mapping is an error`, `An empty catalog file is a missing-version error`, `A catalog with zero provides loads`, `A catalog with neither kinds nor provides loads` — each asserting the exact message or the empty result from specs/catalog-format/spec.md
+- [x] 2.3 RED: Write failing table tests for `A missing version is an error`, `A newer version fails and says to upgrade` (input also carries an unknown top-level key, and the test asserts the upgrade message wins and no catalog is returned), `A version below 1 is an error`
+- [x] 2.4 Confirm every test above fails because `internal/catalog` does not exist, not because a YAML literal is malformed in a way the test did not intend
+- [x] 2.5 GREEN: Add `Catalog`, `Kind`, `Item`, and `Parse([]byte, filename string) (*Catalog, error)` decoding the document into `map[string]any` with `yaml.Unmarshal`, treating an empty document as an empty mapping and any non-mapping document as an error
+- [x] 2.6 GREEN: Add version gating ahead of every other check — required, `0` and below rejected, `> 1` rejected with the upgrade message, and no partially decoded catalog returned on any of them; accept the integer kinds the decoder actually produces (`uint64`, `int64`, `int`) and reject non-integers
+- [x] 2.7 GREEN: Add `Load(path string) (*Catalog, error)` — read the file, return `catalog.yaml not found: the source is not graftable` when absent, otherwise delegate to `Parse`. It reads only; it creates, modifies, and deletes nothing
+- [x] 2.8 REFACTOR: Collapse the repeated `catalog.yaml: ...` formatting into one helper while tests stay green, or record that no refactor was warranted — done: `errf(filename, format, args...)` is the single place the prefix is built; only the two `%w` wraps around a decoder error stay separate, because they must wrap rather than format
+- [x] 2.9 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and ENGINEERING.md's Compatibility section, and confirm the accepted `version` value and the never-half-read-a-newer-file rule still match what `Parse` does
+- [x] 2.10 Run `go test -race ./internal/catalog/...` — green, no regressions
 
 ## 3. Kind declarations
 <!-- kind: behavior -->
