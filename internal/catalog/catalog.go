@@ -83,6 +83,10 @@ func Parse(data []byte, filename string) (*Catalog, error) {
 		return nil, err
 	}
 
+	if err := rejectUnknown(raw, filename); err != nil {
+		return nil, err
+	}
+
 	kinds, err := parseKinds(raw, filename)
 	if err != nil {
 		return nil, err

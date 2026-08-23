@@ -54,12 +54,12 @@
 ## 5. Unknown-key rejection
 <!-- kind: behavior -->
 
-- [ ] 5.1 RED: Write failing table tests for `An unknown top-level key is an error`, `An unknown key inside a kind is an error`, `An unknown key inside a provides entry is an error` — the last asserting the 0-based index in `provides[1]` — each with the exact text from specs/catalog-format/spec.md
-- [ ] 5.2 Confirm the failures come from the missing walk, not from the value extraction rejecting the fixture for an unrelated reason, and confirm the group 2 case asserting the upgrade message beats an unknown key is still green
-- [ ] 5.3 GREEN: Add the unknown-key walk over the decoded `map[string]any` — top level, each `kinds.<kind>` mapping, and each `provides` entry by index — reporting one key deterministically when several are unknown
-- [ ] 5.4 REFACTOR: Compare this walk with `internal/lock`'s and either extract the shared part or record why they stay separate — the wording, the nesting, and the index attribution differ, and a premature extraction would make one package's error message a function of the other's
-- [ ] 5.5 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm no documented key is rejected by the walk, and that `requires` — SPEC.md's own open question — is rejected rather than accepted-and-ignored
-- [ ] 5.6 Run `go test -race ./internal/catalog/...` — green, no regressions
+- [x] 5.1 RED: Write failing table tests for `An unknown top-level key is an error`, `An unknown key inside a kind is an error`, `An unknown key inside a provides entry is an error` — the last asserting the 0-based index in `provides[1]` — each with the exact text from specs/catalog-format/spec.md
+- [x] 5.2 Confirm the failures come from the missing walk, not from the value extraction rejecting the fixture for an unrelated reason, and confirm the group 2 case asserting the upgrade message beats an unknown key is still green
+- [x] 5.3 GREEN: Add the unknown-key walk over the decoded `map[string]any` — top level, each `kinds.<kind>` mapping, and each `provides` entry by index — reporting one key deterministically when several are unknown
+- [x] 5.4 REFACTOR: Compare this walk with `internal/lock`'s and either extract the shared part or record why they stay separate — kept separate. Read side by side, the two walks share only `unknownKey`, a ten-line lowest-sorting-key loop. Everything else differs: lock nests source then item and attributes by name, catalog nests kind then provides index and attributes by position; lock needs `tables()` because TOML spells an array of tables two ways, which YAML does not. A third package holding the ten lines would tie two separately asserted error contracts together for no reduction in either
+- [x] 5.5 CHECK (confirmed: the allowed sets are exactly SPEC.md's documented keys — `version`, `kinds`, `provides`; `to`, `flatten`; `kind`, `name`, `from` — and `requires` is rejected rather than accepted-and-ignored, which is what keeps SPEC.md's open question askable at version 2): Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm no documented key is rejected by the walk, and that `requires` — SPEC.md's own open question — is rejected rather than accepted-and-ignored
+- [x] 5.6 Run `go test -race ./internal/catalog/...` — green, no regressions
 
 ## 6. Selector expansion and the no-match error
 <!-- kind: behavior -->
