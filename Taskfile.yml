@@ -1,0 +1,69 @@
+version: '3'
+
+vars:
+  BINARY: graft
+  COVER_PKGS: ./internal/...
+  COVER_MIN: 80
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
+  DATE:
+    sh: date -u +%Y-%m-%dT%H:%M:%SZ
+
+tasks:
+  fmt:
+    desc: Format all Go source
+    cmds:
+      - gofumpt -w .
+
+  lint:
+    desc: Lint, and fail on unformatted files
+    cmds:
+      - golangci-lint run
+      - |
+        unformatted=$(gofumpt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "not gofumpt-clean:" >&2
+          echo "$unformatted" >&2
+          exit 1
+        fi
+
+  test:
+    desc: Run tests with the race detector
+    cmds:
+      - go test -race ./...
+
+  cover:
+    desc: Run tests with coverage and enforce the floor
+    cmds:
+      - go test -race -covermode=atomic -coverprofile=coverage.out {{.COVER_PKGS}}
+      - go tool cover -func=coverage.out
+      - |
+        total=$(go tool cover -func=coverage.out | awk '/^total:/ {sub(/%/,"",$3); print $3}')
+        echo "total coverage: ${total}% (floor {{.COVER_MIN}}%)"
+        awk -v t="$total" -v m={{.COVER_MIN}} 'BEGIN { exit !(t+0 < m+0) }' \
+          && { echo "coverage below floor" >&2; exit 1; } || exit 0
+
+  build:
+    desc: Build the local binary
+    cmds:
+      - >-
+        go build
+        -ldflags "-s -w
+        -X main.version={{.VERSION}}
+        -X main.commit={{.COMMIT}}
+        -X main.date={{.DATE}}"
+        -o {{.BINARY}} ./cmd/graft
+
+  ci:
+    desc: Everything CI runs
+    cmds:
+      - task: lint
+      - task: cover
+      - task: build
+
+  release:snapshot:
+    desc: Build a release locally without publishing
+    cmds:
+      - goreleaser release --snapshot --clean

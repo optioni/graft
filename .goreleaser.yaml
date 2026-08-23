@@ -1,0 +1,44 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/graft
+    binary: graft
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    files: [README.md, LICENSE]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - { title: Features, regexp: '^feat', order: 0 }
+    - { title: Fixes, regexp: '^fix', order: 1 }
+    - { title: Performance, regexp: '^perf', order: 2 }
+    - { title: Other, order: 99 }
+  filters:
+    exclude: ['^docs', '^test', '^chore', '^ci', '^style']
+
+brews:
+  - repository:
+      owner: optioni
+      name: homebrew-tap
+      token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
+    homepage: https://github.com/optioni/graft
+    description: Vendor files from a git repository into the repository you are standing in
+    license: MIT
