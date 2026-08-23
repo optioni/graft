@@ -4,9 +4,9 @@
 ## 1. TOML decoder dependency
 <!-- kind: operational -->
 
-- [ ] 1.1 CHECK: Confirm the module currently has zero dependencies (`go list -m all` shows only `github.com/optioni/graft`) and confirm the latest published version with `go list -m -versions github.com/BurntSushi/toml`
-- [ ] 1.2 CHANGE: `go get github.com/BurntSushi/toml@v1.6.0` (or the newer latest found in 1.1), then `go mod tidy` — this is the one step in the change that reaches the Go module proxy, as design.md → Test Boundaries records
-- [ ] 1.3 VERIFY: `task build` succeeds and `go.sum` is committed alongside `go.mod` — the real build is the check; do not write a test asserting the dependency is listed
+- [x] 1.1 CHECK: Confirm the module currently has zero dependencies (`go list -m all` shows only `github.com/optioni/graft`) and confirm the latest published version with `go list -m -versions github.com/BurntSushi/toml`
+- [x] 1.2 CHANGE: `go get github.com/BurntSushi/toml@v1.6.0` (or the newer latest found in 1.1), then `go mod tidy` — this is the one step in the change that reaches the Go module proxy, as design.md → Test Boundaries records
+- [x] 1.3 VERIFY: `task build` succeeds and `go.sum` is committed alongside `go.mod` — the real build is the check; do not write a test asserting the dependency is listed
 
 ## 2. `internal/manifest` — parse and validate `graft.toml`
 <!-- kind: behavior -->
