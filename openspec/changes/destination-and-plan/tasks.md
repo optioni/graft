@@ -224,20 +224,20 @@ and a later sync would delete.
 by id, files by path — or every sync churns the diff. Byte equality is what is asserted, not
 semantic equality.
 
-- [ ] 10.1 RED: Write failing tests for: *Writes are ordered by destination across sources
+- [x] 10.1 RED: Write failing tests for: *Writes are ordered by destination across sources
       and items*; *Sources, items, and files are ordered independently of input order*; *An
       idempotent re-plan prunes nothing*
-- [ ] 10.2 RED: The determinism test builds a plan twice from inputs supplied in reversed
+- [x] 10.2 RED: The determinism test builds a plan twice from inputs supplied in reversed
       order — sources, `install` selectors, `Listing.Files`, and the map insertion order of
       `Input.Items` all shuffled — and asserts
       `bytes.Equal(lock.Marshal(a.Lock), lock.Marshal(b.Lock))`. `reflect.DeepEqual` on the
       structs is not sufficient and must not be substituted
-- [ ] 10.3 GREEN: Sort every emitted slice at the point it is built; do not rely on
+- [x] 10.3 GREEN: Sort every emitted slice at the point it is built; do not rely on
       `lock.Marshal`'s normalization to hide an unsorted plan
-- [ ] 10.4 VERIFY: Feed a built plan's lock back in as the current lock, rebuild, and confirm
+- [x] 10.4 VERIFY: Feed a built plan's lock back in as the current lock, rebuild, and confirm
       an empty prune set and byte-identical lock output — the idempotent re-sync property, at
       the plan tier
-- [ ] 10.5 Run `go test ./internal/plan/` — no regressions
+- [x] 10.5 Run `go test ./internal/plan/` — no regressions
 
 ## 11. Documentation
 <!-- kind: operational -->
