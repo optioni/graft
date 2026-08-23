@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 
@@ -44,6 +45,80 @@ type Write struct {
 type claim struct {
 	source string
 	item   string
+	dest   string
+}
+
+// claims records which item took which path, and every directory those paths imply.
+// Two items may not share a path, and — the quieter half — one item's file may not be
+// the directory another item's file needs: docs/api and docs/api/index.md cannot both
+// exist. Left to apply, that fails partway through, and because the lock is written
+// last the file already written is absent from graft.lock, outside anything a later
+// prune could reach. Refusing it here is what keeps that state unreachable.
+type claims struct {
+	files map[string]claim
+	dirs  map[string]claim
+}
+
+func newClaims() *claims {
+	return &claims{files: map[string]claim{}, dirs: map[string]claim{}}
+}
+
+// take records one destination, or returns the collision it makes with an earlier one.
+func (c *claims) take(next claim) error {
+	if first, taken := c.files[next.dest]; taken {
+		return fmt.Errorf(
+			"source %q item %q and source %q item %q both resolve to %q",
+			first.source, first.item, next.source, next.item, next.dest,
+		)
+	}
+	// next is a directory some earlier item's file already lives in.
+	if first, taken := c.dirs[next.dest]; taken {
+		return nesting(first, next)
+	}
+	// Some earlier item's file is a directory next needs.
+	for dir := path.Dir(next.dest); dir != "." && dir != "/"; dir = path.Dir(dir) {
+		if first, taken := c.files[dir]; taken {
+			return nesting(first, next)
+		}
+	}
+
+	c.files[next.dest] = next
+	for dir := path.Dir(next.dest); dir != "." && dir != "/"; dir = path.Dir(dir) {
+		if _, known := c.dirs[dir]; !known {
+			c.dirs[dir] = next
+		}
+	}
+	return nil
+}
+
+// nesting names both paths, in the order the deterministic walk reached them, because
+// neither path on its own says what the clash is.
+func nesting(first, next claim) error {
+	return fmt.Errorf(
+		"source %q item %q writes %q and source %q item %q writes %q: one cannot contain the other",
+		first.source, first.item, first.dest, next.source, next.item, next.dest,
+	)
+}
+
+// isSHA reports whether s is the 40-character lowercase hex sha graft.lock requires.
+//
+// This is the one load-time constraint on the lock that a caller can violate silently:
+// unique source names, unique item ids, and no path claimed twice all follow from what
+// planning already guarantees, and the round-trip test is what verifies them. A bad
+// resolved sha follows from nothing, and lock.Marshal validates nothing, so leaving it
+// to the caller would let plan build a lock lock.Parse refuses — two packages
+// disagreeing about what a valid graft.lock is, surfacing one run later, in a different
+// package, against a file the user is told not to edit.
+func isSHA(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for _, r := range s {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // Build turns each source's resolved inputs and the current lock into a plan. It reads
@@ -67,8 +142,8 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	// The one file set this build produces, shared between the prune diff and the
 	// next lock rather than derived twice from two walks that could disagree.
 	produced := map[string]struct{}{}
-	// Filled as the walk proceeds; the first second claimant is the error.
-	owner := map[string]claim{}
+	// Filled as the walk proceeds; the first clash is the error.
+	claimed := newClaims()
 
 	// Sorted here rather than assumed sorted because manifest.Parse happens to sort:
 	// Build takes a slice a caller assembled, and an unsorted one would churn every
@@ -79,6 +154,15 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	})
 
 	for _, in := range sorted {
+		// Before anything is planned for this source, so a lock lock.Parse would
+		// refuse is never built even partway.
+		if !isSHA(in.Resolved) {
+			return nil, fmt.Errorf(
+				"source %q: resolved %q is not a 40-character hex sha",
+				in.Source.Name, in.Resolved,
+			)
+		}
+
 		// Returned unchanged: typo protection has to reach the user through planning
 		// rather than being swallowed by it.
 		items, err := catalog.Expand(in.Catalog, in.Source.Name, in.Source.Install)
@@ -107,13 +191,13 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 			for _, pl := range places {
 				// Checked before the write is appended, so a build that fails has
 				// produced nothing a caller could act on.
-				if first, taken := owner[pl.Dest]; taken {
-					return nil, fmt.Errorf(
-						"source %q item %q and source %q item %q both resolve to %q",
-						first.source, first.item, in.Source.Name, it.ID, pl.Dest,
-					)
+				if err := claimed.take(claim{
+					source: in.Source.Name,
+					item:   it.ID,
+					dest:   pl.Dest,
+				}); err != nil {
+					return nil, err
 				}
-				owner[pl.Dest] = claim{source: in.Source.Name, item: it.ID}
 
 				p.Writes = append(p.Writes, Write{
 					Source: in.Source.Name,

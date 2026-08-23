@@ -87,12 +87,14 @@ Checks that found nothing, named because they are where this repository fails:
 |---|---|---|---|---|
 | WARNING | specs/destination-computation/spec.md | The escaping-listing-entry scenario was internally inconsistent. Its listing `["../../../etc/passwd"]` joined under `openspec/schemas/tdd` — three segments, three `..` — cleans to `etc/passwd`, which is *inside* the repo root and therefore raises no error at all, while the scenario's asserted message names `../../etc/passwd`. Implemented as written, the scenario could never go green; implemented to match the message, the input had to change. | Corrected the WHEN's listing to `["../../../../../etc/passwd"]`, the input that actually produces the asserted destination, leaving the error text — the asserted contract — untouched. The alternative, weakening the THEN to `etc/passwd`, was rejected: that path does not escape, so it would have turned an invariant scenario into an acceptance one. | specs/destination-computation/spec.md → *No destination escapes the repo root* |
 
-A consequence worth naming rather than discovering later: a listing entry with *fewer*
-`..` segments than its destination has path segments is absorbed by `path.Join` and lands
-somewhere else **inside** the repo. That is not refused, and deliberately so — SPEC.md's
-invariant is only "no destination escapes the repo root", and narrowing it here would be
-the same kind of invented rule design.md → Q2 declines for `.git/`. The fidelity of a
-listing is `git-fetch`'s contract, recorded in design.md → Risks.
+A consequence was named here rather than left to be discovered: a listing entry with
+*fewer* `..` segments than its destination has path segments is absorbed by `path.Join` and
+lands somewhere else **inside** the repo. It was left unrefused at the time, on the reading
+that SPEC.md's invariant is only "no destination escapes the repo root". **That reading was
+wrong**, and the change review below caught it: the repo-root rule is the floor, and a file
+landing anywhere other than the destination the consumer was shown defeats the only
+mitigation SPEC.md offers against an untrusted source. Refused now, and SPEC.md's
+Invariants list says so.
 
 ## Change Review — Findings and Dispositions
 
@@ -109,9 +111,13 @@ tasks.md group 12 names. It reported five of the six holding and one failing.
 | SUGGESTION | **"is not in cleaned form" was literally false** for every destination the requirement's own scenarios accept, since the check is applied to the destination with one trailing `/` trimmed — as it must be, or `.claude/agents/` is refused. | **Fixed** in the requirement text. No code change. |
 | SUGGESTION | **`Build` can construct a lock `lock.Parse` refuses** when `Resolved` is empty, while the round-trip requirement is written without qualification. | **Accepted, resolved the other way the reviewer offered.** The requirement now names the precondition instead of `Build` re-checking it. design.md's Preconditions block deliberately makes a 40-hex `resolved` `git-fetch`'s guarantee and states that `Build` does not re-validate what collaborators guarantee; validating here would put a third copy of that rule in a third package and would need a design amendment to justify. |
 
-The reviewer also left, unrequested and unreported, an implementation of a **nesting
-invariant** in `internal/plan/build.go`. It was reverted — see the deferred note below for
-why, and for the part of its reasoning that is worth keeping.
+Two of those dispositions were **overturned** after review, and the reasons are recorded
+here rather than in a commit message alone, because both strengthen a contract:
+
+| Finding | First disposition | Final disposition |
+|---|---|---|
+| `Build` can construct a lock `lock.Parse` refuses when `Resolved` is not a 40-character hex sha | Accepted; the requirement named the precondition instead of checking it | **Fixed.** The precondition does not behave like its neighbours in design.md → Contracts: unique source names, unique item ids, and no path claimed twice are consequences of what planning does, so the round-trip scenario catches a violation of any of them. A bad `Resolved` is copied verbatim into the lock, `lock.Marshal` validates nothing, and the failure surfaces one run later in a different package against a file the user is told not to edit. Five lines of check are cheaper than two packages disagreeing about what a valid `graft.lock` is. Recorded as design.md → D11, with a requirement and scenario in `sync-plan`. |
+| Two items whose destinations **nest** — `docs/api` as one item's file, `docs/api/index.md` as another's — is not refused | Deferred to `sync-command`, on the grounds that SPEC.md's Invariants list does not name it and inventing an unlisted invariant is what design.md → Q2 declined for `.git/` | **Fixed here, and SPEC.md's Invariants list amended.** The Q2 parallel does not hold: `.git/` is a restriction on what a destination may *name*, which SPEC.md is silent about by choice; a nesting clash is a plan that **cannot be applied at all**. The two paths cannot both exist, so `apply` fails partway through, and because the lock is written last the file already written is left outside `graft.lock` where no prune can reach it. That orphaned state is precisely what the plan-then-apply split exists to make unreachable, so a package whose whole job is to return a value instead of writing must be able to say so before anything is touched. The invariant list is the floor rather than the ceiling. Recorded as design.md → D11, with a requirement and two scenarios in `sync-plan` covering both walk orders, and a third asserting that ordinary siblings in one directory are not a nesting. |
 
 ## No Remaining Implementation-Blocking Gaps
 
@@ -138,25 +144,20 @@ reader to re-derive it. It does not block implementation.
   `git-fetch`'s contract, tested there against real fixture repositories.
 - The pin check (`lock.CheckPins`) is deliberately not called from `Build`; it must fire
   before anything is fetched. Recorded in design.md → D6, and it lands with `sync-command`.
-- **A plan can represent a tree no filesystem can hold: nesting destinations.** `docs/api`
-  as one item's file and `docs/api/index.md` as another's cannot both exist. `apply` would
-  fail halfway, and because the lock is written last the file already written would be left
-  outside `graft.lock`, where no later prune could ever reach it. It is reachable **within
-  one item and one kind**, needing no second item: `to: ["docs/", "docs"]` for a file item
-  with the listing `["x.md"]` plans a write to `docs/x.md` and a write to `docs`, and the
-  interpolate-alike check correctly does not fire — for a file item those two entries
-  genuinely are two destinations. Reproduced against this implementation.
-
-  Deliberately not fixed here. This is **not** the same category as design.md → Q2: Q2 is a
-  policy question (may a destination name `.git/`?) where declining to invent an answer is
-  right. This is an impossibility, so the eventual fix is a validity property of `Plan` —
-  no destination may be a path prefix of another — rather than a new SPEC.md invariant
-  needing a threat-model argument, and `sync-command` should not re-litigate it as policy.
-  It is deferred because it needs its own requirement text, its own message, and its own
-  scenarios, and because the consequence that makes it serious — an orphaned file outside
-  the lock — can only be argued against a real writer. Resolution point: `sync-command`.
-  **Until then `Plan` carries no guarantee that it is applicable, and `internal/apply` must
-  not assume one.**
+- The `catalog.Parse` half of the raw-string duplicate-destination guard — `to: ["a/{name}",
+  "a/{name}/"]` is two entries there and one destination for a directory item — is left as
+  it is. `internal/catalog` belongs to an archived change, and `internal/plan` now compares
+  destinations by meaning, so no plan can be built from that pair regardless. Resolution
+  point: whichever change next opens `internal/catalog`.
+- One route to a nesting clash was found **within a single item and a single kind** while
+  fixing the cross-item case: `to: ["docs/", "docs"]` for a *file* item with the listing
+  `["x.md"]` plans a write to `docs/x.md` and a write to `docs`, and the interpolate-alike
+  check correctly does not fire, because for a file item those two entries genuinely are two
+  destinations. The cross-item check catches it — a nesting is refused whichever items
+  produce it, including one item twice — but the message then names that item as both
+  parties, which reads oddly even though it is accurate. A within-item wording for it is
+  left for whichever change next has cause to touch this code; the behaviour is correct
+  today, only the phrasing is imperfect.
 - Per-item `added`/`updated`/`removed` reporting is derivable from `Writes`, `Prune`, and the
   old lock without `plan` growing a report type. Recorded in proposal.md → Non-Goals and
   design.md → Risks; it lands with `sync-command`.

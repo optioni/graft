@@ -201,8 +201,11 @@ These hold or the run aborts before writing:
   or `.git/hooks/` never leaves the repository, and is still an error. The destination shown
   before install is the only thing a consumer agrees to, so a file landing anywhere else
   defeats the one mitigation an untrusted source has.
-- **No two items share a destination path**, within a source or across sources. Collisions
-  are an error, not last-writer-wins.
+- **No two items share a destination path**, within a source or across sources, and no
+  item's file may be a directory another item's file needs — `docs/api` and
+  `docs/api/index.md` cannot both exist. Collisions are an error, not last-writer-wins:
+  applying one fails partway through, and since the lock is written last the file already
+  written would be left outside `graft.lock`, where no later prune could reach it.
 - **`from` stays inside the source tree.**
 - **The lock is written last**, after every file operation succeeds.
 

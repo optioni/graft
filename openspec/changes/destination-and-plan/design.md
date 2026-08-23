@@ -118,11 +118,22 @@ than left to be discovered.
 re-validate what its collaborators already guarantee. It relies on: every installed item's
 kind being declared in `Catalog.Kinds` (guaranteed by `catalog.Parse`, which refuses an item
 whose kind is undeclared); source names being unique (guaranteed by `manifest.Parse`, whose
-sources come from a TOML table); `Resolved` being a 40-character hex sha (guaranteed by
-`git-fetch`); and `Listing.Files` holding exactly `base(From)` when `Dir` is false. A caller
-violating the first would silently plan no writes for that item, which is why the round-trip
-scenario exists: the constructed lock is parsed back with `lock.Parse`, and every constraint
-`graft.lock` enforces on load is therefore checked against what `plan` produced.
+sources come from a TOML table); and `Listing.Files` holding exactly `base(From)` when `Dir`
+is false. A caller violating the first would silently plan no writes for that item, which is
+why the round-trip scenario exists: the constructed lock is parsed back with `lock.Parse`,
+and every constraint `graft.lock` enforces on load is therefore checked against what `plan`
+produced.
+
+`Resolved` is the exception, and is **checked rather than assumed** — see D11. It was
+drafted as `git-fetch`'s guarantee alongside the others, and it does not behave like them:
+the rest are consequences of what planning itself does, so the round-trip catches a
+violation, while a bad `Resolved` is carried through untouched into a lock `lock.Parse`
+would refuse.
+
+A listing entry is not a precondition either. `Listing.Files` arrives from a source
+repository by way of whatever enumerated its tree, and an entry that is not a relative path
+inside the item is refused rather than trusted — the containment invariant, which the
+repo-root check alone does not give.
 
 **Error surface** — every message is asserted by a test and is a deliberate contract:
 
@@ -134,6 +145,9 @@ scenario exists: the constructed lock is parsed back with `lock.Parse`, and ever
 | Flatten maps two files alike | `source "s": item "agent:pack": flatten maps "a/dup.md" and "b/dup.md" to the same destination ".claude/agents/dup.md"` |
 | Destination escapes the repo root | `source "s": item "agent:x": destination "../outside/agents/" escapes the repo root` |
 | Two items resolve alike | `source "a" item "agent:x" and source "b" item "agent:y" both resolve to ".claude/agents/x.md"` |
+| One item's file is another's directory | `source "s" item "doc:api" writes "docs/api" and source "s" item "schema:api" writes "docs/api/index.md": one cannot contain the other` |
+| A listing entry leaves its item | `source "s": item "schema:tdd": file "../../../etc/passwd" is not a relative path inside the item` |
+| `Resolved` is not a sha | `source "s": resolved "" is not a 40-character hex sha` |
 
 No pagination, no streaming, no compatibility surface. `Build` is additive.
 
@@ -323,6 +337,28 @@ It is the third copy of a five-line path rule (`catalog.inSource`, `lock.isRepoR
 than hoisting a shared package, and each has different wording and a different subject —
 source path, deletable path, destination path. Consistency with the existing precedent beats
 removing fifteen lines of duplication.
+
+**D11 — `Resolved` is validated in `Build`, and the nesting invariant is enforced there.**
+Both strengthen what the draft said, and both were argued after the change-review pass.
+
+`Resolved` sits in the Preconditions list above as `git-fetch`'s guarantee, but it is not
+like its neighbours: the others are properties of what planning does, so the round-trip
+scenario catches a violation of any of them, whereas a bad `Resolved` is copied verbatim
+into the lock and `lock.Marshal` validates nothing. The failure would surface one run
+later, in `lock.Parse`, against a file the user is told not to edit. *Alternative:* state
+the precondition in the requirement and leave the check to `git-fetch` — rejected: it makes
+two packages disagree about what a valid `graft.lock` is, and the cost of agreeing is five
+lines.
+
+The nesting invariant — one item's file may not be the directory another item's file needs
+— is not in SPEC.md's original Invariants list. It is added to it by this change, because
+the list is the floor rather than the ceiling and this case has the consequence the list
+exists to prevent: `docs/api` and `docs/api/index.md` cannot both exist, so applying the
+plan fails partway through, and since the lock is written last the file already written is
+left outside `graft.lock` where no prune can reach it. *Alternative:* defer it to
+`sync-command`, where `internal/apply` exists — rejected: a plan whose application cannot
+succeed is not a valid plan, and the whole reason this package returns a value rather than
+performing writes is so that it can say so before anything is touched.
 
 ## Risks / Trade-offs
 
