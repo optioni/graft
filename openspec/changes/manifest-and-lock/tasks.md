@@ -81,12 +81,12 @@
 ## 7. Manifest and lock pin agreement
 <!-- kind: behavior -->
 
-- [ ] 7.1 RED: Write a failing table test covering `Agreeing pins pass`, `A moved manifest pin is an error` with the exact message, `A source only in the manifest is not an error`, `A source only in the lock is not an error`, and `Two empty files agree`
-- [ ] 7.2 Confirm the failures come from the missing check, not from a manifest fixture that fails validation first
-- [ ] 7.3 GREEN: Implement `CheckPins` in `internal/lock`, comparing `rev` only for sources present in both and returning the exact drift message pointing at `graft update`
-- [ ] 7.4 REFACTOR: None expected for a single comparison — state explicitly that no refactor was needed, or make it and keep the tests unchanged
-- [ ] 7.5 CHECK: Confirm the dependency direction is `lock` → `manifest` and that `internal/plan` gained no code, so plan purity is untouched by this change
-- [ ] 7.6 Run `go test -race ./internal/lock/... ./internal/manifest/...` — green, no regressions
+- [x] 7.1 RED: Write a failing table test covering `Agreeing pins pass`, `A moved manifest pin is an error` with the exact message, `A source only in the manifest is not an error`, `A source only in the lock is not an error`, and `Two empty files agree`
+- [x] 7.2 Confirm the failures come from the missing check, not from a manifest fixture that fails validation first
+- [x] 7.3 GREEN: Implement `CheckPins` in `internal/lock`, comparing `rev` only for sources present in both and returning the exact drift message pointing at `graft update`
+- [x] 7.4 REFACTOR: None expected for a single comparison — state explicitly that no refactor was needed, or make it and keep the tests unchanged
+- [x] 7.5 CHECK: Confirm the dependency direction is `lock` → `manifest` and that `internal/plan` gained no code, so plan purity is untouched by this change
+- [x] 7.6 Run `go test -race ./internal/lock/... ./internal/manifest/...` — green, no regressions
 
 ## 8. Documentation
 <!-- kind: operational -->
