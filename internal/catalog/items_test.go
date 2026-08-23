@@ -105,6 +105,43 @@ func TestParse_ItemErrors(t *testing.T) {
 			want: `catalog.yaml: provides[0]: invalid item id "agent:a:b": want kind:name`,
 		},
 		{
+			// path.Match's * does not cross "/", so an item named nested/thing would
+			// be invisible to agent:* while its siblings matched — a silent
+			// under-install, not an error.
+			name: "a name holding a path separator",
+			in:   declared + "provides:\n  - { kind: agent, name: \"nested/thing\", from: a.md }\n",
+			want: `catalog.yaml: provides[0]: invalid name "nested/thing": want letters, digits, dot, dash, or underscore`,
+		},
+		{
+			// A source could otherwise name an item so that a consumer's exact
+			// selector quietly pulls in a neighbour.
+			name: "a name holding a glob metacharacter",
+			in:   declared + "provides:\n  - { kind: agent, name: \"a*b\", from: a.md }\n",
+			want: `catalog.yaml: provides[0]: invalid name "a*b": want letters, digits, dot, dash, or underscore`,
+		},
+		{
+			name: "a name holding a character class",
+			in:   declared + "provides:\n  - { kind: agent, name: \"[x]\", from: a.md }\n",
+			want: `catalog.yaml: provides[0]: invalid name "[x]": want letters, digits, dot, dash, or underscore`,
+		},
+		{
+			name: "a name holding a backslash",
+			in:   declared + "provides:\n  - { kind: agent, name: \"a\\\\b\", from: a.md }\n",
+			want: `catalog.yaml: provides[0]: invalid name "a\\b": want letters, digits, dot, dash, or underscore`,
+		},
+		{
+			// {name} is interpolated into a destination by a later package, and this
+			// is the check that must not depend on that package repeating it.
+			name: "a name of dot-dot",
+			in:   declared + "provides:\n  - { kind: agent, name: \"..\", from: a.md }\n",
+			want: `catalog.yaml: provides[0]: invalid name "..": a name may not be "." or ".."`,
+		},
+		{
+			name: "a name of dot",
+			in:   declared + "provides:\n  - { kind: agent, name: \".\", from: a.md }\n",
+			want: `catalog.yaml: provides[0]: invalid name ".": a name may not be "." or ".."`,
+		},
+		{
 			name: "an undeclared kind",
 			in: "version: 1\nkinds:\n  agent:\n    to: \".claude/agents/\"\n" +
 				"provides:\n  - { kind: schema, name: tdd, from: extras/tdd }\n",
@@ -144,6 +181,27 @@ func TestParse_ItemErrors(t *testing.T) {
 			}
 			if err == nil || err.Error() != tt.want {
 				t.Fatalf("Parse() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// The names a source is expected to use all pass, so the rule that closes the holes
+// above does not also reject ordinary vocabulary.
+func TestParse_OrdinaryNames(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"tdd", "apply-orchestrator", "outside_in", "v1.2", "TDD9"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			in := declared + fmt.Sprintf("provides:\n  - { kind: agent, name: %q, from: a.md }\n", name)
+			c, err := catalog.Parse([]byte(in), "catalog.yaml")
+			if err != nil {
+				t.Fatalf("Parse() error = %v, want nil", err)
+			}
+			if len(c.Items) != 1 || c.Items[0].Name != name {
+				t.Errorf("Items = %+v, want one item named %q", c.Items, name)
 			}
 		})
 	}

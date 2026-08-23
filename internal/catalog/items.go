@@ -50,10 +50,19 @@ func parseItems(raw map[string]any, kinds map[string]Kind, filename string) ([]I
 		// The kind:name grammar lives in internal/itemid because graft.toml
 		// selectors, graft.lock ids, and catalog items all have to agree on it — a
 		// second grammar here would let a selector silently fail to match an id the
-		// lock happily records.
+		// lock happily records. The two checks after it are not a second grammar but a
+		// producer-side restriction: itemid says what an id is, and a catalog is the
+		// only thing that ever mints one, so it is the right place to refuse the names
+		// that would misbehave downstream. See plainName.
 		id := kind + ":" + name
 		if !itemid.Valid(id) {
 			return nil, at("invalid item id %q: want kind:name", id)
+		}
+		if name == "." || name == ".." {
+			return nil, at(`invalid name %q: a name may not be "." or ".."`, name)
+		}
+		if !plainName(name) {
+			return nil, at("invalid name %q: want letters, digits, dot, dash, or underscore", name)
 		}
 		item := func(format string, args ...any) error {
 			return errf(filename, "item %q: %s", id, fmt.Sprintf(format, args...))
@@ -78,6 +87,37 @@ func parseItems(raw map[string]any, kinds map[string]Kind, filename string) ([]I
 	// Byte-wise, so the order cannot depend on map iteration, locale, or platform.
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items, nil
+}
+
+// plainName reports whether an item name is a single path segment of ordinary
+// characters. internal/itemid says what an id *is*; this says what a source may
+// actually publish, the same way inSource below constrains from rather than moving a
+// rule into a shared package. Three things break without it, none of them noisily:
+//
+//   - path.Match's "*" does not cross "/", so an item named nested/thing is invisible
+//     to a kind:* selector while that selector still matches its siblings. The install
+//     silently drops an item and the no-match guard never fires, because the selector
+//     did match something.
+//   - A name holding a glob metacharacter makes a consumer's exact selector match a
+//     neighbour — agent:a*b also selects agent:ab — or makes the item unselectable at
+//     all, since a name of [x] comes back as an invalid pattern.
+//   - {name} is interpolated into a destination by a later package, so a name of ".."
+//     aims a write at a directory the catalog's own `to` never named. SPEC.md's one
+//     mitigation for an untrusted source is that the destination is shown before
+//     install; a name that rewrites it defeats exactly that.
+//
+// The set is deliberately narrow. It covers every name in SPEC.md's examples and can
+// be widened later without invalidating a catalog that already parses.
+func plainName(s string) bool {
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '-', r == '_', r == '.':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // inSource reports whether p names something inside the source tree. SPEC.md makes
