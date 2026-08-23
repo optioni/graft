@@ -153,24 +153,24 @@ beats the catalog.
 set is derived from the lock alone and never from a directory listing — `plan` has no
 directory to list, which is exactly why this is the right place for the rule.
 
-- [ ] 7.1 RED: Write failing tests for: *A foreign file in a shared destination is never
+- [x] 7.1 RED: Write failing tests for: *A foreign file in a shared destination is never
       pruned*; *An item dropped from install has its files pruned*; *An item the source
       stopped providing has its files pruned*; *A source removed from the manifest has all
       its files pruned*; *A moved destination prunes the old path and writes the new one*; *A
       version bump that adds and removes items*; *A path moving from one source to another is
       written, not pruned*; *A file already present in the tree is still written*
-- [ ] 7.2 RED: The foreign-file test asserts the repo-owned `.claude/agents/local-reviewer.md`
+- [x] 7.2 RED: The foreign-file test asserts the repo-owned `.claude/agents/local-reviewer.md`
       appears in **no** field of the plan — not in `Writes`, not in `Prune`, not in the next
       lock — and asserts it twice: once with the synced item kept and once with it dropped.
       A test that only checks `Prune` would stay green if the path leaked into a write
-- [ ] 7.3 GREEN: Derive `Prune` as the lock's file paths minus the newly produced file set,
+- [x] 7.3 GREEN: Derive `Prune` as the lock's file paths minus the newly produced file set,
       sorted by path
-- [ ] 7.4 CHECK: Persistence gate — confirm what this change requires of stored data:
+- [x] 7.4 CHECK: Persistence gate — confirm what this change requires of stored data:
       migration, backfill, cache invalidation, and index rebuild all **none**, and
       `graft.lock` stays at `version = 1` (design.md → Persistence and Rollout)
-- [ ] 7.5 REFACTOR: Build the new file set once and share it between the prune diff and the
+- [x] 7.5 REFACTOR: Build the new file set once and share it between the prune diff and the
       next lock rather than recomputing it, or state that no refactor was needed
-- [ ] 7.6 Run `go test ./internal/plan/` — no regressions
+- [x] 7.6 Run `go test ./internal/plan/` — no regressions
 
 ## 8. The next lock
 <!-- kind: behavior -->

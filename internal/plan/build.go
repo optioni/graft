@@ -50,6 +50,9 @@ type Write struct {
 // rather than after.
 func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	p := &Plan{Lock: &lock.Lock{Version: lock.Version}}
+	// The one file set this build produces, shared between the prune diff and the
+	// next lock rather than derived twice from two walks that could disagree.
+	produced := map[string]struct{}{}
 
 	for _, in := range inputs {
 		// Returned unchanged: typo protection has to reach the user through planning
@@ -84,6 +87,7 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 					From:   pl.From,
 					Dest:   pl.Dest,
 				})
+				produced[pl.Dest] = struct{}{}
 				files = append(files, pl.Dest)
 			}
 			slices.Sort(files)
@@ -93,5 +97,40 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	}
 
 	slices.SortFunc(p.Writes, func(a, b Write) int { return strings.Compare(a.Dest, b.Dest) })
+	p.Prune = pruneSet(lk, produced)
 	return p, nil
+}
+
+// pruneSet is exactly those paths the lock claims that the new resolution no longer
+// produces, ordered by path. A path enters it only by being in the lock — never by
+// being found in a destination directory, which this package could not look in even if
+// it wanted to.
+//
+// That is what lets synced files share a directory with files graft does not own: a
+// file absent from graft.lock is invisible to graft and can never be deleted by it.
+// The diff is over paths rather than per source, so a path one source stops producing
+// and another starts producing is written rather than deleted and re-created.
+func pruneSet(lk *lock.Lock, produced map[string]struct{}) []string {
+	if lk == nil {
+		return nil
+	}
+
+	var out []string
+	seen := map[string]struct{}{}
+	for _, s := range lk.Sources {
+		for _, it := range s.Items {
+			for _, f := range it.Files {
+				if _, kept := produced[f]; kept {
+					continue
+				}
+				if _, dup := seen[f]; dup {
+					continue
+				}
+				seen[f] = struct{}{}
+				out = append(out, f)
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
 }
