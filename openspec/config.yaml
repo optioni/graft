@@ -39,7 +39,7 @@ rules:
     - Use concrete SHALL requirements with observable CLI behavior — exit code, files written, files deleted, text on stderr.
     - Every requirement needs at least one `#### Scenario:` in WHEN/THEN form naming the starting tree state and the resulting tree state.
     - Specify the failure path whenever one exists; SPEC.md's failure-mode table is the contract, and error text is part of it.
-    - Cover empty and boundary state: no lock, empty install list, a selector matching nothing, a source providing zero items.
+    - 'Cover empty and boundary state: no lock, empty install list, a selector matching nothing, a source providing zero items.'
   design:
     - Name which of `manifest`, `lock`, `catalog`, `source`, `plan`, and `apply` the change touches, and keep `plan` free of filesystem access.
     - 'Any new write path belongs in `internal/apply`: state explicitly if the change adds one, and why it cannot live there if it does not.'
