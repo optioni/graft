@@ -121,8 +121,36 @@
 ## 10. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 10.1 CHECK: Inspect the intended verification commands and affected tiers — the new package is under `./internal/...`, so the coverage gate applies; there is no acceptance tier in this change
-- [ ] 10.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
-- [ ] 10.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` at or above the 80% floor
-- [ ] 10.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
-- [ ] 10.5 VERIFY: Run `openspec validate catalog-and-selectors --strict` — valid
+- [x] 10.1 CHECK: Inspect the intended verification commands and affected tiers — the new package is under `./internal/...`, so the coverage gate applies; there is no acceptance tier in this change
+- [x] 10.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
+- [x] 10.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` at or above the 80% floor
+- [x] 10.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
+- [x] 10.5 VERIFY: Run `openspec validate catalog-and-selectors --strict` — valid
+
+### Change Review outcome
+
+An independent reviewer (dispatched via the `code-review` skill, given only the artifacts
+and the diff) reported 1 CRITICAL, 2 WARNINGs, and 4 SUGGESTIONs. All eight concentration
+points (a)-(h) were confirmed by checking rather than assumed, including a
+character-for-character audit of all 29 asserted error strings with zero deviations.
+
+- **CRITICAL — fixed** (`11fb0e0`): an item name containing `/` parsed but was silently
+  unmatched by a `kind:*` selector, because `path.Match`'s `*` does not cross `/`. It
+  under-installed with a nil error. Fixed by restricting what a catalog may mint.
+- **WARNING — fixed** (`11fb0e0`): item names were otherwise unvalidated, so `..` and
+  `../../etc/cron.d/x` were accepted and would flow into `{name}` interpolation.
+- **WARNING — fixed** (`11fb0e0`): glob metacharacters in a name made a literal selector
+  over-select, and a name like `[x]` was unselectable.
+- **SUGGESTION — fixed** (`9e00a34`): `Expand(nil, …)` panicked.
+- **SUGGESTION — out of scope**: backslash and drive-letter `from` values pass `inSource`.
+  ENGINEERING.md scopes graft to darwin and linux.
+- **SUGGESTION — deferred to design.md Risks**: `inSource` is lexical, so a committed
+  symlink escapes it. This is `internal/apply`'s problem and apply does not exist yet.
+- **SUGGESTION — accepted as-is**: `inSource` runs after the duplicate-id check.
+
+The restriction was deliberately placed in `internal/catalog` rather than the shared
+`internal/itemid`. `itemid` defines what an id *is*; what a source may publish is a
+producer-side rule, and a catalog is the only thing that ever mints an id. Manifest
+selectors only reference ids, and lock ids only record ones a catalog already minted —
+neither reaches `{name}` interpolation — so validating at the mint point closes the
+finding completely without putting policy in a grammar package.
