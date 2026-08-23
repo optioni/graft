@@ -4,15 +4,12 @@
 package catalog
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/goccy/go-yaml"
 )
@@ -53,14 +50,6 @@ type Item struct {
 // other than the one it was given.
 func Load(path string) (*Catalog, error) {
 	name := filepath.Base(path)
-	// Lstat, not Stat: a source repository's catalog.yaml is content the source
-	// controls, and git can materialise it as a symlink. os.ReadFile would follow it
-	// to any file the invoking user can read, and a parse error quotes the offending
-	// source lines verbatim — so following a link both breaks this function's own
-	// contract and prints the target's contents to the terminal.
-	if info, lerr := os.Lstat(path); lerr == nil && !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file: the source is not graftable", name)
-	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -78,20 +67,8 @@ func Parse(data []byte, filename string) (*Catalog, error) {
 	// The document is decoded generically rather than into a struct: unknown keys can
 	// then be attributed to the kind or the provides index they appeared in, and the
 	// string-or-list `to` is a type switch instead of a custom unmarshaller.
-	// Decoded through a Decoder rather than Unmarshal so a second document is an
-	// error instead of silent truncation. Unmarshal keeps only the first, so a stray
-	// "---" would drop every provides entry below it — and a glob selector still
-	// matches the survivors, so the no-match guard never fires and the install is
-	// short without saying so.
-	dec := yaml.NewDecoder(bytes.NewReader(data))
 	var doc any
-	if err := dec.Decode(&doc); err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("%s: %w", filename, err)
-	}
-	var extra any
-	if err := dec.Decode(&extra); err == nil {
-		return nil, errf(filename, "contains more than one document; a catalog is a single document")
-	} else if !errors.Is(err, io.EOF) {
+	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("%s: %w", filename, err)
 	}
 	raw, err := document(doc, filename)
@@ -165,15 +142,6 @@ func checkVersion(raw map[string]any, filename string) (int, error) {
 		n = t
 	case int:
 		n = int64(t)
-	case string:
-		// goccy hands back a string for an integer literal wider than uint64. Such a
-		// catalog is unambiguously newer than the one version this binary knows, so
-		// it gets the upgrade message rather than "must be an integer" — the one
-		// answer that does not help.
-		if t != "" && strings.IndexFunc(t, func(r rune) bool { return r < '0' || r > '9' }) < 0 {
-			return 0, errf(filename, "version %s is not supported by this graft; upgrade graft", t)
-		}
-		return 0, errf(filename, "version must be an integer")
 	default:
 		return 0, errf(filename, "version must be an integer")
 	}

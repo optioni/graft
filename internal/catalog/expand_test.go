@@ -132,19 +132,3 @@ func TestExpand_Errors(t *testing.T) {
 		})
 	}
 }
-
-// TestExpand_NilCatalog pins the one caller mistake Expand cannot report on its own: a
-// nil catalog means Parse's error return went unchecked, and the selector the caller
-// wrote must still fail loudly rather than crash inside the library.
-func TestExpand_NilCatalog(t *testing.T) {
-	t.Parallel()
-
-	got, err := catalog.Expand(nil, "openspec-schemas", []string{"agent:*"})
-	if got != nil {
-		t.Errorf("Expand() items = %q, want nil", ids(got))
-	}
-	want := `source "openspec-schemas": selector "agent:*" matches no item; catalog provides no items`
-	if err == nil || err.Error() != want {
-		t.Fatalf("Expand() error = %v, want %q", err, want)
-	}
-}

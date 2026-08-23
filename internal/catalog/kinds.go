@@ -1,21 +1,15 @@
 package catalog
 
-import (
-	"fmt"
-	"path"
-)
+import "fmt"
 
 // parseKinds reads the kinds mapping. Keys are walked in sorted order so a catalog
 // with two faulty kinds always reports the same one — Go's map iteration is
 // randomised, and every error message here is asserted by a test.
 //
 // Nothing in this function interprets a destination. {name} is left uninterpolated, a
-// trailing slash is left in place, and no path is joined: computing a destination is
-// internal/plan's job, and splitting it across two packages is how the "no destination
-// escapes the repo root" invariant ends up checked in only one. The single exception is
-// the duplicate check below, which compares cleaned forms so two spellings of one
-// directory cannot both survive — it normalises for comparison only and stores the
-// strings as written.
+// trailing slash is left in place, and no path is cleaned or joined: computing a
+// destination is internal/plan's job, and splitting it across two packages is how the
+// "no destination escapes the repo root" invariant ends up checked in only one.
 func parseKinds(raw map[string]any, filename string) (map[string]Kind, error) {
 	v, ok := raw["kinds"]
 	if !ok || v == nil {
@@ -85,16 +79,12 @@ func destinations(v any, fail func(string, ...any) error) ([]string, error) {
 
 	seen := make(map[string]struct{}, len(to))
 	for _, d := range to {
-		// Compared cleaned, carried verbatim: ".claude/agents/" and ".claude/agents//"
-		// are one directory to filepath.Join, so a byte comparison would let a kind
-		// write every item to it twice. Kind.To keeps the strings as written; only
-		// this check normalises.
-		if _, dup := seen[path.Clean(d)]; dup {
+		if _, dup := seen[d]; dup {
 			// Otherwise every item of this kind would be written to the same path
 			// twice, and the second write would look like a collision with itself.
 			return nil, fail("duplicate destination %q", d)
 		}
-		seen[path.Clean(d)] = struct{}{}
+		seen[d] = struct{}{}
 	}
 	return to, nil
 }

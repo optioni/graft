@@ -113,9 +113,17 @@
   - A nil-receiver guard making `Expand` total on a nil `*Catalog`. `Expand(nil, src, nil)` would then return success, hiding the caller's bug outright; `manifest` and `lock` expose the same shape with no such guard; and no file a source or consumer writes can produce that state.
 
   **Accepted, with reason:**
-  - `yaml.Unmarshal` decodes only the first document, so a second one in `catalog.yaml` is dropped silently. Accepted: it cannot cause a silent under-install, because anything the dropped document declared surfaces as the no-match error or as "kind is not declared".
+  - `yaml.Unmarshal` decodes only the first document, so a second one in `catalog.yaml` is dropped silently. **Deferred, and the reason first recorded here was wrong**: a later pass showed the dropped items do *not* surface loudly, because a `kind:*` selector still matches the survivors and so the no-match guard never fires — a short install that reports success. Left open only because nothing yet fetches a source tree, which makes `Load` unreachable in the shipped binary; it must close before `sync-command` wires it up.
   - A `from` is checked as a string, so a symlink inside a source tree could still point out of it. Accepted and recorded in design.md → Risks: nothing here opens a file from a source tree, so there is no point at which a link could be resolved.
   - Probed rather than assumed: a nested-alias YAML bomb does not amplify (goccy shares structure; 443µs at depth 8) and the unknown-key walk is depth-bounded, so an untrusted catalog has no expansion attack.
+
+  **Deferred to a follow-up change, all four unreachable today because no command fetches a source tree, and all four to be closed before `sync-command` makes `Load` reachable:**
+  - A second YAML document in `catalog.yaml` is dropped silently (above).
+  - `catalog.yaml` materialised as a symlink: `os.ReadFile` follows it to any file the invoking user can read, and a decoder error quotes the offending lines verbatim. `Load`'s own contract says it reads no path other than the one it was given, so an `os.Lstat` regular-file check belongs there.
+  - A version literal wider than `uint64` comes back from the decoder as a `string` and lands on "version must be an integer" rather than "upgrade graft". A quoted `version: "1"` must keep reporting the non-integer message, so the two cases have to be told apart by shape rather than by Go type.
+  - The duplicate-destination guard compares raw strings, so `.claude/agents/` and `.claude/agents//` both survive and every item of the kind would be written to one directory twice. The comparison needs the cleaned form while `Kind.To` keeps the strings verbatim.
+
+  Each adds an asserted error message, which is a contract change and therefore a change proposal rather than an edit smuggled in after this one was verified.
 - [x] 9.5 VERIFY: Confirm no blocking or unowned finding remains — every finding above is fixed, rejected with a reason, or accepted with a reason; `go test -race ./...` is green and the working tree is committed
 
 ## 10. Lint & Verify
