@@ -138,15 +138,25 @@ reader to re-derive it. It does not block implementation.
   `git-fetch`'s contract, tested there against real fixture repositories.
 - The pin check (`lock.CheckPins`) is deliberately not called from `Build`; it must fire
   before anything is fetched. Recorded in design.md → D6, and it lands with `sync-command`.
-- **Two items whose destinations nest** — `docs/api` as a file and `docs/api/index.md` as
-  another item's file — is not refused. They cannot both exist: `apply` would fail halfway,
-  and because the lock is written last the file already written would be left outside
-  `graft.lock`, where no later prune could ever reach it. The reasoning is sound and the
-  consequence is real. It is not in this change because SPEC.md's invariant list says only
-  "no two items share a destination path", and inventing an unlisted invariant is exactly
-  what design.md → Q2 declined to do for `.git/`. Resolution point: `sync-command`, where
-  `internal/apply` exists and the orphaning consequence can be argued against a real
-  writer rather than against a plan.
+- **A plan can represent a tree no filesystem can hold: nesting destinations.** `docs/api`
+  as one item's file and `docs/api/index.md` as another's cannot both exist. `apply` would
+  fail halfway, and because the lock is written last the file already written would be left
+  outside `graft.lock`, where no later prune could ever reach it. It is reachable **within
+  one item and one kind**, needing no second item: `to: ["docs/", "docs"]` for a file item
+  with the listing `["x.md"]` plans a write to `docs/x.md` and a write to `docs`, and the
+  interpolate-alike check correctly does not fire — for a file item those two entries
+  genuinely are two destinations. Reproduced against this implementation.
+
+  Deliberately not fixed here. This is **not** the same category as design.md → Q2: Q2 is a
+  policy question (may a destination name `.git/`?) where declining to invent an answer is
+  right. This is an impossibility, so the eventual fix is a validity property of `Plan` —
+  no destination may be a path prefix of another — rather than a new SPEC.md invariant
+  needing a threat-model argument, and `sync-command` should not re-litigate it as policy.
+  It is deferred because it needs its own requirement text, its own message, and its own
+  scenarios, and because the consequence that makes it serious — an orphaned file outside
+  the lock — can only be argued against a real writer. Resolution point: `sync-command`.
+  **Until then `Plan` carries no guarantee that it is applicable, and `internal/apply` must
+  not assume one.**
 - Per-item `added`/`updated`/`removed` reporting is derivable from `Writes`, `Prune`, and the
   old lock without `plan` growing a report type. Recorded in proposal.md → Non-Goals and
   design.md → Risks; it lands with `sync-command`.
