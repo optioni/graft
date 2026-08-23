@@ -6,7 +6,6 @@ before:
 
 builds:
   - main: ./cmd/graft
-    binary: graft
     env: [CGO_ENABLED=0]
     goos: [darwin, linux]
     goarch: [amd64, arm64]
@@ -34,11 +33,18 @@ changelog:
   filters:
     exclude: ['^docs', '^test', '^chore', '^ci', '^style']
 
-brews:
-  - repository:
+homebrew_casks:
+  - name: graft
+    repository:
       owner: optioni
       name: homebrew-tap
       token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
     homepage: https://github.com/optioni/graft
     description: Vendor files from a git repository into the repository you are standing in
     license: MIT
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/graft"]
+          end

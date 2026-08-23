@@ -47,11 +47,12 @@ install` overwrites `node_modules` — edit the source, not the copy.
 ## Install
 
 ```sh
-brew install optioni/tap/graft
-go install github.com/optioni/graft@latest
+brew install --cask optioni/tap/graft      # macOS
+go install github.com/optioni/graft@latest # anywhere
 ```
 
-macOS and Linux, `amd64` and `arm64`.
+Or download a binary from the releases page. Builds are published for macOS and Linux on
+`amd64` and `arm64`; the Homebrew tap is a cask, so it is macOS-only.
 
 ## Design
 

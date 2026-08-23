@@ -56,6 +56,22 @@ tasks:
         -X main.date={{.DATE}}"
         -o {{.BINARY}} ./cmd/graft
 
+  install:
+    desc: Build and install graft into GOBIN
+    cmds:
+      - >-
+        go install
+        -ldflags "-s -w
+        -X main.version={{.VERSION}}
+        -X main.commit={{.COMMIT}}
+        -X main.date={{.DATE}}"
+        ./cmd/graft
+      - |
+        bin="$(go env GOBIN)"
+        [ -n "$bin" ] || bin="$(go env GOPATH)/bin"
+        "$bin/{{.BINARY}}" --version
+        echo "installed to $bin/{{.BINARY}}"
+
   ci:
     desc: Everything CI runs
     cmds:

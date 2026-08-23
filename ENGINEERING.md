@@ -43,6 +43,7 @@ else — no step is ever spelled out twice.
 | `task test` | `go test -race ./...` |
 | `task cover` | test with coverage, print the report, fail under the threshold |
 | `task build` | local binary with version ldflags |
+| `task install` | build and install into `GOBIN`, then print the version |
 | `task ci` | `lint` + `cover` + `build` |
 | `task release:snapshot` | `goreleaser release --snapshot --clean` |
 
@@ -84,7 +85,10 @@ Tag `vX.Y.Z` on `main` → GoReleaser builds and publishes.
 - Changelog grouped by Conventional Commit type, generated from the commits.
 - Version, commit, and build date injected with `-ldflags -X`; `graft --version` prints all
   three.
-- The Homebrew formula is published to `optioni/homebrew-tap` by the same run.
+- A Homebrew **cask** is published to `optioni/homebrew-tap` by the same run. GoReleaser
+  deprecated formula output (`brews`), and Homebrew on Linux does not support casks — so
+  brew installs are macOS-only and Linux users take `go install` or a released binary.
+  A post-install hook clears the quarantine attribute.
 
 Releases are cut by hand. Automated version bumping stays out until tagging actually hurts.
 
