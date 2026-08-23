@@ -26,15 +26,15 @@
 ## 3. Kind declarations
 <!-- kind: behavior -->
 
-- [ ] 3.1 RED: Write failing tests for `A string-valued to is carried verbatim` (one-element `To`, `{name}` uninterpolated, `Flatten` false), `A trailing slash is preserved`, `A list-valued to is carried in declared order`
-- [ ] 3.2 RED: Write failing table tests for `An empty kind name is an error`, `A missing or empty to is an error` (absent, `""`, and `[]` — one message), `An empty destination inside a list is an error`, `A to of the wrong type is an error` (a mapping and a number — one message), `A repeated destination within one kind is an error` — each asserting the exact text from specs/catalog-format/spec.md
-- [ ] 3.3 Confirm the failures come from missing kind parsing, not from group 2's version gate rejecting the fixtures first
-- [ ] 3.4 GREEN: Add kind extraction — every key of the `kinds` mapping with a non-empty name, walked in sorted key order so a catalog with two invalid kinds always reports the same one, `to` normalised to `[]string` through a type switch over `string` and `[]any`, and `flatten` read as a bool defaulting to `false`
-- [ ] 3.5 GREEN: Add the `to` validation rules — required, no empty element, no repeated destination — producing the exact error strings the spec names, and carry every destination verbatim with no cleaning, no interpolation, and no trailing-slash handling
-- [ ] 3.6 REFACTOR: Reduce the value-extraction helpers (`string`, `bool`, `[]string`) to one place so a future field cannot be read one way here and another way in group 4, or record that no refactor was warranted
-- [ ] 3.7 CHECK: Concentration point — confirm no destination semantics leaked in: nothing in this package interpolates `{name}`, resolves a trailing `/`, applies `flatten`, or joins a destination to a path. Those belong to `destination-and-plan`, and splitting them across two packages is how the invariant "no destination escapes the repo root" gets checked in only one of them
-- [ ] 3.8 CHECK: Contract gate — re-read SPEC.md's `kinds` bullets and confirm the accepted shapes (`to` as string or list, `flatten`) and their optionality still match what `Parse` accepts
-- [ ] 3.9 Run `go test -race ./internal/catalog/...` — green, no regressions
+- [x] 3.1 RED: Write failing tests for `A string-valued to is carried verbatim` (one-element `To`, `{name}` uninterpolated, `Flatten` false), `A trailing slash is preserved`, `A list-valued to is carried in declared order`
+- [x] 3.2 RED: Write failing table tests for `An empty kind name is an error`, `A missing or empty to is an error` (absent, `""`, and `[]` — one message), `An empty destination inside a list is an error`, `A to of the wrong type is an error` (a mapping and a number — one message), `A repeated destination within one kind is an error` — each asserting the exact text from specs/catalog-format/spec.md
+- [x] 3.3 Confirm the failures come from missing kind parsing, not from group 2's version gate rejecting the fixtures first
+- [x] 3.4 GREEN: Add kind extraction — every key of the `kinds` mapping with a non-empty name, walked in sorted key order so a catalog with two invalid kinds always reports the same one, `to` normalised to `[]string` through a type switch over `string` and `[]any`, and `flatten` read as a bool defaulting to `false`
+- [x] 3.5 GREEN: Add the `to` validation rules — required, no empty element, no repeated destination — producing the exact error strings the spec names, and carry every destination verbatim with no cleaning, no interpolation, and no trailing-slash handling
+- [x] 3.6 REFACTOR: Reduce the value-extraction helpers (`string`, `bool`, `[]string`) to one place so a future field cannot be read one way here and another way in group 4, or record that no refactor was warranted — done: `values.go` now holds every read of a value out of the decoded document, and group 4 reads its strings through it
+- [x] 3.7 CHECK (confirmed: nothing in the package calls `path.Join`, `filepath.*`, `strings.Replace` on a destination, or reads `Flatten` — `to` is stored exactly as decoded): Concentration point — confirm no destination semantics leaked in: nothing in this package interpolates `{name}`, resolves a trailing `/`, applies `flatten`, or joins a destination to a path. Those belong to `destination-and-plan`, and splitting them across two packages is how the invariant "no destination escapes the repo root" gets checked in only one of them
+- [x] 3.8 CHECK: Contract gate — re-read SPEC.md's `kinds` bullets and confirm the accepted shapes (`to` as string or list, `flatten`) and their optionality still match what `Parse` accepts
+- [x] 3.9 Run `go test -race ./internal/catalog/...` — green, no regressions
 
 ## 4. Provided items
 <!-- kind: behavior -->

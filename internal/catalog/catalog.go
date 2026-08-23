@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -85,13 +84,12 @@ func Parse(data []byte, filename string) (*Catalog, error) {
 		return nil, err
 	}
 
-	c := &Catalog{Version: version, Kinds: map[string]Kind{}}
-	for name, v := range mapping(raw["kinds"]) {
-		k, _ := v.(map[string]any)
-		to, _ := k["to"].(string)
-		flatten, _ := k["flatten"].(bool)
-		c.Kinds[name] = Kind{To: []string{to}, Flatten: flatten}
+	kinds, err := parseKinds(raw, filename)
+	if err != nil {
+		return nil, err
 	}
+
+	c := &Catalog{Version: version, Kinds: kinds}
 	for _, e := range sequence(raw["provides"]) {
 		p, _ := e.(map[string]any)
 		kind, _ := p["kind"].(string)
@@ -144,35 +142,4 @@ func checkVersion(raw map[string]any, filename string) (int, error) {
 		return 0, errf(filename, "version %d is not a known catalog version", n)
 	}
 	return n, nil
-}
-
-// asInt accepts the integer kinds the YAML decoder actually produces — which one it
-// picks depends on the literal's sign and magnitude, not on the schema.
-func asInt(v any) (int, bool) {
-	switch n := v.(type) {
-	case int:
-		return n, true
-	case int64:
-		return int(n), true
-	case uint64:
-		if n > math.MaxInt {
-			return 0, false
-		}
-		return int(n), true
-	}
-	return 0, false
-}
-
-// mapping reads a mapping out of the decoded document, treating an absent or null
-// value as empty.
-func mapping(v any) map[string]any {
-	m, _ := v.(map[string]any)
-	return m
-}
-
-// sequence reads a list out of the decoded document, treating an absent or null value
-// as empty.
-func sequence(v any) []any {
-	s, _ := v.([]any)
-	return s
 }
