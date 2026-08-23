@@ -34,7 +34,7 @@ half; its destination table case lands in group 2.
 `{name}` interpolation and the trailing-slash rule, for a `from` that is a directory and for
 a `from` that is a file. This is the group that fixes design.md → D4.
 
-- [ ] 2.1 RED: Write failing tests for: *A directory item preserves its structure under an
+- [x] 2.1 RED: Write failing tests for: *A directory item preserves its structure under an
       interpolated destination*; *A trailing slash places a file item inside the directory*;
       *Without a trailing slash a file item lands at the destination itself*; *A trailing
       slash is a no-op for a directory item*; *A destination with no `{name}` is used as
@@ -42,18 +42,18 @@ a `from` that is a file. This is the group that fixes design.md → D4.
       of *Computing destinations touches nothing*. Build catalogs as literal
       `catalog.Catalog` values and listings as literal `plan.Listing` values — no
       `t.TempDir()`, no fixture directory
-- [ ] 2.2 GREEN: Add the `Listing` type (`Dir bool`, `Files []string` relative to `from`) and
+- [x] 2.2 GREEN: Add the `Listing` type (`Dir bool`, `Files []string` relative to `from`) and
       an unexported `destinations` function mapping one item plus one interpolated `to` to
       its repo-relative paths, per design.md → D2, D3, D4
-- [ ] 2.3 GREEN: Interpolate `{name}` with `strings.ReplaceAll` and branch on the trailing
+- [x] 2.3 GREEN: Interpolate `{name}` with `strings.ReplaceAll` and branch on the trailing
       `/` for file items only; join with `path.Join`, never `filepath.Join`, so the
       separator can never become platform-dependent
-- [ ] 2.4 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm the
+- [x] 2.4 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm the
       documented `to`, `{name}`, and trailing-slash semantics still match what this group
       implements, including both worked examples and the resulting `graft.lock` paths
-- [ ] 2.5 REFACTOR: Collapse the file/directory branch to one code path where it reads
+- [x] 2.5 REFACTOR: Collapse the file/directory branch to one code path where it reads
       better, or state that no refactor was needed
-- [ ] 2.6 Run `go test ./internal/plan/` — no regressions
+- [x] 2.6 Run `go test ./internal/plan/` — no regressions
 
 ## 3. The repo-root boundary
 <!-- kind: behavior -->
