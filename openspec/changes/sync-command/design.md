@@ -187,6 +187,7 @@ whole suite is `task cover`.
 | Nothing outside the plan is touched | `TestRunTouchesNothingOutsideThePlan` | integration (fs) | real fs | `go test ./internal/apply/ -run Outside` |
 | A refused destination leaves every write unapplied | `TestPreflightRefusesBeforeAnyWrite/destination` | integration (fs) | real fs | `go test ./internal/apply/ -run Preflight` |
 | A refused prune path leaves every write unapplied | `TestPreflightRefusesBeforeAnyWrite/prune` | integration (fs) | real fs | `go test ./internal/apply/ -run Preflight` |
+| graft.lock's own destination is checked before anything is applied | `TestPreflightChecksTheLocksOwnDestination` | integration (fs) | real fs | `go test ./internal/apply/ -run PreflightChecksTheLock` |
 | A missing source file is refused before anything is written | `TestPreflightRefusesBeforeAnyWrite/source` | integration (fs) | real fs | `go test ./internal/apply/ -run Preflight` |
 | A file is copied into a directory that does not exist yet | `TestRunCreatesParentDirectories` | integration (fs) | real fs | `go test ./internal/apply/ -run Parent` |
 | A hand-edited synced file is overwritten | `TestRunOverwritesHandEdits` | integration (fs) | real fs | `go test ./internal/apply/ -run Overwrite` |
@@ -196,7 +197,8 @@ whole suite is `task cover`.
 | A write naming an unregistered source fails before it is attempted | `TestRunUnregisteredSource` | integration (fs) | real fs | `go test ./internal/apply/ -run Unregistered` |
 | A foreign file in a shared destination survives every operation | `TestRunForeignFileSurvives` (three variants) | integration (fs) | real fs | `go test ./internal/apply/ -run Foreign` |
 | Unrecorded files in a destination directory are never enumerated | `TestRunNeverEnumeratesADirectory` | integration (fs) | real fs | `go test ./internal/apply/ -run Enumerate` |
-| A prune path that is already gone is not an error | `TestRunPruneMissingPath` | integration (fs) | real fs | `go test ./internal/apply/ -run PruneMissing` |
+| A prune path that is already gone is not an error | `TestRunPruneMissingPath` and `TestRunKeepsADirectoryItDidNotEmpty` | integration (fs) | real fs | `go test ./internal/apply/ -run 'PruneMissing|DidNotEmpty'` |
+| A file this run just wrote is never pruned | `TestRunNeverPrunesAFileItJustWrote` | integration (fs) | real fs | `go test ./internal/apply/ -run JustWrote` |
 | A prune path that is a directory is refused | `TestRunPruneDirectoryRefused` | integration (fs) | real fs | `go test ./internal/apply/ -run PruneDirectory` |
 | A prune path that is a symlink is refused | `TestRunPruneSymlinkRefused` | integration (fs) | real fs | `go test ./internal/apply/ -run PruneSymlink` |
 | A prune path under a symlinked parent is refused | `TestRunPruneSymlinkedParentRefused` | integration (fs) | real fs | `go test ./internal/apply/ -run PruneSymlinkedParent` |
@@ -205,11 +207,12 @@ whole suite is `task cover`.
 | A directory still holding a foreign file is kept | `TestRunKeepsNonEmptyDirectory` | integration (fs) | real fs | `go test ./internal/apply/ -run KeepsNonEmpty` |
 | A directory a write still fills is kept | `TestRunOrdersOperations` (the same composed effect) | integration (fs) | real fs | `go test ./internal/apply/ -run Order` |
 | An unrelated empty directory is left alone | `TestRunLeavesUnrelatedEmptyDirectory` | integration (fs) | real fs | `go test ./internal/apply/ -run Unrelated` |
-| A symlinked ancestor of a pruned path is not removed | `TestRunKeepsSymlinkedAncestor` | integration (fs) | real fs, hand-built plan | `go test ./internal/apply/ -run SymlinkedAncestor` |
+| A symlinked ancestor of a pruned path never becomes a candidate | `TestRunKeepsSymlinkedAncestor` | integration (fs) | real fs | `go test ./internal/apply/ -run SymlinkedAncestor` |
 | A pruned path at the repository root removes nothing | `TestRunPruneAtRoot` | integration (fs) | real fs | `go test ./internal/apply/ -run PruneAtRoot` |
 | A destination inside .git is refused | `TestRunReservedPaths/write-git` | integration (fs) | real fs, hand-built plan | `go test ./internal/apply/ -run Reserved` |
 | A prune path inside .git is refused | `TestRunReservedPaths/prune-git` | integration (fs) | real fs, hand-built plan | `go test ./internal/apply/ -run Reserved` |
 | A destination of graft.toml or graft.lock is refused | `TestRunReservedPaths/own-files` | integration (fs) | real fs, hand-built plan | `go test ./internal/apply/ -run Reserved` |
+| A respelling of .git in another case is refused too | `TestRunReservedPathsFoldCase` | integration (fs) | real fs | `go test ./internal/apply/ -run FoldCase` |
 | A path merely beginning with .git is not inside it | `TestRunReservedPaths/dotgithub` | integration (fs) | real fs | `go test ./internal/apply/ -run Reserved` |
 | A write that fails mid-flight leaves the previous lock in place | `TestRunMidFlightFailureKeepsPreviousLock` — the destination directory is made read-only after the pre-flight pass by a plan whose first write creates it | integration (fs) | real fs | `go test ./internal/apply/ -run MidFlight` |
 | An unchanged sync still writes the lock | `TestRunTwiceWritesIdenticalLock` | integration (fs) | real fs | `go test ./internal/apply/ -run IdenticalLock` |

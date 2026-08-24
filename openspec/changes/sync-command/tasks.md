@@ -376,11 +376,11 @@ and until this change none of its rows had ever been reached through a whole run
 ## 19. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 19.1 CHECK: Inspect the verification commands `Taskfile.yml` defines and confirm the
+- [x] 19.1 CHECK: Inspect the verification commands `Taskfile.yml` defines and confirm the
       affected tiers are `./internal/apply`, `./internal/sync`, `./internal/cli`,
       `./internal/lock`, and `./internal/manifest`
-- [ ] 19.2 VERIFY: Run `task lint` — 0 errors
-- [ ] 19.3 VERIFY: Run `task cover` — green and above the 80% floor over `./internal/...`,
+- [x] 19.2 VERIFY: Run `task lint` — 0 errors
+- [x] 19.3 VERIFY: Run `task cover` — green and above the 80% floor over `./internal/...`,
       with `internal/apply` and `internal/sync` reported individually
-- [ ] 19.4 VERIFY: Run `task build` — succeeds
-- [ ] 19.5 VERIFY: Run `openspec validate sync-command --strict` — clean
+- [x] 19.4 VERIFY: Run `task build` — succeeds
+- [x] 19.5 VERIFY: Run `openspec validate sync-command --strict` — clean
