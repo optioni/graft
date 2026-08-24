@@ -284,6 +284,14 @@ func preflight(repo *os.Root, src *sources, p *plan.Plan, o options) error {
 		if err := checkDestination(repo, manifest.Filename); err != nil {
 			return err
 		}
+		// The staging path is checked here for the same reason the destinations are:
+		// reaching it after every planned write and every deletion means failing with the
+		// tree already moved. It is also the one path this package writes that no plan and
+		// no lock names, so a leftover that is not a regular file has to be refused here
+		// rather than removed later.
+		if err := checkDestination(repo, manifestTemp); err != nil {
+			return err
+		}
 	}
 	return checkDestination(repo, lock.Filename)
 }
@@ -306,8 +314,12 @@ func writeFile(repo *os.Root, dest string, data []byte) error {
 
 // writeFileAs is writeFile with the path it writes to and the path its failures name pulled
 // apart. Only the manifest write uses the second form: it stages into a temporary file, and
-// a reader told `cannot write ".graft.toml.tmp"` would be sent to look at a path they have
-// never seen and that no longer exists.
+// a reader told `cannot write ".graft.toml.tmp"` about a failed write would be sent to look
+// at a path they have never seen and that no longer exists.
+//
+// The refusal of a destination that is not a regular file is the exception, and deliberately
+// so: it names the staging path, because that is the path the user has to go and look at.
+// Only the failures after the check are re-labelled.
 func writeFileAs(repo *os.Root, at, name string, data []byte) error {
 	if err := checkDestination(repo, at); err != nil {
 		return err
@@ -426,17 +438,31 @@ const manifestTemp = ".graft.toml.tmp"
 // between the unlink and a successful close would delete the consumer's own request. A
 // rename makes a reader see either the old bytes or the new ones and never neither.
 //
-// The temporary file is removed on every failure. On success the rename consumed it.
+// The temporary file is removed on every failure, and only ever when it is a file. On
+// success the rename consumed it.
 func writeManifest(repo *os.Root, data []byte) error {
 	if err := writeFileAs(repo, manifestTemp, manifest.Filename, data); err != nil {
-		_ = repo.Remove(manifestTemp)
+		removeStaged(repo)
 		return err
 	}
 	if err := repo.Rename(manifestTemp, manifest.Filename); err != nil {
-		_ = repo.Remove(manifestTemp)
+		removeStaged(repo)
 		return writeErrf(manifest.Filename, "%v", err)
 	}
 	return nil
+}
+
+// removeStaged deletes the staging file, and only when it is one.
+//
+// os.Root.Remove takes an empty directory and a symlink as readily as a regular file, and
+// deleting either would be graft removing a path no lock claims — the one thing it may never
+// do. The staging path is refused in the pre-flight pass when it holds anything else, so
+// this is the second half of that check rather than a substitute for it: what survives to
+// here is either the file this run created or nothing.
+func removeStaged(repo *os.Root) {
+	if fi, err := repo.Lstat(manifestTemp); err == nil && fi.Mode().IsRegular() {
+		_ = repo.Remove(manifestTemp)
+	}
 }
 
 // sources holds one os.Root per fetched tree, opened on first use. Opening lazily means a

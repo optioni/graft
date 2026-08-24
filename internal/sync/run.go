@@ -86,17 +86,15 @@ func Run(o Options) (*Report, error) {
 		return nil, fmt.Errorf("%s has no source %q", manifest.Filename, o.Update.Source)
 	}
 
-	moved, err := movePin(o, data)
+	// The run resolves what will be on disk, not what was: movePin re-parses the bytes it
+	// edited and hands them back together, so nothing downstream can read one and write the
+	// other.
+	moved, edited, err := movePin(o, data)
 	if err != nil {
 		return nil, err
 	}
 	if moved != nil {
-		// The run resolves what will be on disk, not what was. Re-parsing the edited bytes
-		// rather than mutating the parsed manifest is the only way to prove the two are the
-		// same thing — see movePin.
-		if m, err = manifest.Parse(moved, manifest.Filename); err != nil {
-			return nil, err
-		}
+		m = edited
 	}
 
 	// Narrowed to the sources this run does not re-resolve. A disagreement is real for a
@@ -170,33 +168,38 @@ func pinned(o Options, m *manifest.Manifest) []manifest.Source {
 	return out
 }
 
-// movePin returns the graft.toml bytes this run will write, or nil when it writes none.
+// movePin returns the graft.toml bytes this run will write and the manifest they parse to,
+// or nil for both when the run writes none.
 //
-// The returned bytes are re-parsed by the caller before anything uses them, and the source's
-// rev in the re-parse is checked against what was asked for. That check is not belt and
-// braces: manifest.SetRev edits text, and a text edit's real failure is landing on the wrong
-// line — a commented-out key, a key in a sub-table — which produces a file that parses
+// The bytes are re-parsed here rather than mutated in the already-parsed manifest, and the
+// source's rev in the re-parse is checked against what was asked for. That check is not belt
+// and braces: manifest.SetRev edits text, and a text edit's real failure is landing on the
+// wrong line — a commented-out key, a key in a sub-table — which produces a file that parses
 // perfectly while the run resolves the old rev. Comparing the value turns every failure in
 // that class into a failed run.
-func movePin(o Options, data []byte) ([]byte, error) {
+//
+// Both halves are returned together so that what goes to disk and what the run resolves are
+// the same object rather than two readings of it, and so the caller has no parse of its own
+// to get wrong.
+func movePin(o Options, data []byte) ([]byte, *manifest.Manifest, error) {
 	if o.Update == nil || o.Update.To == "" || o.Update.Source == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	moved, err := manifest.SetRev(data, o.Update.Source, o.Update.To)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	edited, err := manifest.Parse(moved, manifest.Filename)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, s := range edited.Sources {
 		if s.Name == o.Update.Source && s.Rev == o.Update.To {
-			return moved, nil
+			return moved, edited, nil
 		}
 	}
-	return nil, fmt.Errorf("%s: source %q: the pin did not move to %q",
+	return nil, nil, fmt.Errorf("%s: source %q: the pin did not move to %q",
 		manifest.Filename, o.Update.Source, o.Update.To)
 }
 

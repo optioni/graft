@@ -112,3 +112,33 @@ func TestUpdateHelpGoesToStandardOutput(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", code)
 	}
 }
+
+// An empty positional is not the same as no positional. internal/sync reads an empty source
+// name as every source, so `graft update "$SOURCE"` with an unset variable would otherwise
+// update everything — and `graft update --to v1.1.0 ""` would discard the flag and exit 0
+// having moved no pin at all. The sentinel is safe against a manifest, which cannot name a
+// source "", and not against a shell.
+func TestUpdateRefusesAnEmptySourceName(t *testing.T) {
+	t.Parallel()
+
+	for name, args := range map[string][]string{
+		"alone":     {"update", ""},
+		"with --to": {"update", "--to", "v1.1.0", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stdout, stderr, code := run(t, cli.Options{Args: args})
+
+			if want := "graft: source name may not be empty\n" + hint + "\n"; stderr != want {
+				t.Errorf("stderr = %q, want %q", stderr, want)
+			}
+			if stdout != "" {
+				t.Errorf("stdout = %q, want empty", stdout)
+			}
+			if code != 1 {
+				t.Errorf("exit code = %d, want 1", code)
+			}
+		})
+	}
+}

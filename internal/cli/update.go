@@ -44,6 +44,15 @@ path in update that writes it.`,
 			if len(args) > 1 {
 				return usagef("unknown argument %q", args[1])
 			}
+			// An empty positional is not "no source": internal/sync reads an empty Source
+			// as every source, so accepting one here would turn `graft update "$SOURCE"`
+			// with an unset variable into a silent update of everything — and, with --to,
+			// into a run that discards the flag and exits 0 having moved no pin. The
+			// sentinel is safe against a manifest, which cannot name a source "", and not
+			// against a shell.
+			if len(args) == 1 && args[0] == "" {
+				return usagef("source name may not be empty")
+			}
 			if !cmd.Flags().Changed(toFlag) {
 				return nil
 			}

@@ -200,6 +200,7 @@ rev = "v1.0.0"
 `,
 		"a multi-line value":                       "[sources.shared]\nrev = \"\"\"\nv1.0.0\"\"\"\n",
 		"a value that is not a quoted string":      "[sources.shared]\nrev = 1\n",
+		"a rev key with nothing after the =":       "[sources.shared]\nrev =\n",
 		"a value whose closing quote is elsewhere": "[sources.shared]\nrev = \"v1.0.0\n",
 		"no rev key at all": `[sources.shared]
 git = "x"

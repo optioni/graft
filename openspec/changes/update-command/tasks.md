@@ -249,7 +249,7 @@ harness.
 ## 9. Change Review
 <!-- kind: operational -->
 
-- [ ] 9.1 CHECK: Dispatch an **independent reviewer subagent** — not a fork of the implementing
+- [x] 9.1 CHECK: Dispatch an **independent reviewer subagent** — not a fork of the implementing
       session — against proposal.md, all four spec files, design.md, tasks.md, and the diff.
       Point it explicitly at: that `graft sync`'s behavior is byte-for-byte unchanged and every
       pre-existing test still passes unmodified; that no code path in `internal/apply` can delete
@@ -257,20 +257,31 @@ harness.
       knowledge of `update`; that `cmd/graft` gained no decision; and that `SetRev` cannot edit a
       line it did not mean to — the sub-table, the trailing comment, the commented-out key, and
       the multi-line value each get looked at in the code, not just in the tests
-- [ ] 9.2 CHECK: Have the reviewer confirm no source-provided content can cause anything to
+- [x] 9.2 CHECK: Have the reviewer confirm no source-provided content can cause anything to
       execute, that a source can influence neither which rev is resolved nor what `SetRev` writes,
       that a `--to` value cannot reach git as an operand, and that no test reaches this
       repository's own tree, its own `.claude/agents/`, or the developer's real `~/.cache/graft`
-- [ ] 9.3 CHANGE: Fix every CRITICAL, resolve or accept each WARNING with the reason recorded, and
+- [x] 9.3 CHANGE: Fix every CRITICAL, resolve or accept each WARNING with the reason recorded, and
       re-run the affected tests
-- [ ] 9.4 VERIFY: Confirm no blocking or unowned finding remains
+      — 1 CRITICAL fixed (an empty positional source meant "every source" and silently discarded
+      `--to`); 4 WARNINGs fixed (the staging path could be removed when it was an empty directory
+      or a symlink, a path no lock claims; `SetRev` read syntax inside another key's multi-line
+      string; `Run` re-parsed what `movePin` had already parsed, leaving an unreachable branch;
+      the `pin did not move` message was in no SPEC row). 2 NOTEs fixed (a comment that
+      contradicted its own test, four uncovered scanner branches). **1 NOTE accepted:**
+      `.graft.toml.tmp` is not in `checkReserved`, so a catalog may still name it as a
+      destination and `--to` will consume that file in the rename. Adding it would change which
+      plans `graft sync` refuses, and this change's own gate is that `sync` is byte-for-byte
+      unchanged; the state self-heals on the next sync, no source bytes reach `graft.toml`, and
+      nothing outside the lock is deleted.
+- [x] 9.4 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 10. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 10.1 CHECK: Inspect the verification commands `Taskfile.yml` defines and confirm the affected
+- [x] 10.1 CHECK: Inspect the verification commands `Taskfile.yml` defines and confirm the affected
       tiers are `./internal/manifest`, `./internal/apply`, `./internal/sync`, and `./internal/cli`
-- [ ] 10.2 VERIFY: Run `task lint` — 0 errors, `gofumpt -l` included
-- [ ] 10.3 VERIFY: Run `task cover` — green and above the 80% floor over `./internal/...`
-- [ ] 10.4 VERIFY: Run `task build` — succeeds
-- [ ] 10.5 VERIFY: Run `openspec validate update-command --strict` — clean
+- [x] 10.2 VERIFY: Run `task lint` — 0 errors, `gofumpt -l` included
+- [x] 10.3 VERIFY: Run `task cover` — green and above the 80% floor over `./internal/...`
+- [x] 10.4 VERIFY: Run `task build` — succeeds
+- [x] 10.5 VERIFY: Run `openspec validate update-command --strict` — clean

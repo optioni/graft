@@ -33,12 +33,25 @@ func SetRev(data []byte, name, rev string) ([]byte, error) {
 
 	text := string(data)
 	inTable := false
+	open := "" // the multi-line delimiter still to be closed, or "" outside every string
 	for pos := 0; pos < len(text); {
 		line, next := lineAt(text, pos)
+		raw := strings.TrimSuffix(line, "\r")
+
+		// Inside a multi-line string these bytes are a value, not syntax. A `[sources.b]`
+		// or a `rev = "…"` written inside one belongs to whichever key opened the string —
+		// so a scanner that reads them as a header and a key edits a line in a completely
+		// different key's value, which is the one failure this function exists to make
+		// impossible.
+		if open != "" {
+			open = continueString(raw, open)
+			pos = next
+			continue
+		}
 
 		// Table tracking is on the trimmed line, and the value edit is on the raw one: the
 		// first needs to recognise `[ sources . "x" ]`, the second may not disturb a byte.
-		trimmed := strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		trimmed := strings.TrimSpace(raw)
 		switch {
 		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
 			// A commented-out `rev` is not the key. Skipping comments here is what keeps
@@ -62,9 +75,75 @@ func SetRev(data []byte, name, rev string) ([]byte, error) {
 				return []byte(text[:pos+lo] + rev + text[pos+hi:]), nil
 			}
 		}
+		open = openString(raw)
 		pos = next
 	}
 	return nil, cannotMove(name)
+}
+
+// openString reports the multi-line delimiter the line leaves open, or "" when the line ends
+// outside every string.
+//
+// It is a scan rather than a parse, and its errors are all in the safe direction: a state it
+// gets wrong makes SetRev skip a line, and a skipped line produces the refusal. Reading a
+// line it should have skipped is the failure that cannot be allowed, and that is the one
+// this closes.
+func openString(line string) string {
+	for i := 0; i < len(line); {
+		switch c := line[i]; c {
+		case '#':
+			// Outside every string, so the rest of the line is a comment.
+			return ""
+		case '"', '\'':
+			delim := strings.Repeat(string(c), 3)
+			if strings.HasPrefix(line[i:], delim) {
+				j := strings.Index(line[i+len(delim):], delim)
+				if j < 0 {
+					return delim
+				}
+				i += len(delim) + j + len(delim)
+				continue
+			}
+			j := closingQuote(line, i)
+			if j < 0 {
+				// A single-line string with no closing quote. TOML has no such value and
+				// a line-oriented scan cannot recover, so the rest of the line is left
+				// alone rather than guessed at.
+				return ""
+			}
+			i = j + 1
+		default:
+			i++
+		}
+	}
+	return ""
+}
+
+// continueString consumes a line inside an open multi-line string and returns the delimiter
+// still open after it.
+func continueString(line, open string) string {
+	i := strings.Index(line, open)
+	if i < 0 {
+		return open
+	}
+	return openString(line[i+len(open):])
+}
+
+// closingQuote returns the index of the quotation mark closing the single-line string opened
+// at i, or -1 when the line ends first. A backslash escapes inside a basic string only; a
+// literal string has no escapes at all.
+func closingQuote(line string, i int) int {
+	q := line[i]
+	for j := i + 1; j < len(line); j++ {
+		if q == '"' && line[j] == '\\' {
+			j++
+			continue
+		}
+		if line[j] == q {
+			return j
+		}
+	}
+	return -1
 }
 
 // checkRev refuses a rev that cannot be written literally into a TOML string.
@@ -213,16 +292,11 @@ func quotedSpan(line string, from int) (int, int, bool) {
 		return 0, 0, false
 	}
 
-	for j := i + 1; j < len(line); j++ {
-		if q == '"' && line[j] == '\\' {
-			j++
-			continue
-		}
-		if line[j] == q {
-			return i + 1, j, true
-		}
+	j := closingQuote(line, i)
+	if j < 0 {
+		return 0, 0, false
 	}
-	return 0, 0, false
+	return i + 1, j, true
 }
 
 func skipSpace(s string, i int) int {

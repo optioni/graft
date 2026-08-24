@@ -205,22 +205,43 @@ func TestRunLeavesNoTemporaryManifestBehind(t *testing.T) {
 // A leftover temporary from a process that died mid-write, which is not a regular file. It
 // is refused rather than removed blindly, and the message names the path the user has to go
 // and look at rather than the destination they asked for.
+//
+// An *empty* directory is the case that matters: os.Root.Remove takes one as readily as a
+// file, so a blind removal here would be graft deleting a path no lock claims. The refusal
+// is in the pre-flight pass, so the planned write never happens either — the alternative is
+// failing with the tree already moved and no record of it.
 func TestRunRefusesALeftoverTemporaryThatIsNotARegularFile(t *testing.T) {
 	t.Parallel()
 
 	const original = "[sources.shared]\nrev = \"v1.0.0\"\n"
 
-	repo := newTree(t)
-	repo.file(manifest.Filename, original)
-	repo.mkdir(".graft.toml.tmp/occupied")
+	for name, occupy := range map[string]func(*tree){
+		"a directory with something in it": func(r *tree) { r.mkdir(".graft.toml.tmp/occupied") },
+		"an empty directory":               func(r *tree) { r.mkdir(".graft.toml.tmp") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()}, apply.WithManifest([]byte(movedManifest)))
-	assertError(t, err, `cannot write ".graft.toml.tmp": it exists and is not a regular file`)
+			repo := newTree(t)
+			repo.file(manifest.Filename, original)
+			occupy(repo)
 
-	if got := repo.read(manifest.Filename); got != original {
-		t.Errorf("graft.toml = %q, want the original", got)
-	}
-	if !repo.exists(".graft.toml.tmp/occupied") {
-		t.Error("the leftover was removed: graft only ever removes a path it confirmed regular")
+			src := newTree(t)
+			src.file("extras/a.md", "a\n")
+			p := &plan.Plan{Writes: []plan.Write{write("extras/a.md", "docs/a.md")}, Lock: lockOf("docs/a.md")}
+
+			err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
+			assertError(t, err, `cannot write ".graft.toml.tmp": it exists and is not a regular file`)
+
+			if got := repo.read(manifest.Filename); got != original {
+				t.Errorf("graft.toml = %q, want the original", got)
+			}
+			if !repo.exists(".graft.toml.tmp") {
+				t.Error("the leftover was removed: graft only ever removes a path it confirmed regular")
+			}
+			if repo.exists("docs/a.md") {
+				t.Error("the plan was applied: the staging path is refused before the first write")
+			}
+		})
 	}
 }

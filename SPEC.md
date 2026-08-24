@@ -254,7 +254,8 @@ is why the destination is shown before install and why a consumer override alway
 | `update` names a source `graft.toml` does not declare | Error: `graft.toml has no source "<name>"`. Decided before anything is resolved, fetched, or edited, so a mistyped name is never reported as a manifest shape it could not rewrite. |
 | `--to` against a manifest where `rev` is not a plain key under `[sources.<name>]` | Error: `graft.toml: source "<name>": cannot move the pin: rev is not a plain key under [sources.<name>]`. Refused rather than guessed at: `graft.toml` is a file graft did not write. |
 | A `--to` rev that cannot be written literally into a TOML string | Error: `graft.toml: rev "<rev>" contains a quote, a backslash, or a control character`. It could otherwise close the string it is written into and append a key the consumer never wrote. |
-| `--to` given without a source, or with an empty rev | Usage error, with the hint line. |
+| A moved pin does not read back as the rev that was asked for | Error: `graft.toml: source "<name>": the pin did not move to "<rev>"`. An internal invariant: the edit parsed but landed somewhere other than the line it named. Nothing is written. |
+| `update` given an empty source name, or `--to` given without a source or with an empty rev | Usage error, with the hint line. |
 | A synced file was edited in place | Silently overwritten. `git diff` is the report. |
 | A destination exists and is not a regular file | Error naming the path. Never opened, never truncated. |
 | A pruned path exists and is not a regular file | Error naming the path. Never removed. |
