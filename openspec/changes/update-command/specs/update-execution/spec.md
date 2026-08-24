@@ -153,7 +153,8 @@ with the message `manifest-format` specifies — before any resolution and any f
 
 **The edited bytes SHALL be re-parsed before the run uses them, and SHALL be checked against
 what was asked for.** If they do not parse, or if the named source's `rev` in the re-parsed
-manifest is not `<rev>`, the run SHALL fail without writing anything. What goes to disk and what
+manifest is not `<rev>`, the run SHALL fail without writing anything, the second case reading
+`graft.toml: source "<name>": the pin did not move to "<rev>"`. What goes to disk and what
 the run resolves must be the same thing, and re-parsing is the only way to prove it; the check
 on the value is what catches an edit that landed on the wrong line — a commented-out `rev`
 above the real one, or a key in a sub-table — which a parse alone would accept.
@@ -335,6 +336,13 @@ SHALL be refused as a usage error reading `unknown argument "<argument>"`, follo
 line, with the exit code `1`. An unrecognised flag SHALL be refused as a usage error in the same
 way, so there is no `--force` and no `--frozen` here either.
 
+A positional argument that is present and empty SHALL be refused as a usage error reading
+`source name may not be empty`, followed by the hint line, with the exit code `1`. An empty name
+is not the same as no name: an absent argument means every source, and accepting `""` for it
+would make `graft update "$SOURCE"` with the variable unset re-resolve every pin, and
+`graft update --to <rev> ""` discard the rev and exit `0` having moved nothing. A manifest
+cannot declare a source named `""`; a shell can produce one.
+
 `--to` and `--dry-run` SHALL be the only flags `graft update` adds; `--help` exists on every
 command and goes to the standard output stream with the exit code `0`.
 
@@ -351,6 +359,14 @@ section lists every subcommand, and is specified there rather than restated here
 - **THEN** the error stream holds `graft: unknown argument "extra"` followed by
   `run "graft --help" for usage`
 - **AND** the standard output stream is empty and the exit code is `1`
+
+#### Scenario: An empty source name is a usage error
+
+- **WHEN** `graft update ""` is invoked, and separately `graft update --to v1.1.0 ""`
+- **THEN** the error stream holds `graft: source name may not be empty` followed by
+  `run "graft --help" for usage`
+- **AND** the exit code is `1`, the standard output stream is empty, and nothing was read,
+  resolved, or written
 
 #### Scenario: An unknown flag is a usage error
 

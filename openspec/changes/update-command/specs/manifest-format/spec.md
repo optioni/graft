@@ -74,6 +74,14 @@ The value SHALL be a single-line quoted string whose closing quotation mark is o
 A multi-line string, a value that is not a quoted string, and a `rev` key that is not found at
 all SHALL each be refused rather than rewritten.
 
+Bytes inside a multi-line string SHALL NOT be read as syntax. A `[sources.<name>]` header or a
+`rev` key written inside a `"""` or `'''` value belongs to whichever key opened that string, so
+the scan SHALL track an open delimiter across lines and treat every line inside one as neither a
+header nor a key. This is the failure mode with no upper bound on its damage: rewriting a line
+inside another key's value corrupts a value in a source that was never named, and the result can
+still parse. A delimiter the scan gets wrong SHALL fail closed — a line skipped in error produces
+the refusal below, never a rewrite.
+
 Any shape not covered above — a source written as an inline table, a dotted key at the top
 level, a multi-line value, a source the file does not declare at all — SHALL be an error reading
 
@@ -141,6 +149,32 @@ file.
 - **THEN** the same `cannot move the pin` error is returned and no bytes are produced
 - **AND** this matters because a line-oriented rewrite would strand the second line and produce
   a `graft.toml` that no longer parses
+
+#### Scenario: A rev inside another key's multi-line string is not the one edited
+
+- **WHEN** a manifest holds
+
+  ```toml
+  [sources.a]
+  git = """
+  [sources.b]
+  rev = "zzz"
+  """
+  rev = "v1"
+  ```
+
+  and `b`'s rev is moved to `v2`
+- **THEN** the error reads
+  `graft.toml: source "b": cannot move the pin: rev is not a plain key under [sources.b]`
+- **AND** no bytes are returned, so `a`'s quoted value cannot be corrupted by an edit aimed at a
+  source the file does not declare
+- **AND** the same holds for a literal multi-line string opened with `'''`
+
+#### Scenario: A pin past a multi-line string still moves
+
+- **WHEN** the source's own table holds a `"""` value containing the text `rev = "decoy"`, and
+  the real `rev     = "v1.0.0"` follows the string's closing delimiter
+- **THEN** the real key reads `rev     = "v1.1.0"` and the quoted value is byte-identical
 
 ### Requirement: A rev that cannot be written literally is refused rather than escaped
 

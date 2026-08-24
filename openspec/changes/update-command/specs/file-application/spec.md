@@ -104,6 +104,13 @@ fail the apply **before the first byte of the plan is written**, with the wordin
 already produces. Neither of graft's own two files is in the plan, so both are named
 explicitly.
 
+The staging path SHALL be checked in that same pre-flight pass, and a leftover that exists and
+is not a regular file SHALL fail the apply before the first byte of the plan is written, naming
+the staging path rather than the destination — that is the path the user has to go and look at.
+It SHALL NOT be removed: deleting an empty directory or a symlink found there would be graft
+removing a path no lock claims, which is the one thing it may never do. The removal on failure
+SHALL therefore touch the staging path only when it is a regular file.
+
 This is graft writing its own file, not a source placing one. The refusal in *graft never
 writes inside `.git` and never writes over its own two files* is unchanged and still applies to
 every path in the plan's writes and prune set: a plan naming `graft.toml` as a destination
@@ -139,6 +146,16 @@ the bytes came from — the plan, or the caller — never by the path string.
 - **THEN** the apply fails with
   `cannot write "graft.toml": it exists and is not a regular file`
 - **AND** no planned file was written, nothing was deleted, and `graft.lock` is unchanged
+
+#### Scenario: A leftover staging file that is not a regular file is refused, not removed
+
+- **WHEN** a path beside `graft.toml` where the new manifest would be staged exists as a
+  directory — empty in one case, holding a file in the other — and a plan with one write is
+  applied with manifest bytes given
+- **THEN** the apply fails with
+  `cannot write ".graft.toml.tmp": it exists and is not a regular file`
+- **AND** that path still exists, `graft.toml` holds exactly the bytes it held before, and the
+  plan's write did not happen, because the refusal is in the pre-flight pass
 
 #### Scenario: A failed apply leaves graft.toml unmoved
 
