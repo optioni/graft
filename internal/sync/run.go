@@ -71,13 +71,14 @@ func Run(o Options) (*Report, error) {
 	// catalog and no catalog without a fetch, and internal/source writes under the cache
 	// root only. The cost is that a dry run reaches none of internal/apply's refusals, so
 	// a clean one says the plan is valid rather than that the sync will succeed.
+	report := newReport(current, p, res.catalogs, o.DryRun)
 	if o.DryRun {
-		return &Report{}, nil
+		return report, nil
 	}
 	if err := apply.Run(o.Root, res.trees, p); err != nil {
 		return nil, err
 	}
-	return &Report{}, nil
+	return report, nil
 }
 
 // resolved is what walking the manifest's sources produces: the planner's inputs, the

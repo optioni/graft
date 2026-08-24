@@ -264,25 +264,25 @@ and until this change none of its rows had ever been reached through a whole run
 ## 13. sync: the report value
 <!-- kind: behavior -->
 
-- [ ] 13.1 RED: Write failing unit tests, over hand-built old and new locks with no filesystem
+- [x] 13.1 RED: Write failing unit tests, over hand-built old and new locks with no filesystem
       at all, for: *A newly installed item is added*, *An unchanged item under a moved pin is
       still updated*, *An unchanged item under an unchanged pin produces no line*, *An item
       dropped from install says so*, *An item of a source dropped from the manifest says so*,
       *A version bump shows both revs and both shas*, *A newly added source shows one rev and
       one sha*, *A branch pin whose sha moved shows both shas and one rev*
-- [ ] 13.2 RED: Write failing tests for the nothing-to-do predicate: *A repeated sync reports
+- [x] 13.2 RED: Write failing tests for the nothing-to-do predicate: *A repeated sync reports
       nothing*, *A sync that only rewrites identical files is still nothing to do*, *A first
       sync is never nothing to do*, *A dry run with nothing to do reports nothing*
-- [ ] 13.3 GREEN: Build the `Report` from the old lock, the plan's lock, the prune set, and
+- [x] 13.3 GREEN: Build the `Report` from the old lock, the plan's lock, the prune set, and
       the per-source catalogs — verb from item presence plus sha and file-list movement, note
       from whether the catalog still provides the item or the source is gone. Sources come from
       the **union** of the two locks, in name order, so a source dropped from `graft.toml` is
       still reported
-- [ ] 13.4 GREEN: Implement the nothing-to-do predicate as
+- [x] 13.4 GREEN: Implement the nothing-to-do predicate as
       `bytes.Equal(lock.Marshal(old), lock.Marshal(new)) && len(p.Prune) == 0`
-- [ ] 13.5 REFACTOR: Keep the report free of any filesystem access — it is built from values,
+- [x] 13.5 REFACTOR: Keep the report free of any filesystem access — it is built from values,
       and a test needing a directory to exercise it is a signal the boundary moved
-- [ ] 13.6 Run `go test ./internal/sync/` — green
+- [x] 13.6 Run `go test ./internal/sync/` — green
 
 ## 14. sync: rendering the report
 <!-- kind: behavior -->

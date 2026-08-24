@@ -1,5 +1,30 @@
 package sync
 
+import (
+	"bytes"
+	"slices"
+
+	"github.com/optioni/graft/internal/catalog"
+	"github.com/optioni/graft/internal/lock"
+	"github.com/optioni/graft/internal/plan"
+)
+
+// The three verbs SPEC.md's report uses. Words, not symbols.
+const (
+	verbAdded   = "added"
+	verbUpdated = "updated"
+	verbRemoved = "removed"
+)
+
+// The three notes a removed item can carry. Each is distinguishable only from something
+// the report is handed — the source's catalog, or the absence of the source from the new
+// lock — which is why they are decided here rather than anywhere downstream.
+const (
+	noteNotProvided  = "no longer provided"
+	noteNotInstalled = "no longer installed"
+	noteSourceGone   = "source removed"
+)
+
 // Report is what a sync changed, as a value: which sources moved, which items were added,
 // updated, or removed, and how many files were written and deleted.
 //
@@ -7,7 +32,189 @@ package sync
 // own counts — never from the tree. Every planned file is written on every sync, so
 // "updated" cannot mean "the bytes changed", and no comparison this package could make
 // would let it mean that.
+type Report struct {
+	// Sources holds only the sources with something to say, in name order over the union
+	// of the two locks.
+	Sources []SourceReport
+
+	// Written is every file the plan writes, and Removed the size of its prune set.
+	Written int
+	Removed int
+
+	// DryRun changes what the summary says, not what any of the rest means.
+	DryRun bool
+
+	// upToDate is byte equality of the two serialized locks plus an empty prune set. It is
+	// held rather than derived on demand because the locks are not.
+	upToDate bool
+}
+
+// SourceReport is one source's block. A previous half is empty when there was no previous
+// one — a source the lock had never seen, and a source that is being reported only because
+// it is going away.
+type SourceReport struct {
+	Name         string
+	Rev          string
+	PrevRev      string
+	Resolved     string
+	PrevResolved string
+	Items        []ItemReport
+}
+
+// ItemReport is one line: the verb, the item, how many files, and — for a removed item —
+// why it went.
+type ItemReport struct {
+	Verb  string
+	ID    string
+	Files int
+	Note  string
+}
+
+// UpToDate reports whether this sync had nothing to do.
 //
-// The fields and the rendering land in the groups that own them; today a sync returns an
-// empty one so that the sequence in run.go can be tested on its own.
-type Report struct{}
+// The test is byte equality of the two serialized locks plus an empty prune set: one
+// predicate over the two artifacts a reader would diff, rather than a conjunction of the
+// conditions that produce report lines. It also covers the case those conditions miss — a
+// source whose git value changed in graft.toml with the same rev produces a different lock
+// and no item lines, and must not be reported as nothing to do.
+//
+// Its known cost is the reverse case: a user who deleted installed files by hand and
+// re-syncs gets them back and is told "up to date", because the lock did not move and
+// nothing was pruned. Narrowing the predicate to cover that would mean checking every
+// destination's presence, which is the tree-scanning this design does not do — and the
+// restored files still appear where SPEC.md says a sync's effect appears, in git status.
+func (r *Report) UpToDate() bool { return r.upToDate }
+
+// newReport derives the report from the two locks, the plan, and the catalog of each source
+// the manifest still declares.
+//
+// catalogs is keyed by source name and holds an entry only for a source that was fetched.
+// A source graft.toml no longer declares has none, which is exactly what tells its removed
+// items apart from ones a selector stopped matching.
+func newReport(before *lock.Lock, p *plan.Plan, catalogs map[string]*catalog.Catalog, dryRun bool) *Report {
+	after := p.Lock
+	r := &Report{
+		Written:  len(p.Writes),
+		Removed:  len(p.Prune),
+		DryRun:   dryRun,
+		upToDate: len(p.Prune) == 0 && bytes.Equal(lock.Marshal(before), lock.Marshal(after)),
+	}
+
+	old := byName(before)
+	current := byName(after)
+	for _, name := range unionOfNames(old, current) {
+		b, hadBefore := old[name]
+		a, hasAfter := current[name]
+
+		items := itemReports(b, a, hasAfter, catalogs[name])
+		// A source with no item lines is still worth a header when its pin moved; one
+		// whose pin held and whose items all held has nothing to say at all.
+		if len(items) == 0 && hadBefore && hasAfter && b.Rev == a.Rev && b.Resolved == a.Resolved {
+			continue
+		}
+
+		s := SourceReport{Name: name}
+		switch {
+		case !hasAfter:
+			// Reported only because it is going away: there is no new half to move to.
+			s.Rev, s.Resolved = b.Rev, b.Resolved
+		case !hadBefore:
+			s.Rev, s.Resolved = a.Rev, a.Resolved
+		default:
+			s.PrevRev, s.PrevResolved = b.Rev, b.Resolved
+			s.Rev, s.Resolved = a.Rev, a.Resolved
+		}
+		s.Items = items
+		r.Sources = append(r.Sources, s)
+	}
+	return r
+}
+
+// itemReports is one source's lines, in item-id order.
+//
+// An item present in both locks earns a line when the source's sha moved or its own file
+// list did. The sha half is what makes a version bump report every item it installs: the
+// bytes behind an unchanged path may well have changed, and there is no content comparison
+// here to say otherwise.
+func itemReports(b, a lock.Source, hasAfter bool, cat *catalog.Catalog) []ItemReport {
+	oldItems := make(map[string][]string, len(b.Items))
+	for _, it := range b.Items {
+		oldItems[it.ID] = it.Files
+	}
+	newItems := make(map[string][]string, len(a.Items))
+	for _, it := range a.Items {
+		newItems[it.ID] = it.Files
+	}
+
+	ids := make([]string, 0, len(oldItems)+len(newItems))
+	for id := range oldItems {
+		ids = append(ids, id)
+	}
+	for id := range newItems {
+		if _, dup := oldItems[id]; !dup {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+
+	var out []ItemReport
+	for _, id := range ids {
+		oldFiles, had := oldItems[id]
+		newFiles, has := newItems[id]
+		switch {
+		case has && !had:
+			out = append(out, ItemReport{Verb: verbAdded, ID: id, Files: len(newFiles)})
+		case !has:
+			out = append(out, ItemReport{
+				Verb: verbRemoved, ID: id, Files: len(oldFiles),
+				Note: removalNote(id, hasAfter, cat),
+			})
+		case a.Resolved != b.Resolved || !slices.Equal(oldFiles, newFiles):
+			out = append(out, ItemReport{Verb: verbUpdated, ID: id, Files: len(newFiles)})
+		}
+	}
+	return out
+}
+
+// removalNote says why an item went. The three cases are genuinely different to a reader:
+// a source dropped from graft.toml, a selector that stopped matching, and a source that
+// stopped offering the item at the resolved sha.
+func removalNote(id string, hasAfter bool, cat *catalog.Catalog) string {
+	if !hasAfter {
+		// No catalog was read for this source, because nothing was fetched for it.
+		return noteSourceGone
+	}
+	if cat != nil {
+		for _, it := range cat.Items {
+			if it.ID == id {
+				return noteNotInstalled
+			}
+		}
+	}
+	return noteNotProvided
+}
+
+func byName(l *lock.Lock) map[string]lock.Source {
+	out := make(map[string]lock.Source, len(l.Sources))
+	for _, s := range l.Sources {
+		out[s.Name] = s
+	}
+	return out
+}
+
+// unionOfNames is every source in either lock, sorted. A source dropped from graft.toml is
+// in the old lock only and is still reported; taking the new lock's order alone would drop
+// exactly the sources whose files are being deleted.
+func unionOfNames(old, current map[string]lock.Source) []string {
+	names := make([]string, 0, len(old)+len(current))
+	for name := range old {
+		names = append(names, name)
+	}
+	for name := range current {
+		if _, dup := old[name]; !dup {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	return names
+}
