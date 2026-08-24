@@ -15,7 +15,7 @@ The headline scenario is *No arguments prints help and succeeds*, not *`--versio
 stdout* — the placeholder already answers `--version`, and an acceptance test that is green
 before any work starts is not an outer loop.
 
-- [ ] 0.1 Set up the harness named in design.md → Test Boundaries: create
+- [x] 0.1 Set up the harness named in design.md → Test Boundaries: create
       `internal/cli/cli.go` holding only the package doc comment — `cli` turns arguments into
       an outcome and an exit code, and lives under `./internal/` so the coverage gate can see
       it — and add `internal/cli/acceptance_test.go` with **one** parent test that owns a
@@ -25,11 +25,11 @@ before any work starts is not an outer loop.
       hand later tests a path that no longer exists. Each run captures stdout and stderr as
       **separate** buffers, reads the exit status from `*exec.ExitError` via `errors.As`, and
       sets the child's working directory to a fresh `t.TempDir()`
-- [ ] 0.2 RED: Write the failing end-to-end test for *No arguments prints help and
+- [x] 0.2 RED: Write the failing end-to-end test for *No arguments prints help and
       succeeds*: run the binary with no arguments and assert stdout names `graft`, contains
       `Usage:`, and lists `--version` and `--help`; stderr is byte-empty; the exit code is
       `0`; and the child's working directory is still empty
-- [ ] 0.3 Confirm it fails because the behavior is missing rather than because the harness is
+- [x] 0.3 Confirm it fails because the behavior is missing rather than because the harness is
       misconfigured: the placeholder writes `graft: not implemented yet — see SPEC.md` to
       stderr and exits `1`, so record that the observed failure is that message and that exit
       code — not a build error, not an empty capture, and not a missing binary
