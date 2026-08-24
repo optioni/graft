@@ -31,6 +31,8 @@ internal/catalog/   catalog.yaml parsing, selector expansion
 internal/source/    git resolution and the content-addressed fetch cache
 internal/plan/      pure: manifest + lock + catalog -> file operations
 internal/apply/     the only package that touches the working tree
+internal/sync/      the resolution sequence: fetch, plan, apply, and the report
+internal/cli/       the cobra command surface; internal/ui owns both streams
 ```
 
 `plan` is pure and `apply` is the sole writer. That split is what makes the SPEC's

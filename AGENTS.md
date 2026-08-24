@@ -44,6 +44,8 @@ internal/catalog/   catalog.yaml, selector expansion
 internal/source/    git resolution, content-addressed fetch cache
 internal/plan/      pure: manifest + lock + catalog -> file operations
 internal/apply/     the only package that writes to the working tree
+internal/sync/      the resolution sequence: fetch, plan, apply, and the report
+internal/cli/       the cobra command surface; internal/ui owns both streams
 ```
 
 `plan` is pure and `apply` is the sole writer. This is not stylistic — it is what makes
@@ -55,6 +57,18 @@ internal/apply/     the only package that writes to the working tree
 - **Never delete a file absent from `graft.lock`.** `.claude/agents/` holds repo-owned
   agents beside synced ones. The lock's per-item file list exists solely to make removal
   safe; any change near the prune set needs a test proving a foreign file survives.
+- **An `os.Root` is half the containment, not all of it.** It refuses a path that leaves its
+  root and **follows** a symlink that stays inside it. So every ancestor of a path graft
+  writes or deletes is checked with `Lstat` and must be a directory — a symlink to a directory
+  is not one. Without that, a write through a symlinked parent lands where `graft.lock` does
+  not say, and a lock claiming `vendor/x.md` where `vendor` became a link to `docs` deletes
+  `docs/x.md`. The same trap sits in the empty-directory walk: unlinking a symlink succeeds
+  however full its target is, so "a non-empty directory fails harmlessly" is false for links.
+- **graft never writes inside `.git`, nor over `graft.toml` or `graft.lock`.** Neither escapes
+  the repo root, so no planning rule catches them. A file in `.git/` is invisible to the
+  `git diff` that is graft's entire review story, and `.git/config` turns placing a file into
+  running a program. The rule is on the first path segment — `.github/` and `.gitignore` are
+  ordinary destinations.
 - **Lock serialization is deterministic** — sources by name, items by id, files by path.
   Assert byte equality across two runs, not semantic equality, or every sync churns the
   diff.

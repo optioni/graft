@@ -207,6 +207,22 @@ These hold or the run aborts before writing:
   applying one fails partway through, and since the lock is written last the file already
   written would be left outside `graft.lock`, where no later prune could reach it.
 - **`from` stays inside the source tree.**
+- **graft never writes inside `.git`, and never over `graft.toml` or `graft.lock`.** Neither
+  escapes the repo root, so no planning rule catches them; the refusal is a floor under the
+  writer. A file placed in `.git/` is invisible to the git diff that is the whole of the
+  review story below, and `.git/config` alone turns placing a file into running a program
+  through `core.fsmonitor`, `core.sshCommand`, or an alias. The rule is on a path's first
+  segment, so `.github/workflows/` and `.gitignore` are ordinary destinations.
+- **Every ancestor of a path graft writes or deletes is a directory**, checked without
+  following it. A symlink to a directory is not one: a write through a symlinked parent lands
+  where `graft.lock` does not say, and a lock claiming `vendor/x.md` where `vendor` has become
+  a link to `docs` would otherwise delete `docs/x.md` — a path no lock claims.
+- **A destination or a pruned path that is not a regular file is refused**, never replaced and
+  never removed. graft only ever writes regular files, so anything else there is something
+  graft did not put there.
+- **Nothing is written until every check that can be made has been made.** All of the above
+  are decidable before the first byte, so a refusal leaves the tree byte-identical rather than
+  partly applied.
 - **The lock is written last**, after every file operation succeeds.
 
 graft executes nothing a source provides — it reads `catalog.yaml` and copies files. It
@@ -230,6 +246,12 @@ is why the destination is shown before install and why a consumer override alway
 | Network unavailable, cache miss | Error naming what it needed to fetch. |
 | Manifest `rev` differs from the lock's | Error naming both, and pointing at `graft update`. |
 | A synced file was edited in place | Silently overwritten. `git diff` is the report. |
+| A destination exists and is not a regular file | Error naming the path. Never opened, never truncated. |
+| A pruned path exists and is not a regular file | Error naming the path. Never removed. |
+| An ancestor of either exists and is not a directory | Error naming the shallowest such ancestor. |
+| A destination or pruned path is inside `.git`, or is `graft.toml` or `graft.lock` | Error naming the path. |
+| A source file cannot be read | Error naming the source and the path within its tree. |
+| The repository root cannot be opened | Error naming it. graft never creates the repository it runs in. |
 
 ## Exit codes
 
@@ -260,7 +282,18 @@ openspec-schemas  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
 ```
 
 A sync with nothing to do prints `up to date` and nothing else. Output that appears when
-nothing happened trains the reader to stop reading it.
+nothing happened trains the reader to stop reading it — and a dry run with nothing to do
+says the same thing, because `--dry-run` changes what the summary says rather than what
+"nothing to do" means.
+
+Under `--dry-run` the summary line reads `6 files to write, 1 to remove - nothing written`,
+so a plan can never be mistaken for a result. The blocks above it are identical to what the
+same sync would print without the flag.
+
+"Nothing to do" is the lock this run would write being byte-identical to the one on disk,
+with an empty prune set — the two artifacts a reader would diff. A run that restores files
+someone deleted by hand therefore says `up to date`, because the lock did not move; the
+restored files show up in `git status`, which is where a sync's effect always shows up.
 
 ## Reviewing a sync
 

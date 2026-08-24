@@ -341,16 +341,16 @@ and until this change none of its rows had ever been reached through a whole run
 ## 17. Documentation: SPEC.md and the layout blocks
 <!-- kind: operational -->
 
-- [ ] 17.1 CHECK: List the user-facing conditions this change adds against SPEC.md's
+- [x] 17.1 CHECK: List the user-facing conditions this change adds against SPEC.md's
       Failure modes table and Invariants, and confirm none is already there
-- [ ] 17.2 CHANGE: Add rows to SPEC.md's Failure modes table for: a destination or prune path
+- [x] 17.2 CHANGE: Add rows to SPEC.md's Failure modes table for: a destination or prune path
       that is not a regular file, an ancestor that is not a directory, a destination inside
       `.git` or naming graft's own two files, a source file that cannot be read, and a
       repository root that cannot be opened. Add the `.git` rule to Invariants, and add the
       `--dry-run` summary line to the Output section
-- [ ] 17.3 CHANGE: Add `internal/sync` to the layout blocks in ENGINEERING.md and AGENTS.md,
+- [x] 17.3 CHANGE: Add `internal/sync` to the layout blocks in ENGINEERING.md and AGENTS.md,
       which both still list six packages
-- [ ] 17.4 VERIFY: Re-read the amended SPEC.md sections against the error strings the tests
+- [x] 17.4 VERIFY: Re-read the amended SPEC.md sections against the error strings the tests
       assert, and confirm each row is worded exactly as the message the code produces
 
 ## 18. Change Review
