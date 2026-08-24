@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/optioni/graft/internal/lock"
+	"github.com/optioni/graft/internal/manifest"
 	"github.com/optioni/graft/internal/plan"
 )
 
@@ -20,13 +21,43 @@ const (
 	dirMode  = 0o755
 )
 
+// Option adjusts what an apply does beyond performing the plan. There is exactly one, and
+// the shape is variadic so that every existing call site — this package's own tests, and
+// internal/sync — reads and compiles unchanged.
+type Option func(*options)
+
+type options struct {
+	// manifest is the graft.toml to write, or nil to leave the file alone.
+	manifest []byte
+}
+
+// WithManifest makes the apply write data to graft.toml at the repository root, immediately
+// before graft.lock and only after every planned write, deletion, and directory removal has
+// succeeded.
+//
+// It is not a hole in "every path this package touches comes from the plan". graft's own two
+// files are the named exception: their paths are fixed rather than derived, and their bytes
+// come from the caller rather than from a source. graft.lock has always been written this
+// way; this is the same class of write, for the file that records what the consumer asked
+// for rather than what graft installed. A *plan* naming either is still refused outright —
+// the two are told apart by where the bytes came from, never by the path string.
+func WithManifest(data []byte) Option {
+	return func(o *options) { o.manifest = data }
+}
+
 // Run performs a plan's file operations against the repository at root. trees maps a
 // source name to the path of that source's fetched tree.
 //
 // The order is SPEC.md's resolution step 8: write the planned files, delete the prune set,
-// remove the directories the prune set left empty, write graft.lock. Nothing here derives
-// a path of its own — every one comes from the plan.
-func Run(root string, trees map[string]string, p *plan.Plan) error {
+// remove the directories the prune set left empty, write graft.toml when the caller supplied
+// it, write graft.lock. Nothing here derives a path of its own — every one comes from the
+// plan, or is one of graft's own two files at the root.
+func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) error {
+	var o options
+	for _, apply := range opts {
+		apply(&o)
+	}
+
 	repo, err := os.OpenRoot(root)
 	if err != nil {
 		return fmt.Errorf("cannot open the repository root %q: %w", root, err)
@@ -36,7 +67,7 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 	src := &sources{dirs: trees, open: map[string]*os.Root{}}
 	defer src.close()
 
-	if err := preflight(repo, src, p); err != nil {
+	if err := preflight(repo, src, p, o); err != nil {
 		return err
 	}
 
@@ -74,6 +105,11 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 
 	removeEmptyDirs(repo, unlinked)
 
+	if o.manifest != nil {
+		if err := writeManifest(repo, o.manifest); err != nil {
+			return err
+		}
+	}
 	return writeLock(repo, p.Lock)
 }
 
@@ -217,7 +253,7 @@ func checkPrune(repo *os.Root, dest string) (os.FileInfo, error) {
 // that depends on it, and that case is allowed to fail mid-flight; the checks stay at their
 // point of use for exactly that reason. What this pass removes is the failures graft can see
 // coming, which is all a pre-flight pass can ever do.
-func preflight(repo *os.Root, src *sources, p *plan.Plan) error {
+func preflight(repo *os.Root, src *sources, p *plan.Plan, o options) error {
 	for _, w := range p.Writes {
 		if err := checkReservedWrite(w.Dest); err != nil {
 			return err
@@ -237,10 +273,18 @@ func preflight(repo *os.Root, src *sources, p *plan.Plan) error {
 			return err
 		}
 	}
-	// The lock is a write like any other and is the last one performed, so leaving it out
-	// of the pass would mean a repository where graft.lock is a directory applies the whole
-	// plan and then fails at the final step — files written, files deleted, and no record
-	// of either. It is not in p.Writes, so it is named explicitly.
+	// graft's own two files are writes like any other and are the last ones performed, so
+	// leaving them out of the pass would mean a repository where graft.lock is a directory
+	// applies the whole plan and then fails at the final step — files written, files
+	// deleted, and no record of either. Neither is in p.Writes, so both are named
+	// explicitly. graft.toml is checked only when the caller supplied bytes for it: a run
+	// that is not moving a pin never touches it, so a graft.toml that is somehow not a
+	// regular file is not that run's problem to report.
+	if o.manifest != nil {
+		if err := checkDestination(repo, manifest.Filename); err != nil {
+			return err
+		}
+	}
 	return checkDestination(repo, lock.Filename)
 }
 
@@ -257,28 +301,36 @@ func preflight(repo *os.Root, src *sources, p *plan.Plan) error {
 // An empty directory would be removed outright, and a symlink would be removed while its
 // target stayed — a deletion of something graft never wrote.
 func writeFile(repo *os.Root, dest string, data []byte) error {
-	if err := checkDestination(repo, dest); err != nil {
+	return writeFileAs(repo, dest, dest, data)
+}
+
+// writeFileAs is writeFile with the path it writes to and the path its failures name pulled
+// apart. Only the manifest write uses the second form: it stages into a temporary file, and
+// a reader told `cannot write ".graft.toml.tmp"` would be sent to look at a path they have
+// never seen and that no longer exists.
+func writeFileAs(repo *os.Root, at, name string, data []byte) error {
+	if err := checkDestination(repo, at); err != nil {
 		return err
 	}
-	if dir := path.Dir(dest); dir != "." {
+	if dir := path.Dir(at); dir != "." {
 		if err := repo.MkdirAll(dir, dirMode); err != nil {
-			return writeErrf(dest, "%v", err)
+			return writeErrf(name, "%v", err)
 		}
 	}
-	if err := repo.Remove(dest); err != nil && !isNotExist(err) {
-		return writeErrf(dest, "%v", err)
+	if err := repo.Remove(at); err != nil && !isNotExist(err) {
+		return writeErrf(name, "%v", err)
 	}
 
-	f, err := repo.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_EXCL, fileMode)
+	f, err := repo.OpenFile(at, os.O_WRONLY|os.O_CREATE|os.O_EXCL, fileMode)
 	if err != nil {
-		return writeErrf(dest, "%v", err)
+		return writeErrf(name, "%v", err)
 	}
 	if _, err := f.Write(data); err != nil {
 		_ = f.Close()
-		return writeErrf(dest, "%v", err)
+		return writeErrf(name, "%v", err)
 	}
 	if err := f.Close(); err != nil {
-		return writeErrf(dest, "%v", err)
+		return writeErrf(name, "%v", err)
 	}
 	return nil
 }
@@ -353,6 +405,36 @@ func ancestors(p string) []string {
 func writeLock(repo *os.Root, l *lock.Lock) error {
 	if err := writeFile(repo, lock.Filename, lock.Marshal(l)); err != nil {
 		return err
+	}
+	return nil
+}
+
+// manifestTemp is where the new graft.toml is staged. It is at the repository root beside
+// its destination, because a rename is only atomic within one filesystem, and it is named
+// visibly rather than hidden: a leftover from a process that died mid-write should show up
+// in `git status` rather than lurk.
+const manifestTemp = ".graft.toml.tmp"
+
+// writeManifest puts data at graft.toml through a temporary file and a rename.
+//
+// Not through writeFile, which removes an existing destination before creating it with
+// O_EXCL. That removal is load-bearing for a *planned* write — the mode argument to a
+// create-and-truncate open applies only on creation, so truncating would let a destination
+// someone once made executable stay executable while a source replaced its contents — and
+// its reason does not apply here, because no source's bytes are involved. The cost does
+// apply: graft.toml is the one file in the repository graft cannot regenerate, and a failure
+// between the unlink and a successful close would delete the consumer's own request. A
+// rename makes a reader see either the old bytes or the new ones and never neither.
+//
+// The temporary file is removed on every failure. On success the rename consumed it.
+func writeManifest(repo *os.Root, data []byte) error {
+	if err := writeFileAs(repo, manifestTemp, manifest.Filename, data); err != nil {
+		_ = repo.Remove(manifestTemp)
+		return err
+	}
+	if err := repo.Rename(manifestTemp, manifest.Filename); err != nil {
+		_ = repo.Remove(manifestTemp)
+		return writeErrf(manifest.Filename, "%v", err)
 	}
 	return nil
 }

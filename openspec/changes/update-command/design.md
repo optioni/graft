@@ -256,7 +256,7 @@ unchanged, which is the verification.
 | manifest-format: A rev that would inject a second key is refused | exact error string; assert no bytes | unit | none | `go test ./internal/manifest/` |
 | manifest-format: The result round-trips through the parser | `Parse` the result and compare every field | unit | none | `go test ./internal/manifest/` |
 | file-application: A plan's operations happen in the documented order | *existing* test must still pass unchanged | unit | real `t.TempDir()` | `go test ./internal/apply/` |
-| file-application: An empty plan writes only the lock | *existing* test, extended with an assertion that `graft.toml` was neither read nor written | unit | real `t.TempDir()` | `go test ./internal/apply/` |
+| file-application: An empty plan writes only the lock | *existing* test, unchanged — its whole-tree assertion is already what proves no `graft.toml` was created | unit | real `t.TempDir()` | `go test ./internal/apply/` |
 | file-application: An empty plan with manifest bytes writes graft's two files and nothing else | new test over the same empty plan | unit | real `t.TempDir()` | `go test ./internal/apply/` |
 | file-application: Nothing outside the plan is touched | *existing* test must still pass unchanged | unit | real `t.TempDir()` | `go test ./internal/apply/` |
 | file-application: Manifest bytes are written just before the lock | apply a hand-built plan; read both files back, the manifest through `manifest.Parse` | unit | real `t.TempDir()` | `go test ./internal/apply/` |

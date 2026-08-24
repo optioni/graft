@@ -96,9 +96,9 @@ bytes came from — the plan, or the caller — never by the path string.
       package has always written — and that the reserved refusal still governs every path in
       `p.Writes` and `p.Prune`
 - [ ] 2.6 CHECK: Contract gate — confirm `graft.lock` is still the last write on every path, that
-      a run given manifest bytes that fails before them writes neither file, and that the existing
-      `internal/apply` tests still pass **unmodified** except for the one extended assertion in
-      *An empty plan writes only the lock*
+      a run given manifest bytes that fails before them writes neither file, and that every
+      existing `internal/apply` test still passes **unmodified** — the empty-plan test already
+      asserts the whole tree listing, which is what proves no `graft.toml` was created
 - [ ] 2.7 Run `go test ./internal/apply/` — green, no regressions elsewhere
 
 ## 3. sync: re-resolution as a parameter, and the narrowed pin check
