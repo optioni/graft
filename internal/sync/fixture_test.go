@@ -275,6 +275,15 @@ func (c *consumer) updateWith(u sync.Update) (*sync.Report, error) {
 	return sync.Run(o)
 }
 
+// dryRunUpdate performs `graft update --dry-run`, with whatever source and rev u names.
+func (c *consumer) dryRunUpdate(u sync.Update) (*sync.Report, error) {
+	c.t.Helper()
+	o := c.options()
+	o.Update = &u
+	o.DryRun = true
+	return sync.Run(o)
+}
+
 // cacheEntries lists everything under the consumer's fetch cache, so "nothing was fetched"
 // is one comparison rather than a guess.
 func (c *consumer) cacheEntries() []string {

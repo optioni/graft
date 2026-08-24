@@ -176,17 +176,17 @@ harness.
 ## 5. sync: `--dry-run` under an update
 <!-- kind: behavior -->
 
-- [ ] 5.1 RED: Write failing tests for: *A dry run of an update writes neither of graft's files*,
+- [x] 5.1 RED: Write failing tests for: *A dry run of an update writes neither of graft's files*,
       *A dry run of `--to` leaves the manifest where it was*, *A dry run of a first update creates
       no directory* — the last asserting the tree holds only `graft.toml`, which is the half of
       SPEC.md's promise a file-existence check would miss
-- [ ] 5.2 GREEN: Confirm the existing early return after `plan.Build` already covers the manifest
+- [x] 5.2 GREEN: Confirm the existing early return after `plan.Build` already covers the manifest
       write, and add nothing if it does; if the `SetRev` result reaches disk under `--dry-run`,
       move the write behind the same return
-- [ ] 5.3 REFACTOR: None expected — `--dry-run` returns before `apply.Run` and the manifest write
+- [x] 5.3 REFACTOR: None expected — `--dry-run` returns before `apply.Run` and the manifest write
       lives inside it. State that in the verification task rather than leaving a checked box that
       overstates what was done
-- [ ] 5.4 Run `go test ./internal/sync/` — green
+- [x] 5.4 Run `go test ./internal/sync/` — green
 
 ## 6. cli: the `update` command
 <!-- kind: behavior -->
