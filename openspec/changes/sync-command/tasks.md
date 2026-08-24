@@ -224,23 +224,29 @@ clean CI runner.
 - [x] 10.5 Run `go test ./internal/sync/` — green
 
 ## 11. sync: failure modes leave the tree untouched
-<!-- kind: behavior -->
+<!-- kind: refactor -->
 
-- [ ] 11.1 RED: Write failing tests for: *A rev that no longer exists fails, naming the rev and
-      the source*, *A source without a catalog is not graftable*, *An invalid catalog fails the
-      run* (both variants), *A selector matching nothing fails the run*, *Two items resolving
-      to one path fail the run before any of it is written*
-- [ ] 11.2 RED: Write failing tests for the two failure-mode rows nothing else reaches: *A
-      destination outside the repository root fails the run* — through a real `plan.Build`,
-      not a hand-built plan — and *A source's listing climbing out of its item fails the run*
-- [ ] 11.3 RED: Write failing tests for: *A cache miss with no network names what it needed*
+**Reclassified during implementation**, the third group to be. Group 10 built the sequence
+with every collaborator's error returned unaltered, so these tests characterize SPEC.md's
+failure-mode table reaching a user end to end rather than driving new behavior. That is
+still the most valuable thing to pin here: the table *is* the product for a CLI this size,
+and until this change none of its rows had ever been reached through a whole run.
+
+- [x] 11.1 CHARACTERIZE: Write tests for *A rev that no longer exists fails, naming the rev
+      and the source*, *A source without a catalog is not graftable*, *An invalid catalog
+      fails the run* (both variants), *A selector matching nothing fails the run*, *Two items
+      resolving to one path fail the run before any of it is written*
+- [x] 11.2 CHARACTERIZE: Write tests for the two rows nothing else reaches: *A destination
+      outside the repository root fails the run* — through a real `plan.Build`, not a
+      hand-built plan — and *A source's listing climbing out of its item fails the run*
+- [x] 11.3 CHARACTERIZE: Write tests for *A cache miss with no network names what it needed*
       and *A cache hit with no network succeeds*
-- [ ] 11.4 RED: Each failure test asserts the same three things: the exact error string, that
-      every pre-existing file is byte-identical, and that `graft.lock` was neither created nor
-      modified
-- [ ] 11.5 GREEN: Return each collaborator's error unaltered — no wrapping, no second layer of
-      context — since every message already locates its own problem
-- [ ] 11.6 Run `go test ./internal/sync/` — green
+- [x] 11.4 CHARACTERIZE: Every failure test asserts the same three things through one shared
+      helper: the exact error string, that every pre-existing file is byte-identical, and
+      that `graft.lock` was neither created nor modified
+- [x] 11.5 REFACTOR: None. "Return the error unaltered" is the absence of code, and the
+      characterization is what keeps it absent
+- [x] 11.6 VERIFY: Run `go test ./internal/sync/` — green
 
 ## 12. sync: `--dry-run`
 <!-- kind: behavior -->
