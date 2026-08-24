@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/optioni/graft/internal/buildinfo"
 )
 
 // The acceptance tier: the real binary, real arguments, real pipes, and a real exit
@@ -89,6 +91,43 @@ func TestGraftBinary(t *testing.T) {
 		}
 		if len(entries) != 0 {
 			t.Errorf("the working directory is not empty: %v", entries)
+		}
+	})
+
+	// The split and the exit code, proven across a real process boundary rather than across
+	// two buffers a test wired up itself.
+	t.Run("--version goes to stdout and succeeds", func(t *testing.T) {
+		t.Parallel()
+
+		got := runGraft(t, bin, t.TempDir(), "--version")
+
+		if got.code != 0 {
+			t.Errorf("exit code = %d, want 0", got.code)
+		}
+		if got.stderr != "" {
+			t.Errorf("stderr = %q, want empty", got.stderr)
+		}
+		// task build injects the linker variables; `go build` in this harness does not, so
+		// the defaults are what a bare build prints.
+		if want := buildinfo.Format("dev", "unknown", "unknown") + "\n"; got.stdout != want {
+			t.Errorf("stdout = %q, want %q", got.stdout, want)
+		}
+	})
+
+	t.Run("an unknown command goes to stderr and fails", func(t *testing.T) {
+		t.Parallel()
+
+		got := runGraft(t, bin, t.TempDir(), "frobnicate")
+
+		if got.code != 1 {
+			t.Errorf("exit code = %d, want 1", got.code)
+		}
+		if got.stdout != "" {
+			t.Errorf("stdout = %q, want empty", got.stdout)
+		}
+		want := "graft: unknown command \"frobnicate\"\n" + `run "graft --help" for usage` + "\n"
+		if got.stderr != want {
+			t.Errorf("stderr = %q, want %q", got.stderr, want)
 		}
 	})
 }

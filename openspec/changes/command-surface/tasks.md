@@ -256,14 +256,14 @@ pflag's and is passed through on purpose (design.md → Contracts).
 runs `go test` outside it — so anything left in `cmd/graft` is not merely unmeasured, it is
 unexecuted. This group's job is to leave nothing there.
 
-- [ ] 6.1 RED: Confirm group 0's acceptance test is still red and still red for the right
+- [x] 6.1 RED: Confirm group 0's acceptance test is still red and still red for the right
       reason — `main` routes to the placeholder `run`, so the binary prints
       `graft: not implemented yet — see SPEC.md` and exits `1`
-- [ ] 6.2 GREEN: Rewrite `cmd/graft/main.go` as the package doc comment, the three
+- [x] 6.2 GREEN: Rewrite `cmd/graft/main.go` as the package doc comment, the three
       linker-injected `var`s, and a `main` that calls `os.Exit(cli.Main(cli.Options{…}))`
       with `os.Args[1:]`, `os.Stdout`, `os.Stderr`, and the three build strings. Delete `run`
       and the `errors`, `fmt`, and `io` imports
-- [ ] 6.3 RED: Write `TestCmdGraftImports` in `internal/cli` — a Go **test**, not a command
+- [x] 6.3 RED: Write `TestCmdGraftImports` in `internal/cli` — a Go **test**, not a command
       run by hand — shelling out to `go list -f '{{join .Imports "\n"}}' ./cmd/graft` and
       asserting the result is exactly `github.com/optioni/graft/internal/cli` and `os`, in that
       order (`.Imports` comes back lexically sorted), and to `go list ./cmd/...` asserting
@@ -273,19 +273,19 @@ unexecuted. This group's job is to leave nothing there.
       later change adds an import to `main.go`, which is the regression this guards, in the one
       directory CI never runs a test over. The `go` toolchain is already a named collaborator
       (design.md → Test Boundaries)
-- [ ] 6.4 VERIFY: Confirm `TestCmdGraftImports` passes against the rewritten `main.go`, and
+- [x] 6.4 VERIFY: Confirm `TestCmdGraftImports` passes against the rewritten `main.go`, and
       record the `go list` output it saw
-- [ ] 6.5 Run `go test ./internal/...` — no regressions
+- [x] 6.5 Run `go test ./internal/...` — no regressions
 
 ## 7. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 7.1 VERIFY: Confirm group 0's acceptance test now passes end to end against the
+- [x] 7.1 VERIFY: Confirm group 0's acceptance test now passes end to end against the
       compiled binary — help on stdout, empty stderr, exit `0`, working directory untouched
-- [ ] 7.2 VERIFY: Extend the acceptance run with `--version` and with `frobnicate`, asserting
+- [x] 7.2 VERIFY: Extend the acceptance run with `--version` and with `frobnicate`, asserting
       the stream each lands on and the exit code, so the split and the code are proven across
       a real process boundary and not only across two `bytes.Buffer`s
-- [ ] 7.3 REFACTOR: Confirm the binary is built once per test binary rather than once per
+- [x] 7.3 REFACTOR: Confirm the binary is built once per test binary rather than once per
       subtest, and that the build output and the child's working directory are both under
       `t.TempDir()` — or state that no refactor was needed
 
