@@ -6,18 +6,18 @@ no command — and the risk it carries is wiring: a plan applied against the wro
 report on the wrong stream, a cache root read from a global. design.md → Test Strategy records
 why the group is kept.
 
-- [ ] 0.1 Add `internal/cli/sync_acceptance_test.go` with the harness design.md → Test
-      Boundaries names and nothing else: a fixture source repository built in `t.TempDir()`
-      with `git -c init.defaultBranch=main init -q` and `user.name` / `user.email` set **on
-      the repository**, a consumer directory holding `graft.toml`, `t.Chdir` into it,
-      `t.Setenv("XDG_CACHE_HOME", t.TempDir())` — the temp dir must be **absolute**, or
-      `defaultCacheRoot` falls through to the developer's real `~/.cache` — and `bytes.Buffer`
-      streams passed through `cli.Options`
-- [ ] 0.2 RED: Write the failing end-to-end test for *A first sync installs what the manifest
-      asks for* — `cli.Main` with `[]string{"sync"}` exits `0`, every item's file exists at
+- [x] 0.1 Extend `internal/cli/acceptance_test.go`'s existing harness — which builds the real
+      binary and runs it as a subprocess with `cmd.Dir` — with an environment-carrying variant,
+      and add a fixture source repository built in `t.TempDir()` with
+      `git -c init.defaultBranch=main init -q` and `user.name` / `user.email` set **on the
+      repository**. The subprocess's `XDG_CACHE_HOME` points at an **absolute** `t.TempDir()`,
+      or `defaultCacheRoot` falls through to the developer's real `~/.cache`. No `t.Chdir` and
+      no `t.Setenv`: the working directory and the environment belong to the child
+- [x] 0.2 RED: Write the failing end-to-end test for *A first sync installs what the manifest
+      asks for* — the binary run with `sync` exits `0`, every item's file exists at
       its destination with the source's bytes, `graft.lock` records the source and both
       items, the report is on the error stream, and the standard output stream is byte-empty
-- [ ] 0.3 Confirm it fails because `sync` is not a command — `graft: unknown command "sync"` —
+- [x] 0.3 Confirm it fails because `sync` is not a command — `graft: unknown command "sync"` —
       and not because the fixture repository or the temp cache is misconfigured
 
 ## 1. Filename constants and the apply package scaffold

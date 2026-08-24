@@ -152,12 +152,12 @@ SPEC.md's `graft.lock` section and confirm the bytes still match the documented 
 | `git` (subprocess) | real, against fixture repositories built in `t.TempDir()` | not used by `internal/apply`; real in `internal/sync` |
 | Fixture source repositories | real git repositories created in `t.TempDir()`, with `user.name` and `user.email` set **on the repository** | same |
 | The network | never reached: every fixture remote is a local filesystem path | same. "Unreachable" is a path that does not exist, not a firewall |
-| The fetch cache | real. `internal/cli` calls `source.DefaultCacheRoot()`, which is the one place a test reaches it; the test points it at an **absolute** `t.TempDir()` with `t.Setenv("XDG_CACHE_HOME", …)` — `defaultCacheRoot` honours that variable only when absolute and otherwise falls through to the developer's real `~/.cache` | real, rooted at a `t.TempDir()` passed in as a value. `source.DefaultCacheRoot` is never called |
+| The fetch cache | real. The built binary calls `source.DefaultCacheRoot()`, which is the one place a test reaches it; the subprocess's own environment points `XDG_CACHE_HOME` at an **absolute** `t.TempDir()` — `defaultCacheRoot` honours that variable only when absolute and otherwise falls through to the developer's real `~/.cache` | real, rooted at a `t.TempDir()` passed in as a value. `source.DefaultCacheRoot` is never called |
 | `$HOME` and the real `~/.cache` | never read, per the row above | never read |
-| The process working directory | real, via `t.Chdir` in the acceptance test only | not used; `internal/sync` takes its root as a value |
-| Output streams | `bytes.Buffer` passed through `cli.Options` | `bytes.Buffer` through `ui.New` |
-| Terminal detection | injected `IsTerminal` returning false | injected, both values |
-| `NO_COLOR` | injected `Getenv` | injected |
+| The process working directory | real, set per subprocess with `cmd.Dir`. No `t.Chdir` anywhere: the acceptance tier runs the compiled binary, so the working directory and the environment are the child's rather than the test process's | not used; `internal/sync` takes its root as a value |
+| Output streams | real pipes from a real process, captured separately, so the stdout/stderr split is asserted across a process boundary | `bytes.Buffer` through `ui.New` |
+| Terminal detection | real: a pipe is not a terminal, so the acceptance tier sees colour off without injecting anything | injected, both values |
+| `NO_COLOR` | the subprocess's own environment | injected `Getenv` |
 | `internal/plan` | real | real. Plans are built by `plan.Build` from values, or hand-built where a scenario needs a plan `plan.Build` would refuse |
 | Call-sequence observation inside `internal/apply` | **none — there is no seam.** Ordering is asserted through composed filesystem effects | none |
 
@@ -228,7 +228,7 @@ whole suite is `task cover`.
 | A moved branch does not move the pin | `TestRunNeverReResolves` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run ReResolve` |
 | A source with no lock entry is resolved once and recorded | `TestRunResolvesNewSource` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run NewSource` |
 | A rev that no longer exists fails, naming the rev and the source | `TestRunRevNotFound` | integration (git) | real git, real fs | `go test ./internal/sync/ -run RevNotFound` |
-| There is no flag to make sync re-resolve or refuse to overwrite | `TestSyncRejectsForceAndFrozen` | acceptance | `cli.Main`, buffers | `go test ./internal/cli/ -run ForceFrozen` |
+| There is no flag to make sync re-resolve or refuse to overwrite | `TestSyncRejectsForceAndFrozen` | acceptance | the built binary | `go test ./internal/cli/ -run ForceFrozen` |
 | A bumped rev in the manifest points at graft update | `TestRunPinDisagreement` | integration (git) | real fs | `go test ./internal/sync/ -run PinDisagreement` |
 | The pin check precedes the network | `TestRunPinCheckPrecedesFetch` | integration (git) | real fs, unreachable remote, empty cache | `go test ./internal/sync/ -run PinCheckPrecedes` |
 | A source without a catalog is not graftable | `TestRunNoCatalog` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run NoCatalog` |
@@ -242,9 +242,9 @@ whole suite is `task cover`.
 | A dry run of a first sync creates nothing | `TestRunDryRunCreatesNothing` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run DryRunCreates` |
 | A dry run of a removal deletes nothing | `TestRunDryRunDeletesNothing` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run DryRunDeletes` |
 | A dry run of a failing plan fails the same way | `TestRunDryRunFailsAlike` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run DryRunFails` |
-| An argument to sync is a usage error | `TestSyncTakesNoArguments` | acceptance | `cli.Main`, buffers | `go test ./internal/cli/ -run NoArguments` |
-| A successful sync leaves standard output byte-empty | `TestSyncStdoutEmptyOnSuccess` | acceptance | `cli.Main`, real git, temp cache, `t.Chdir` | `go test ./internal/cli/ -run StdoutEmptyOnSuccess` |
-| A failing sync leaves standard output byte-empty | `TestSyncStdoutEmptyOnFailure` | acceptance | `cli.Main`, buffers, `t.Chdir` | `go test ./internal/cli/ -run StdoutEmptyOnFailure` |
+| An argument to sync is a usage error | `TestSyncTakesNoArguments` | acceptance | the built binary | `go test ./internal/cli/ -run NoArguments` |
+| A successful sync leaves standard output byte-empty | `TestSyncStdoutEmptyOnSuccess` | acceptance | the built binary, real git, temp cache | `go test ./internal/cli/ -run StdoutEmptyOnSuccess` |
+| A failing sync leaves standard output byte-empty | `TestSyncStdoutEmptyOnFailure` | acceptance | the built binary, real fs | `go test ./internal/cli/ -run StdoutEmptyOnFailure` |
 | A repeated sync reports nothing | `TestReportUpToDate` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run UpToDate` |
 | A sync that only rewrites identical files is still nothing to do | `TestReportUpToDateAfterHandDeletion` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run UpToDateAfterHand` |
 | A first sync is never nothing to do | `TestReportFirstSyncIsNotUpToDate` | integration (git) | real git, real fs, temp cache | `go test ./internal/sync/ -run FirstSyncIsNot` |
@@ -263,7 +263,7 @@ whole suite is `task cover`.
 | A sync that only removes still reports zero written | `TestReportSummaryZeroWritten` | unit | none | `go test ./internal/sync/ -run SummaryZero` |
 | A single file is reported in the singular | `TestReportSummarySingular` | unit | none | `go test ./internal/sync/ -run SummarySingular` |
 | A dry run says nothing was written | `TestReportSummaryDryRun` | unit | none | `go test ./internal/sync/ -run SummaryDryRun` |
-| The report never reaches standard output | `TestSyncReportGoesToStderr` | acceptance | `cli.Main`, real git, temp cache, `t.Chdir` | `go test ./internal/cli/ -run ReportGoesTo` |
+| The report never reaches standard output | `TestSyncReportGoesToStderr` | acceptance | the built binary, real git, temp cache | `go test ./internal/cli/ -run ReportGoesTo` |
 | With colour off the report is plain text | `TestReportPlainWithColorOff` | unit | `ui.New(..., false)` | `go test ./internal/sync/ -run PlainWithColor` |
 | With colour on only the verb and the note are styled | `TestReportStyledWithColorOn` | unit | `ui.New(..., true)` | `go test ./internal/sync/ -run StyledWithColor` |
 | No arguments prints help and succeeds | existing `internal/cli` test, re-run unchanged | acceptance | buffers | `go test ./internal/cli/` |
