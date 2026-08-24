@@ -50,8 +50,10 @@ func (c Cache) Fetch(name, git, sha string) (string, error) {
 		return "", fail("cannot create cache entry for %q: %v", sha, err)
 	}
 	// On every path, including success: after the rename the scaffold holds only the
-	// now-empty directory the tree was moved out of.
-	defer os.RemoveAll(scaffold)
+	// now-empty directory the tree was moved out of. Its removal is best-effort by
+	// design — a leftover scaffold is not an entry, so it cannot be mistaken for one,
+	// and failing a good fetch over it would be the worse outcome.
+	defer func() { _ = os.RemoveAll(scaffold) }()
 
 	tree := filepath.Join(scaffold, "tree")
 	if err := os.Mkdir(tree, 0o755); err != nil {
@@ -82,16 +84,16 @@ func (c Cache) Fetch(name, git, sha string) (string, error) {
 // exists within the tree that gets published — a stronger guarantee than deleting one
 // afterwards, where an interrupted run could leave the repository behind.
 func fetchTree(gitDir, work, url, sha string) error {
-	if detail, err := git("", "init", "-q", "--bare", gitDir); err != nil {
+	if detail, err := git("init", "-q", "--bare", gitDir); err != nil {
 		return gitErr(detail, err)
 	}
 	// "--" separates options from operands: a URL is not trusted to be a URL, because
 	// git decides what is a flag by its spelling and not by its position.
-	if detail, err := git("", "--git-dir="+gitDir, "remote", "add", "origin", "--", url); err != nil {
+	if detail, err := git("--git-dir="+gitDir, "remote", "add", "origin", "--", url); err != nil {
 		return gitErr(detail, err)
 	}
 	// One commit's history, and no tag objects the tree does not need.
-	if detail, err := git("", "--git-dir="+gitDir, "fetch", "--depth", "1", "--no-tags", "-q", "origin", sha); err != nil {
+	if detail, err := git("--git-dir="+gitDir, "fetch", "--depth", "1", "--no-tags", "-q", "origin", sha); err != nil {
 		return gitErr(detail, err)
 	}
 	// attr.tree at the empty tree disables the source's own committed .gitattributes.
@@ -101,7 +103,7 @@ func fetchTree(gitDir, work, url, sha string) error {
 	// That would be a source-controlled file causing a program to run, which is exactly
 	// what graft does not do. core.autocrlf and core.eol do not close it: the in-tree
 	// attributes, not the config, are what select the filter.
-	detail, err := git("",
+	detail, err := git(
 		"--git-dir="+gitDir,
 		"-c", "attr.tree="+emptyTree,
 		"-c", "core.bare=false",

@@ -1,6 +1,9 @@
 package source
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 // Resolve turns a source's rev — a tag, a branch, or a full sha — into the 40-character
 // lowercase hex commit sha graft.lock records as resolved. name locates errors, so a
@@ -31,9 +34,9 @@ func Resolve(name, git, rev string) (string, error) {
 	tag := "refs/tags/" + rev
 	head := "refs/heads/" + rev
 
-	out, detail, err := gitOutput("", "ls-remote", "--", url, tag, peeled, head)
+	out, detail, err := gitOutput("ls-remote", "--", url, tag, peeled, head)
 	if err != nil {
-		if err == errNoGit { //nolint:errorlint // a sentinel returned directly, never wrapped
+		if errors.Is(err, errNoGit) {
 			return "", err
 		}
 		// A non-zero exit means the remote could not be read. A rev that simply does not

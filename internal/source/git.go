@@ -23,12 +23,11 @@ var errNoGit = errors.New("git not found on PATH")
 // On failure the returned error carries git's first stderr line only. Everything after it
 // is advice for a human at a terminal, and a multi-line error inside a per-source failure
 // buries the line that identifies the problem.
-func gitOutput(dir string, args ...string) (string, string, error) {
+func gitOutput(args ...string) (string, string, error) {
 	if _, err := exec.LookPath("git"); err != nil {
 		return "", "", errNoGit
 	}
 	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
 	// Prompting disabled, and nothing else scrubbed. The failure this prevents is a
 	// hang: a private source with no usable credentials would otherwise block on a
 	// password prompt forever inside what a caller believes is a function call.
@@ -44,8 +43,8 @@ func gitOutput(dir string, args ...string) (string, string, error) {
 }
 
 // git runs a command for its exit status alone.
-func git(dir string, args ...string) (string, error) {
-	_, detail, err := gitOutput(dir, args...)
+func git(args ...string) (string, error) {
+	_, detail, err := gitOutput(args...)
 	return detail, err
 }
 
