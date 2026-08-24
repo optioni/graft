@@ -143,3 +143,30 @@ a boundary the design does not name.
 - **`term.IsTerminal` returning true is asserted nowhere.** Accepted, argued in
   design.md → Risks, and deliberately not bought with a third dependency. It is x/term's own
   contract; graft asserts the negative direction, the pure decision, and the wiring identity.
+
+## Change Review — after implementation
+
+Delegated to a third fresh subagent, given only the artifacts and the diff
+`da483f6..HEAD`, never a fork of the implementing session. It was asked to mutate a scratch
+copy rather than to read for plausibility, and it did: nine behaviors were deleted or
+inverted one at a time and every one turned a test red. The dispositions:
+
+| Severity | Finding | Disposition |
+|---|---|---|
+| WARNING | **`root.SetArgs(nil)` does not mean "no arguments".** Cobra falls back to `os.Args[1:]` whenever the slice it is handed is nil, so `Main(Options{Args: nil})` ran against the *process's* arguments. The two unit tests for the no-arguments scenario passed `nil` and stayed green only because pflag silently swallows `-test.*` shorthands — proven by running the compiled test binary with an extra argument, which made `TestMainHelp` fail with `unknown command "frobnicate"`. It contradicted `Main`'s own doc comment and design.md → Test Boundaries. | **Fixed.** `Main` substitutes an empty slice for a nil one, with the reason in the comment; the two tests now pass `[]string{}` so they assert the scenario rather than the process. `TestMainIgnoresProcessArguments` was added, setting and restoring `os.Args`, and mutation-tested: restoring `SetArgs(o.Args)` turns it red. New spec scenario *The process's own arguments are never read*, a matrix row, and a corrected Test Boundaries row for process arguments. |
+| SUGGESTION | **`Options`' nil defaults survive mutation.** Replacing `os.Getenv` and `ui.IsTerminal` with constants leaves `./internal/...` green, because nothing here emits styled output through `Main`. | **Accepted and deferred with a named resolution point.** Closing it needs coloured output to observe, which arrives with the report format. Recorded as design.md → Q5, resolved in `sync-command` by one acceptance case running the real binary with and without `NO_COLOR`. |
+| SUGGESTION | **A nil `Stdout` or `Stderr` panics**, exiting with a code SPEC.md does not admit. | **Fixed by documentation, not by a default.** Both fields now say they are required. Defaulting them to `io.Discard` would turn a wiring bug into silence, which is the outcome this package exists to prevent. |
+| SUGGESTION | **The `__complete` refusal and `DisableDefaultCmd` ended up in different functions**, where task 5.6a asked for them adjacent. Unavoidable — the refusal must precede `Execute`. | **Fixed by cross-reference.** Each comment now names the other, so removing one without the other reads as obviously incomplete. |
+| SUGGESTION | **`TestUnknownCommandBesideARegisteredOne` built its expectation from the implementation's own `hintLine` constant**, so a reworded hint could not fail it. | **Fixed.** It uses the literal, as the external test already did. |
+
+**The three named deferrals all hold**, checked against the built binary rather than against
+the plan: `graft sync` gives `unknown command "sync"` and exit `1` with no stub anywhere;
+nothing spawns a subprocess, so Q1's timeout still has nothing to bound; and the diff touches
+no existing package, so no message of `internal/source`'s was reworded. The **fourth** thing
+the reviewer was asked to find is the `os.Args` fallback above — the one process global the
+plan did not remove, because cobra reaches for it behind the caller's back.
+
+**Verification at review time:** `task lint` 0 issues, `task test` green, `task cover`
+**97.7%** over `./internal/...` against a floor of 80 — `internal/ui` 100.0%,
+`internal/cli` 96.9% — `task build` clean, `openspec validate command-surface --strict`
+valid. No blocking or unowned finding remains.

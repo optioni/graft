@@ -21,7 +21,9 @@ type Options struct {
 	// Args is the argument list without the program name — os.Args[1:].
 	Args []string
 
-	// Stdout carries machine-readable output; Stderr carries everything else.
+	// Stdout carries machine-readable output; Stderr carries everything else. Both are
+	// required — there is no nil default, because a run whose output silently went nowhere
+	// is the outcome this package exists to make impossible.
 	Stdout io.Writer
 	Stderr io.Writer
 
@@ -57,12 +59,21 @@ func Main(o Options) int {
 
 	// Refused before Execute, because cobra registers these two on every run regardless of
 	// CompletionOptions.DisableDefaultCmd, and they never reach the argument validator.
+	// Paired with DisableDefaultCmd in newRoot: enabling completion means removing both.
 	if len(o.Args) > 0 && (o.Args[0] == completeCmd || o.Args[0] == completeNoDescCmd) {
 		return report(u, usagef("unknown command %q", o.Args[0]))
 	}
 
 	root := newRoot(u, o)
-	root.SetArgs(o.Args)
+
+	// Never nil: cobra falls back to os.Args[1:] whenever the slice it was given is nil,
+	// which would let the process's own arguments reach a caller that passed none.
+	args := o.Args
+	if args == nil {
+		args = []string{}
+	}
+	root.SetArgs(args)
+
 	return execute(u, root)
 }
 
@@ -142,6 +153,8 @@ Sources and the items to install are declared in graft.toml.`,
 	root.Flags().BoolVar(&showVersion, "version", false, "print the version, commit, and build date")
 
 	// SPEC.md's command table is the contract and it does not list a completion command.
+	// This removes the visible one; Main refuses the hidden __complete protocol, which cobra
+	// registers regardless of this field. The two belong together.
 	root.CompletionOptions.DisableDefaultCmd = true
 
 	// The UI's recording writers, not the process's streams: cobra.Command.Help() returns

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -74,7 +75,7 @@ func TestMainWriteFailure(t *testing.T) {
 	for name, args := range map[string][]string{
 		"version":      {"--version"},
 		"help":         {"--help"},
-		"no arguments": nil,
+		"no arguments": {},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -129,5 +130,30 @@ func TestMainColorFollowsStdout(t *testing.T) {
 		if w == io.Writer(&stderr) {
 			t.Error("the terminal test was asked about the stderr stream")
 		}
+	}
+}
+
+// TestMainIgnoresProcessArguments pins design.md's claim that Main reads nothing from the
+// process. cobra falls back to os.Args[1:] whenever the slice it was handed is nil, so a
+// caller passing no arguments would otherwise run against whatever the process was started
+// with — and under `go test` that stays green only because pflag happens to swallow
+// -test.* shorthands.
+//
+// Not parallel: it mutates os.Args.
+func TestMainIgnoresProcessArguments(t *testing.T) {
+	saved := os.Args
+	t.Cleanup(func() { os.Args = saved })
+	os.Args = []string{"graft", "frobnicate"}
+
+	stdout, stderr, code := run(t, cli.Options{Args: nil})
+
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if stderr != "" {
+		t.Errorf("stderr = %q, want empty", stderr)
+	}
+	if !strings.Contains(stdout, "Usage:") {
+		t.Errorf("stdout is not help:\n%s", stdout)
 	}
 }

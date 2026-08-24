@@ -67,7 +67,7 @@ func TestMainVersion(t *testing.T) {
 func TestMainHelp(t *testing.T) {
 	t.Parallel()
 
-	bare, bareErr, bareCode := run(t, cli.Options{Args: nil})
+	bare, bareErr, bareCode := run(t, cli.Options{Args: []string{}})
 	flag, flagErr, flagCode := run(t, cli.Options{Args: []string{"--help"}})
 
 	for _, c := range []struct {

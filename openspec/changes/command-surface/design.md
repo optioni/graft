@@ -216,7 +216,7 @@ themselves.
 | Dependency | In acceptance test | In unit tests |
 |---|---|---|
 | The two output streams | **real `*os.File` pipes**, captured from the compiled binary's stdout and stderr as separate buffers, so the split is asserted against real file descriptors rather than against two `bytes.Buffer`s a test wired up itself | **replaced** by `bytes.Buffer`, and by a writer that fails every write for the write-failure scenario |
-| Process arguments | **real** — passed on the compiled binary's command line | **replaced** by `Options.Args`; no test reads `os.Args` |
+| Process arguments | **real** — passed on the compiled binary's command line | **replaced** by `Options.Args`. One exception, named because it is the boundary itself: `TestMainIgnoresProcessArguments` sets `os.Args` and restores it, to prove cobra's nil-slice fallback to `os.Args[1:]` is closed |
 | Exit code | **real** — read from the child process's exit status via `exec.ExitError` | **replaced** — `Main` returns an `int`, which is the whole reason it does |
 | Environment (`NO_COLOR`) | **not set** — the acceptance test asserts nothing about colour | **replaced** by an `Options.Getenv` stub and by direct calls to the pure `ColorEnabled`; no test calls `t.Setenv` for `NO_COLOR` |
 | Terminal detection | **real, and never a terminal** — a piped child process is not one, which is the whole point of the split being safe under a pipe | **replaced** by an `Options.IsTerminal` stub for the decision tests; **real** in `TestIsTerminal`, which asks the real `ui.IsTerminal` about a `bytes.Buffer`, both ends of a real `os.Pipe`, and a real `*os.File` opened at `/dev/null`. No test opens a pty — see Risks |
@@ -270,6 +270,7 @@ worse than nothing beside an assertion that can. `graft completion` returning
 | Spec Scenario | Verification | Tier | Collaborators | Command |
 |---|---|---|---|---|
 | A successful invocation exits 0 | `TestMainVersion`, asserting the returned `int` is `0` and stderr is byte-empty | unit | buffers, real `buildinfo` | `go test ./internal/cli/ -run Version` |
+| The process's own arguments are never read | `TestMainIgnoresProcessArguments`, setting `os.Args` and passing `Args: nil`. Mutation-checked: restoring `SetArgs(o.Args)` turns it red | unit | `os.Args` real, mutated and restored | `go test ./internal/cli/ -run IgnoresProcess` |
 | cmd/graft holds no decision of its own | `TestCmdGraftImports`, a Go test in `internal/cli` shelling out to `go list -f '{{join .Imports "\n"}}' ./cmd/graft` and `go list ./cmd/...`, asserting exactly `github.com/optioni/graft/internal/cli` and `os`, and exactly one package. A test rather than a hand-run command: this is the one directory CI never runs a test over, and the regression it guards against is a later change adding an import | unit | real `go` toolchain | `go test ./internal/cli/ -run CmdGraftImports` |
 | The version line goes to stdout | `TestMainVersion`, asserting stdout is byte-exactly `buildinfo.Format("v1.2.0","abc1234","2026-08-23")+"\n"` and stderr is `""` | unit | buffers, real `buildinfo` | `go test ./internal/cli/ -run Version` |
 | An unbuilt binary still prints a version line | `TestMainVersion` case with all three strings empty | unit | buffers, real `buildinfo` | `go test ./internal/cli/ -run Version` |
@@ -522,6 +523,14 @@ is the contract. It becomes worth revisiting once the table is complete and stab
 it is one line, and the argument for it gets stronger as the number of commands and selectors
 a user has to type grows. **Resolution point: after `add-command`**, when the surface a
 completion script would describe stops changing.
+
+**Q5 — The nil defaults in `Options` survive mutation.** Replacing `os.Getenv` and
+`ui.IsTerminal` with constants leaves `./internal/...` fully green, because nothing in this
+change emits styled output through `Main` and the acceptance binary therefore cannot see the
+difference. It is harmless today and live the moment a styled word is printed. **Resolution
+point: `sync-command`**, whose acceptance tier should run the real binary with `NO_COLOR=1`
+and without it against coloured output — one case, and it closes the last unasserted wiring
+in this package.
 
 **Q4 — Should colour be decided per stream?** Rejected in D7 in favour of SPEC.md's literal
 rule. Recorded because the first user report of "why is my terminal output not coloured when

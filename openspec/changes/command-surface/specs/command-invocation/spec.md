@@ -19,6 +19,14 @@ stop reading it.
 - **THEN** the process exits `0`
 - **AND** nothing is written to the error stream
 
+#### Scenario: The process's own arguments are never read
+
+- **WHEN** the command surface is invoked with an argument list of `nil` while the process
+  was started with the argument `frobnicate`
+- **THEN** it prints help and exits `0`, because the caller passed no arguments
+- **AND** `frobnicate` appears nowhere in either stream: cobra falls back to `os.Args[1:]`
+  whenever the slice it is handed is nil, and that fallback is closed
+
 #### Scenario: cmd/graft holds no decision of its own
 
 - **WHEN** the import set of `./cmd/graft` is enumerated

@@ -317,7 +317,7 @@ unexecuted. This group's job is to leave nothing there.
 ## 9. Change Review
 <!-- kind: operational -->
 
-- [ ] 9.1 CHECK: Dispatch an independent reviewer — a fresh subagent given only proposal.md,
+- [x] 9.1 CHECK: Dispatch an independent reviewer — a fresh subagent given only proposal.md,
       the two spec files, design.md, tasks.md, and the diff, never a fork of the implementing
       session — with these concentration points named: (a) for every spec scenario, the test
       that would go red if the behavior were deleted, and specifically whether the stdout
@@ -331,15 +331,15 @@ unexecuted. This group's job is to leave nothing there.
       code was introduced; (g) whether any file outside `t.TempDir()` is written by any test,
       `internal/apply` still being the only future writer of the working tree; (h) whether the
       help assertions are substrings and relations rather than a golden file that will churn
-- [ ] 9.1a CHECK: Name to that reviewer the three things this plan deliberately did **not**
+- [x] 9.1a CHECK: Name to that reviewer the three things this plan deliberately did **not**
       do, and ask whether each deferral holds or hides a defect: no subcommand stubs, no
       timeout or signal handling (Q1), and no rewording of `internal/source`'s messages (Q2).
       A reviewer given only the general shape tends to re-derive the same list; the useful
       answer is a fourth
-- [ ] 9.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
+- [x] 9.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
       one-line reason, note each SUGGESTION, and re-run the affected tests. Record the
       dispositions in planning-review.md
-- [ ] 9.3 VERIFY: Confirm no blocking or unowned finding remains, and that any contract
+- [x] 9.3 VERIFY: Confirm no blocking or unowned finding remains, and that any contract
       changed while fixing findings was written back into the owning artifact and into
       planning-review.md
 

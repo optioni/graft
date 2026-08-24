@@ -88,7 +88,8 @@ func TestUnknownCommandBesideARegisteredOne(t *testing.T) {
 	if code := execute(u, root); code != 1 {
 		t.Errorf("exit code = %d, want 1", code)
 	}
-	if want := "graft: unknown command \"frobnicate\"\n" + hintLine + "\n"; stderr.String() != want {
+	want := "graft: unknown command \"frobnicate\"\n" + `run "graft --help" for usage` + "\n"
+	if stderr.String() != want {
 		t.Errorf("stderr = %q, want %q", stderr.String(), want)
 	}
 }
