@@ -300,6 +300,57 @@ func TestParse_VersionErrors(t *testing.T) {
 			in:   "version: 9223372036854775808\n",
 			want: "catalog.yaml: version 9223372036854775808 is not supported by this graft; upgrade graft",
 		},
+		{
+			// Past what uint64 holds, so the decoder hands it back as a string —
+			// the same Go type a quoted version arrives as. It is a version, and
+			// the answer is the same one a narrower future version gets.
+			name: "a version wider than any integer type",
+			in:   "version: 99999999999999999999999999\n",
+			want: "catalog.yaml: version 99999999999999999999999999 is not supported by this graft; upgrade graft",
+		},
+		{
+			name: "a version wider than any integer type, with separators",
+			in:   "version: 99_999_999_999_999_999_999_999_999\n",
+			want: "catalog.yaml: version 99_999_999_999_999_999_999_999_999 is not supported by this graft; upgrade graft",
+		},
+		{
+			name: "a signed version wider than any integer type",
+			in:   "version: +99999999999999999999999999\n",
+			want: "catalog.yaml: version +99999999999999999999999999 is not supported by this graft; upgrade graft",
+		},
+		{
+			// Quoted, and the rule reads shape rather than the source token, so it
+			// gets the same answer as the bare spelling. Both are refused; only
+			// which refusal differs.
+			name: "a quoted version wider than any integer type",
+			in:   "version: \"99999999999999999999999999\"\n",
+			want: "catalog.yaml: version 99999999999999999999999999 is not supported by this graft; upgrade graft",
+		},
+		{
+			// Below 1 however it is written, so it is not a future format.
+			name: "a hugely negative version",
+			in:   "version: -99999999999999999999999999\n",
+			want: "catalog.yaml: version -99999999999999999999999999 is not a known catalog version",
+		},
+		{
+			name: "a boolean version",
+			in:   "version: true\n",
+			want: "catalog.yaml: version must be an integer",
+		},
+		{
+			// Integer-shaped up to the last character, which is what stops the
+			// shape rule from treating any long string as a version.
+			name: "a wide literal with a trailing letter",
+			in:   "version: \"99999999999999999999999999x\"\n",
+			want: "catalog.yaml: version must be an integer",
+		},
+		{
+			// -1 is a value the decoder could hold, so a string carrying it was
+			// quoted deliberately: a string, not a version.
+			name: "a quoted negative version that fits",
+			in:   "version: \"-1\"\n",
+			want: "catalog.yaml: version must be an integer",
+		},
 	}
 
 	for _, tt := range tests {

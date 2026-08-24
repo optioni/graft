@@ -10,6 +10,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/goccy/go-yaml"
 )
@@ -170,6 +172,19 @@ func checkVersion(raw map[string]any, filename string) (int, error) {
 		n = t
 	case int:
 		n = int64(t)
+	case string:
+		// A literal too wide for any of those comes back as a string — the same Go
+		// type a quoted version arrives as, so the two are told apart by the
+		// literal's shape rather than by its type. A value that would fit never
+		// arrives as a string, so a string carrying "1" was quoted deliberately.
+		if negative, wide := wideLiteral(t); wide {
+			if negative {
+				// Below 1 however it is written, so it is not a future format.
+				return 0, errf(filename, "version %s is not a known catalog version", t)
+			}
+			return 0, errf(filename, "version %s is not supported by this graft; upgrade graft", t)
+		}
+		return 0, errf(filename, "version must be an integer")
 	default:
 		return 0, errf(filename, "version must be an integer")
 	}
@@ -181,4 +196,40 @@ func checkVersion(raw map[string]any, filename string) (int, error) {
 		return 0, errf(filename, "version %d is not a known catalog version", n)
 	}
 	return int(n), nil
+}
+
+// wideLiteral reports whether s is a decimal integer literal too wide for any 64-bit
+// integer type, and whether it is negative. It exists for one input class and is not a
+// general number parser: the decoder converts every integer literal it can hold, so a
+// string reaching here is either a quoted value or a literal that overflowed.
+//
+// Only a range failure counts. ParseUint rejects "99...9_0" with ErrSyntax rather than
+// ErrRange, which is why the separators are stripped first and why the two failures are
+// not treated alike — conflating them would route a separated wide literal back to the
+// non-integer message this case exists to avoid.
+func wideLiteral(s string) (negative, wide bool) {
+	digits := s
+	switch {
+	case strings.HasPrefix(digits, "-"):
+		negative, digits = true, digits[1:]
+	case strings.HasPrefix(digits, "+"):
+		digits = digits[1:]
+	}
+	if digits == "" || digits[0] < '0' || digits[0] > '9' {
+		return false, false
+	}
+	digits = strings.ReplaceAll(digits, "_", "")
+	for _, r := range digits {
+		if r < '0' || r > '9' {
+			return false, false
+		}
+	}
+
+	var err error
+	if negative {
+		_, err = strconv.ParseInt("-"+digits, 10, 64)
+	} else {
+		_, err = strconv.ParseUint(digits, 10, 64)
+	}
+	return negative, errors.Is(err, strconv.ErrRange)
 }
