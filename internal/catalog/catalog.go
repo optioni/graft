@@ -64,6 +64,13 @@ func Load(path string) (*Catalog, error) {
 // prefix, so a message does not depend on where the file happened to live. On any
 // error the returned catalog is nil — never a partially decoded one.
 func Parse(data []byte, filename string) (*Catalog, error) {
+	// Before the decode, because the decoder reads the first document and discards the
+	// rest in silence — and because a fault after a marker is the extra document, not
+	// the syntax error the decoder would report about it. See documents.
+	if documents(data) > 1 {
+		return nil, errf(filename, "multiple YAML documents; a catalog is a single document")
+	}
+
 	// The document is decoded generically rather than into a struct: unknown keys can
 	// then be attributed to the kind or the provides index they appeared in, and the
 	// string-or-list `to` is a type switch instead of a custom unmarshaller.
