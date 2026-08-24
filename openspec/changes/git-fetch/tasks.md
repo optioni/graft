@@ -14,20 +14,20 @@
 group below builds on this helper, so a harness that only works on a developer laptop makes
 eleven groups green locally and red in CI.
 
-- [ ] 1.1 CHECK: Create `internal/source/source.go` holding only the package doc comment —
+- [x] 1.1 CHECK: Create `internal/source/source.go` holding only the package doc comment —
       `source` is the only package that runs `git`; it writes only under the cache root it is
       given, never into the repository graft runs in — and confirm `go build ./internal/source/`
       succeeds
-- [ ] 1.2 CHANGE: Add `internal/source/fixture_test.go` with a `newRepo(t)` helper that
+- [x] 1.2 CHANGE: Add `internal/source/fixture_test.go` with a `newRepo(t)` helper that
       creates a repository under `t.TempDir()` with `git -c init.defaultBranch=main init -q`,
       then `git -C <dir> config user.name` and `git -C <dir> config user.email` — repository
       scope, never `--global` — and methods to write a file, commit, tag lightweight, tag
       annotated, and branch, each returning the resulting sha
-- [ ] 1.3 VERIFY: Prove the repository-scope config is load-bearing rather than assumed: run
+- [x] 1.3 VERIFY: Prove the repository-scope config is load-bearing rather than assumed: run
       one commit-making helper call under `env -u HOME GIT_CONFIG_GLOBAL=/dev/null
       GIT_CONFIG_SYSTEM=/dev/null go test ./internal/source/ -run Fixture` and confirm it
       passes, which is the clean-CI-runner condition reproduced locally
-- [ ] 1.4 VERIFY: Confirm the helper sets the default branch explicitly, so a fixture's branch
+- [x] 1.4 VERIFY: Confirm the helper sets the default branch explicitly, so a fixture's branch
       name does not depend on the runner's git configuration, and confirm `go test
       ./internal/source/` is green
 
