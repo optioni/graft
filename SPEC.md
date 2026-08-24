@@ -251,6 +251,7 @@ is why the destination is shown before install and why a consumer override alway
 | An ancestor of either exists and is not a directory | Error naming the shallowest such ancestor. |
 | A destination or pruned path is inside `.git`, or is `graft.toml` or `graft.lock` | Error naming the path. |
 | A source file cannot be read | Error naming the source and the path within its tree. |
+| A write names a source with no fetched tree | Error naming the source. An internal invariant; a plan and a fetch that disagree. |
 | The repository root cannot be opened | Error naming it. graft never creates the repository it runs in. |
 
 ## Exit codes

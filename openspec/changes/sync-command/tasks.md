@@ -76,9 +76,12 @@ destination's own type, because a safe write cannot be written without deciding 
 - [x] 3.2 GREEN: Walk the destination's ancestors from the top; an ancestor that exists and is
       not a directory fails with `cannot write "<path>": "<ancestor>" is not a directory`,
       naming the shallowest one. A symlink to a directory is not a directory here
-- [x] 3.3 REFACTOR: Extract the two predicates — "exists and is a regular file", "exists and is
-      a directory" — so group 5's prune-side checks share them and "graft only ever writes
-      regular files" is stated once
+- [x] 3.3 REFACTOR: Share the ancestor predicate (`badAncestor`) between the write and prune
+      sides. The regular-file check is **not** shared: the two refusals return different types
+      and word themselves differently — one is about replacing a file, the other about
+      deleting one — and hoisting eight lines behind a parameterised message made both call
+      sites harder to read than the duplication. Recorded here rather than left as a checked
+      box that overstates what was done
 - [x] 3.4 Run `go test ./internal/apply/` — green
 
 ## 4. apply: reserved paths
@@ -356,19 +359,19 @@ and until this change none of its rows had ever been reached through a whole run
 ## 18. Change Review
 <!-- kind: operational -->
 
-- [ ] 18.1 CHECK: Dispatch an **independent reviewer subagent** — not a fork of the
+- [x] 18.1 CHECK: Dispatch an **independent reviewer subagent** — not a fork of the
       implementing session — against proposal.md, all four spec files, design.md, tasks.md,
       and the diff. Point it explicitly at the prune set and the foreign-file guarantee: that
       no code path in `internal/apply` can delete a path absent from `graft.lock`, that no
       code path enumerates a destination directory, that no path resolves through a symlink to
       reach a file the lock does not name, and that the empty-directory removal cannot reach a
       directory outside a pruned path's ancestry
-- [ ] 18.2 CHECK: Have the reviewer confirm no source-provided content can cause anything to
+- [x] 18.2 CHECK: Have the reviewer confirm no source-provided content can cause anything to
       execute, that `internal/plan` gained no filesystem access, and that `cmd/graft` gained
       no decision
-- [ ] 18.3 CHANGE: Fix every CRITICAL, resolve or accept each WARNING with the reason
+- [x] 18.3 CHANGE: Fix every CRITICAL, resolve or accept each WARNING with the reason
       recorded, and re-run the affected tests
-- [ ] 18.4 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 18.4 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 19. Lint & Verify
 <!-- kind: operational -->

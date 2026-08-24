@@ -40,6 +40,9 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 		return err
 	}
 
+	// The identity of each file written, so the prune step can decline to delete one of
+	// them. See written.
+	var wrote written
 	for _, w := range p.Writes {
 		data, err := src.read(w.Source, w.From)
 		if err != nil {
@@ -48,15 +51,28 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 		if err := writeFile(repo, w.Dest, data); err != nil {
 			return err
 		}
-	}
-
-	for _, dest := range p.Prune {
-		if err := removeFile(repo, dest); err != nil {
-			return err
+		if fi, err := repo.Lstat(w.Dest); err == nil {
+			wrote = append(wrote, fi)
 		}
 	}
 
-	removeEmptyDirs(repo, p.Prune)
+	// Only the paths this run actually unlinked become directory-removal candidates. A
+	// prune path the user had already deleted by hand removes nothing, so the directory it
+	// used to live in was not emptied by graft — and removing it would be graft deleting
+	// something it has no record of, which is the same mistake as scanning for files to
+	// prune.
+	unlinked := make([]string, 0, len(p.Prune))
+	for _, dest := range p.Prune {
+		gone, err := removeFile(repo, dest, wrote)
+		if err != nil {
+			return err
+		}
+		if gone {
+			unlinked = append(unlinked, dest)
+		}
+	}
+
+	removeEmptyDirs(repo, unlinked)
 
 	return writeLock(repo, p.Lock)
 }
@@ -110,23 +126,56 @@ func removeEmptyDirs(repo *os.Root, prune []string) {
 
 // removeFile deletes one pruned path, or refuses it.
 //
-// The only deletion this package performs is a Remove on a path it has just confirmed to
-// be a regular file whose ancestry is all directories. There is no RemoveAll anywhere, and
-// there is no directory listing: the prune set handed in is the only source of deletions,
-// which is what makes a file absent from graft.lock invisible here rather than merely
-// spared.
+// The only file deletion this package performs is a Remove on a path it has just confirmed
+// to be a regular file whose ancestry is all directories; removeEmptyDirs deletes
+// directories, under its own rules. There is no RemoveAll anywhere, and there is no
+// directory listing: the prune set handed in is the only source of deletions, which is what
+// makes a file absent from graft.lock invisible here rather than merely spared.
 //
 // A path that does not exist is skipped without complaint. The lock still claims a file a
 // user deleted by hand, so it is still in the prune set, and there is nothing to do about
 // that.
-func removeFile(repo *os.Root, dest string) error {
-	if err := checkPrune(repo, dest); err != nil {
-		return err
+// It reports whether it unlinked anything, so a path that was already gone — or one this run
+// just wrote — does not make the directory it used to live in a removal candidate.
+func removeFile(repo *os.Root, dest string, wrote written) (bool, error) {
+	fi, err := checkPrune(repo, dest)
+	switch {
+	case err != nil:
+		return false, err
+	case fi == nil:
+		return false, nil
+	case wrote.is(fi):
+		// internal/plan makes the write set and the prune set a difference over path
+		// strings, and on a case-sensitive filesystem that is the end of it. On APFS and
+		// NTFS it is not: a source renaming Foo.md to foo.md puts one path in each set
+		// naming one file, and pruning it would delete the file the write just created,
+		// leaving graft.lock claiming a path that is not there. The comparison is by file
+		// identity rather than by folded string, so a filesystem where the two really are
+		// different files still gets both operations.
+		return false, nil
 	}
-	if err := repo.Remove(dest); err != nil && !isNotExist(err) {
-		return removeErrf(dest, "%v", err)
+
+	if err := repo.Remove(dest); err != nil {
+		if isNotExist(err) {
+			return false, nil
+		}
+		return false, removeErrf(dest, "%v", err)
 	}
-	return nil
+	return true, nil
+}
+
+// written is the identity of every file a run wrote. It is a slice rather than a set because
+// os.SameFile is the only portable way to ask the question, and a plan holds tens of files
+// rather than thousands.
+type written []os.FileInfo
+
+func (w written) is(fi os.FileInfo) bool {
+	for _, other := range w {
+		if os.SameFile(other, fi) {
+			return true
+		}
+	}
+	return false
 }
 
 // checkPrune refuses a prune path graft could not have written. A directory, a symlink, or
@@ -136,23 +185,24 @@ func removeFile(repo *os.Root, dest string) error {
 //
 // A path that does not exist is not a refusal — it is a file the user deleted by hand, and
 // there is nothing to do about that.
-func checkPrune(repo *os.Root, dest string) error {
+// It returns the path's own information, or nil when there is nothing there.
+func checkPrune(repo *os.Root, dest string) (os.FileInfo, error) {
 	if bad, err := badAncestor(repo, dest); err != nil {
-		return removeErrf(dest, "%v", err)
+		return nil, removeErrf(dest, "%v", err)
 	} else if bad != "" {
-		return removeErrf(dest, "%q is not a directory", bad)
+		return nil, removeErrf(dest, "%q is not a directory", bad)
 	}
 
 	fi, err := repo.Lstat(dest)
 	switch {
 	case isNotExist(err):
-		return nil
+		return nil, nil
 	case err != nil:
-		return removeErrf(dest, "%v", err)
+		return nil, removeErrf(dest, "%v", err)
 	case !fi.Mode().IsRegular():
-		return removeErrf(dest, "it is not a regular file")
+		return nil, removeErrf(dest, "it is not a regular file")
 	}
-	return nil
+	return fi, nil
 }
 
 // preflight decides every refusal in this package before the first byte is written.
@@ -183,11 +233,15 @@ func preflight(repo *os.Root, src *sources, p *plan.Plan) error {
 		if err := checkReservedRemove(dest); err != nil {
 			return err
 		}
-		if err := checkPrune(repo, dest); err != nil {
+		if _, err := checkPrune(repo, dest); err != nil {
 			return err
 		}
 	}
-	return nil
+	// The lock is a write like any other and is the last one performed, so leaving it out
+	// of the pass would mean a repository where graft.lock is a directory applies the whole
+	// plan and then fails at the final step — files written, files deleted, and no record
+	// of either. It is not in p.Writes, so it is named explicitly.
+	return checkDestination(repo, lock.Filename)
 }
 
 // writeFile puts data at dest, creating the parent directories it needs.

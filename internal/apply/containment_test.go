@@ -31,9 +31,8 @@ func TestRunDestinationEscapeRefused(t *testing.T) {
 			Writes: []plan.Write{write("extras/x.md", escaping)},
 			Lock:   lockOf(escaping),
 		}
-		if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
-			t.Fatal("no error, want one: the destination leaves the repository root")
-		}
+		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		assertErrorPrefix(t, err, `cannot write "`+escaping+`": `)
 		if outside.exists("outside.md") {
 			t.Error("a file was written outside the repository root")
 		}
@@ -43,9 +42,7 @@ func TestRunDestinationEscapeRefused(t *testing.T) {
 		outside.file("outside.md", "not graft's\n")
 
 		p := &plan.Plan{Prune: []string{escaping}, Lock: emptyLock()}
-		if err := apply.Run(repo.dir, nil, p); err == nil {
-			t.Fatal("no error, want one: the prune path leaves the repository root")
-		}
+		assertErrorPrefix(t, apply.Run(repo.dir, nil, p), `cannot remove "`+escaping+`": `)
 		if got := outside.read("outside.md"); got != "not graft's\n" {
 			t.Errorf("outside.md = %q, want %q", got, "not graft's\n")
 		}

@@ -87,6 +87,17 @@ the failures graft can see coming, not the ones another program causes.
   whose destinations were fine
 - **AND** `graft.lock` is unchanged, so a failed apply leaves the tree exactly as it found it
 
+#### Scenario: graft.lock's own destination is checked before anything is applied
+
+- **WHEN** `graft.lock` exists as a directory, and the plan holds a valid write and a valid
+  prune path
+- **THEN** the apply fails with
+  `cannot write "graft.lock": it exists and is not a regular file`, nothing is written, and
+  nothing is deleted
+- **AND** the lock is not in the plan's writes, so it is checked explicitly: leaving it out
+  would apply the whole plan and fail at the final step, with files written, files deleted,
+  and no record of either
+
 #### Scenario: A refused prune path leaves every write unapplied
 
 - **WHEN** every write in a plan is valid and one prune path is a directory
@@ -220,6 +231,19 @@ because it is never in the set, and `internal/apply` never looks in a directory 
   deleted it
 - **THEN** the apply succeeds and `graft.lock` is written
 - **AND** nothing else in `openspec/` is deleted
+- **AND** the directory it used to live in is **not** removed even if it is empty: nothing was
+  unlinked, so graft did not empty it, and removing it would be graft deleting something it
+  has no record of
+
+#### Scenario: A file this run just wrote is never pruned
+
+- **WHEN** a source renames `Foo.md` to `foo.md`, so the plan writes `.claude/agents/foo.md`
+  and prunes `.claude/agents/Foo.md`, and the repository is on a case-insensitive filesystem
+  where those name one file
+- **THEN** `.claude/agents/foo.md` holds the source's bytes afterwards, and `graft.lock`
+  claims a path that is on disk
+- **AND** the two are told apart by file identity rather than by folded strings, so on a
+  case-sensitive filesystem — where they really are two files — both operations still happen
 
 #### Scenario: A prune path that is a directory is refused
 
@@ -302,14 +326,17 @@ something it has no record of.
 - **AND** the candidate set is the ancestry of the pruned paths, so `scratch/` was never a
   candidate
 
-#### Scenario: A symlinked ancestor of a pruned path is not removed
+#### Scenario: A symlinked ancestor of a pruned path never becomes a candidate
 
 - **WHEN** the prune set names `agents/x.md`, `agents` is a symlink to the repository's own
-  `shared/`, `shared/` holds other files, and the prune path itself passes every check because
-  the plan was hand-built
-- **THEN** the symlink `agents` still exists and `shared/` still holds its files
-- **AND** the candidate was skipped because it is not a directory, rather than removed because
-  removing it would have "failed harmlessly"
+  `shared/`, and `shared/` holds other files
+- **THEN** the apply fails at the pre-flight pass with
+  `cannot remove "agents/x.md": "agents" is not a directory`, and the symlink and `shared/`
+  are both untouched
+- **AND** the removal walk is never reached, because the ancestor rule refuses the prune path
+  first. Its own non-directory check is therefore unreachable through an apply, and is kept as
+  a floor rather than as behavior this scenario observes: it costs one `Lstat`, and the pass
+  that makes it redundant is one refactor away from not doing so
 
 #### Scenario: A pruned path at the repository root removes nothing
 
@@ -328,7 +355,16 @@ cannot remove "<path>": graft never removes inside ".git"
 ```
 
 A write destination or a prune path equal to `graft.toml` or `graft.lock` SHALL be refused the
-same way, with `graft never writes over "<name>"` and `graft never removes "<name>"`.
+same way, with `graft never writes over "<name>"` and `graft never removes "<name>"`. A path
+that names nothing — the empty string, or `.` — SHALL be refused with
+`it does not name a file`.
+
+All three comparisons SHALL fold case, and SHALL do so on every platform rather than only
+where the filesystem does. On APFS and on NTFS `.GIT/config` **is** `.git/config`: a
+byte-exact comparison is no refusal at all there, and the write lands in the real file while
+a prune aimed at it takes the repository with it. A directory genuinely named `.GIT` on a
+case-sensitive filesystem is not a destination worth supporting, and one rule everywhere
+beats a rule that holds on some machines.
 
 This is a floor under the writer rather than a restatement of a planning rule. `internal/plan`
 refuses a destination that escapes the repository root, and `.git/config` does not escape it;
@@ -365,6 +401,15 @@ then claim a file a later prune would delete.
 - **THEN** each fails with `cannot write "graft.toml": graft never writes over "graft.toml"`
   and `cannot write "graft.lock": graft never writes over "graft.lock"`
 - **AND** both files are byte-identical to what they were
+
+#### Scenario: A respelling of .git in another case is refused too
+
+- **WHEN** a plan writes `.GIT/config`, and separately `.Git/config`, `GRAFT.TOML`, and
+  `Graft.Lock`, and separately prunes `.GIT/hooks/pre-commit`
+- **THEN** each is refused, and the real `.git/config` and `.git/hooks/pre-commit` are
+  byte-identical to what they were
+- **AND** this holds on a case-sensitive filesystem as well, where the refusal is
+  unnecessary: the rule does not depend on which filesystem the repository is on
 
 #### Scenario: A path merely beginning with .git is not inside it
 

@@ -73,15 +73,25 @@ func TestRunNoCatalog(t *testing.T) {
 func TestRunInvalidCatalog(t *testing.T) {
 	t.Parallel()
 
-	for name, body := range map[string]string{
-		"a syntax error":  "version: 1\nkinds:\n  - this is not a mapping\n",
-		"an unknown kind": "version: 1\nkinds:\n  agent:\n    to: \".claude/agents/\"\nprovides:\n  - { kind: schema, name: tdd, from: extras/tdd }\n",
+	// Asserted in full, not merely as "mentions catalog.yaml": that weaker test passes on
+	// `catalog.yaml not found`, which is the *missing*-catalog row of the failure-mode
+	// table and a different condition entirely.
+	for name, tc := range map[string]struct{ body, want string }{
+		"a kinds list": {
+			"version: 1\nkinds:\n  - this is not a mapping\n",
+			"catalog.yaml: kinds must be a mapping",
+		},
+		"an undeclared kind": {
+			"version: 1\nkinds:\n  agent:\n    to: \".claude/agents/\"\nprovides:\n" +
+				"  - { kind: schema, name: tdd, from: extras/tdd }\n",
+			`catalog.yaml: item "schema:tdd": kind "schema" is not declared`,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			r := newRepo(t)
-			r.write("catalog.yaml", body)
+			r.write("catalog.yaml", tc.body)
 			r.write("extras/tdd/schema.yaml", "x\n")
 			r.commit("v1")
 			r.tag("v1.0.0")
@@ -91,7 +101,7 @@ func TestRunInvalidCatalog(t *testing.T) {
 			check := untouched(t, c)
 
 			_, err := c.run()
-			assertErrorContains(t, err, "catalog.yaml")
+			assertError(t, err, tc.want)
 			check()
 		})
 	}

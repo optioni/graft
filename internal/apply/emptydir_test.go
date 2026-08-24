@@ -75,8 +75,9 @@ func TestRunKeepsSymlinkedAncestor(t *testing.T) {
 	repo.file("shared/keep.md", "repo-owned\n")
 	repo.symlink("shared", "agents")
 
-	// The prune path itself is fine — agents/x.md does not exist, so it is skipped — and
-	// the ancestor `agents` is then considered for removal. That is the whole exposure.
+	// The ancestor rule refuses the prune path before its existence is ever consulted, so
+	// the removal walk is never reached. Its own non-directory check is therefore a floor
+	// under this one rather than the thing that saves the link here.
 	p := &plan.Plan{Prune: []string{"agents/x.md"}, Lock: emptyLock()}
 	err := apply.Run(repo.dir, nil, p)
 	assertError(t, err, `cannot remove "agents/x.md": "agents" is not a directory`)
@@ -84,8 +85,8 @@ func TestRunKeepsSymlinkedAncestor(t *testing.T) {
 	repo.assertEntries("agents", "shared/", "shared/keep.md")
 }
 
-// The same exposure reached past the prune-path check, with a plan that gets far enough to
-// consider the link as a removal candidate.
+// A link that is not in a pruned path's ancestry is never a candidate at all, which is the
+// other half of "only the ancestry of a pruned path is considered".
 func TestRunKeepsSymlinkedAncestorOfARealPrune(t *testing.T) {
 	t.Parallel()
 
@@ -154,4 +155,22 @@ func TestRunOrdersOperations(t *testing.T) {
 		"openspec/schemas/tdd/templates/",
 		"openspec/schemas/tdd/templates/new.md",
 	)
+}
+
+// A prune path the user had already deleted by hand unlinks nothing, so the directory it
+// used to live in was not emptied by graft. Removing it anyway would be graft deleting
+// something it has no record of — the same mistake as scanning a directory for files to
+// prune, arrived at from the other side.
+func TestRunKeepsADirectoryItDidNotEmpty(t *testing.T) {
+	t.Parallel()
+
+	repo := newTree(t)
+	repo.mkdir("vendor/tools")
+
+	p := &plan.Plan{Prune: []string{"vendor/tools/x.md"}, Lock: emptyLock()}
+	if err := apply.Run(repo.dir, nil, p); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	repo.assertEntries("graft.lock", "vendor/", "vendor/tools/")
 }

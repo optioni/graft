@@ -58,6 +58,9 @@ func TestHelpListsSync(t *testing.T) {
 	if !strings.Contains(stdout, "sync") {
 		t.Errorf("help does not name sync:\n%s", stdout)
 	}
+	if !strings.Contains(stdout, "Make the tree match graft.lock") {
+		t.Errorf("help names sync without describing it:\n%s", stdout)
+	}
 	// Neither a help command nor a completion command is offered: SPEC.md's command table
 	// names neither, and the flags section's "help for graft" is the --help flag, not one.
 	for _, line := range strings.Split(stdout, "\n") {

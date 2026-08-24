@@ -78,3 +78,50 @@ No unresolved decision requires user input.
   `sync-execution` rather than closed, because closing it means running the pre-flight pass
   without a plan to apply — a second entry point into the only writer, which is a cost this
   change should not pay. Resolution point: reconsider if a user reports the surprise.
+
+## Change Review
+
+Run after implementation, by two independent reviewer subagents — neither a fork of the
+implementing session, neither having written any of the code. One took safety (the prune set,
+symlinks and traversal, the reserved-path rule, mode normalization, ordering, execution), the
+other took spec conformance and test adequacy. Both were pointed at the diff rather than at
+the plan, and both reproduced their findings against a built binary rather than reasoning
+about the source.
+
+They found the same CRITICAL independently.
+
+| Severity | Finding | Disposition |
+|---|---|---|
+| CRITICAL | **The `.git` / `graft.toml` / `graft.lock` refusal compared bytes, so `.GIT/config` bypassed it on any case-insensitive filesystem — APFS by default, and this repo's CI runs `macos-latest`.** Both reviewers demonstrated it end to end: a catalog declaring `to: ".GIT/"` overwrote the consumer's real `.git/config` with `core.sshCommand`, exit `0`; a prune path of `.GIT/hooks/pre-commit` deleted the hook; and `removeEmptyDirs` then took `.git` itself, leaving the repository as one file. Exactly the outcome the rule exists to prevent, and invisible to the `git diff` that is SPEC.md's whole mitigation. | **Fixed.** `strings.EqualFold` on both comparisons, unconditionally rather than per-platform — one rule everywhere beats a rule that holds on some machines. Scenarios and subtests added for `.GIT/config`, `.Git/config`, `GRAFT.TOML`, `Graft.Lock`, and a `.GIT` prune path; verified against the built binary. |
+| WARNING | **A case-only rename upstream deleted the file it had just written.** `internal/plan` makes the write and prune sets a difference over path *strings*; on APFS a source renaming `Foo.md` to `foo.md` puts one in each set naming one file, so the prune removed what the write created and the run reported success over a tree that did not match the lock. | **Fixed.** `removeFile` declines to unlink a path that is the same file as one this run wrote, compared by `os.SameFile` rather than by folded string — so a case-sensitive filesystem, where the two really are different files, still performs both operations. |
+| WARNING | **`graft.lock`'s own destination escaped the pre-flight pass.** It is not in `p.Writes`, so a repository where `graft.lock` was a directory applied the whole plan and then failed at the final step: files written, files deleted, no record of either. | **Fixed.** `preflight` now checks it explicitly, with its own scenario. |
+| WARNING | **`removeEmptyDirs` removed directories graft had not emptied.** Candidates came from the whole prune set, including paths whose removal was a no-op because the user had already deleted the file — contradicting the function's own doc comment. | **Fixed.** `removeFile` reports whether it unlinked anything, and only those paths become candidates. |
+| WARNING | **The scenario *A symlinked ancestor of a pruned path is not removed* asserted something unreachable.** Its premise — a prune path that "passes every check" with a symlinked ancestor — cannot happen, because `checkPrune` refuses exactly that. The test named for it asserts a pre-flight failure instead, and a test comment described behavior the code does not have. | **Fixed in the spec, not the code.** The scenario now says what happens (pre-flight refuses it, naming the ancestor) and records the removal walk's own guard as a deliberately unreachable floor, which is what `run.go` already says. The false test comment was corrected. |
+| WARNING | **`TestRunInvalidCatalog` asserted only that the message mentioned `catalog.yaml`**, which passes on `catalog.yaml not found` — the *missing*-catalog row, a different condition. | **Fixed.** Both variants assert the full message. |
+| WARNING | **`source "<name>": no fetched tree` was asserted by tests but missing from SPEC.md's failure-mode table.** The task's cross-check ran table→code and not code→table. | **Fixed.** Row added, marked as the internal invariant it is. |
+| WARNING | **The `--dry-run` tests discarded the report entirely**, so the scenarios' claim that a dry run "names every item that would be added" was verified nowhere. | **Fixed.** Both dry-run tests assert the item lines and the summary. |
+| NOTE | `checkReserved` accepted the empty string and `.`. Unreachable through `Run`, but this function is a floor under whichever planner produced the plan. | **Fixed**, with a test. |
+| NOTE | The escape tests asserted only `err != nil`, not that the message names the path. | **Fixed.** |
+| NOTE | `removeFile`'s doc comment claimed "the only deletion this package performs", which `removeEmptyDirs` contradicts. | **Fixed.** Scoped to file deletions, naming the other. |
+| NOTE | `Lines` emitted two blank lines for a source block with a header and no items. Unreachable today; reachable once `graft update` exists. | **Fixed**, with a test. |
+| NOTE | Padding untested for a note on the first item but not the second, and for a zero file count on an item line. | **Fixed.** Both added; the first exposed nothing, the assertion was simply absent. |
+| NOTE | `TestHelpListsSync` asserted only that help names `sync`, not that it describes it. | **Fixed.** |
+| NOTE | `graft sync --help` writes to stdout, which the requirement's "nothing to standard output on any path" appeared to forbid. | **Fixed in the spec.** Help is a thing the user asked for, which is the carve-out `command-invocation` already makes; `--dry-run` is the only flag `sync` *adds*. |
+| NOTE | Task 3.3 claimed two predicates were extracted; only the ancestor one was. | **Task text corrected** rather than the code. The regular-file checks return different types and word themselves differently — replacing a file versus deleting one — and hoisting them behind a parameterised message made both call sites harder to read. |
+| NOTE | Error wrapping is inconsistent: one `%w` (`cannot open the repository root`) among `%v` everywhere else. | **Accepted.** The `%v` sites interpolate a cause into a sentence that is itself the contract; the one `%w` is a plain wrap of an `os` error and loses nothing by staying one. |
+| NOTE | `internal/plan`'s collision check has the same case blind spot: `Docs/a.md` and `docs/a.md` are one file on APFS and two paths to the planner. | **Deferred**, recorded below. It is a planning-layer question, `internal/apply` now refuses to delete a file it just wrote, and the change that fixes it should fix it for the destination-collision rule as a whole. |
+
+Both reviewers independently confirmed: no `RemoveAll` and no directory enumeration anywhere
+in `internal/apply`; the prune set never extended or reordered; `internal/plan` still pure
+(its own AST test plus an import check); `cmd/graft` untouched by this change; no
+source-provided content able to cause anything to execute; and no PRD non-goal crossed.
+
+## Deferred Non-Blocking Notes — added by the change review
+
+- **`internal/plan`'s collision check is case-sensitive.** Two items resolving to `Docs/a.md`
+  and `docs/a.md` are one file on a case-insensitive filesystem and two paths to the planner,
+  so the collision the spec promises to refuse is not refused. `internal/apply` now declines
+  to prune a file it just wrote, which removes the destructive half; what remains is that one
+  item silently overwrites the other's content and both are recorded in the lock. Resolution
+  point: it belongs with `destination-computation`, whose requirement it is, and should be
+  fixed there for the whole collision rule at once rather than patched in the writer.

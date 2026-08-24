@@ -227,7 +227,7 @@ A source the lock has never seen SHALL still be resolved and fetched under `--dr
 because there is no plan without a catalog and no catalog without a fetch. The fetch cache is
 not the working tree.
 
-`--dry-run` SHALL be the only flag `graft sync` accepts.
+`--dry-run` SHALL be the only flag `graft sync` adds; `--help` exists on every command.
 
 A dry run stops after the plan is built, so it exercises none of `internal/apply`'s refusals —
 a destination that is a directory, a prune path that is a symlink, an ancestor that is not a
@@ -261,9 +261,13 @@ stronger claim.
 error reading `unknown argument "<argument>"`, followed by the hint line, with the exit code
 `1`. An unrecognised flag SHALL be refused as a usage error in the same way.
 
-`graft sync` SHALL write nothing to the **standard output** stream on any path. Its report is
-a summary and its errors are errors, and SPEC.md sends both to the **error** stream so a pipe
-is never corrupted by text a human was meant to read.
+`graft sync` SHALL write nothing of its own to the **standard output** stream on any path.
+Its report is a summary and its errors are errors, and SPEC.md sends both to the **error**
+stream so a pipe is never corrupted by text a human was meant to read.
+
+`--help` is the exception, and is the same exception `command-invocation` already makes:
+help is a thing the user asked for rather than a diagnostic, so it goes to standard output
+and exits `0`. `--dry-run` is the only flag `graft sync` adds.
 
 `graft sync` SHALL exit `0` when the sync completes and `1` on any failure. There is no third
 outcome and no partial success: a run that could not finish reports the reason and leaves the

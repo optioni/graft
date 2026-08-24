@@ -195,3 +195,85 @@ func stripEscapes(s string) string {
 	}
 	return b.String()
 }
+
+// The cases SPEC.md's own example does not reach. Its note is on the last item, so the
+// ordering is untested there; and no item in it holds zero files.
+func TestReportAlignmentEdges(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a note on the first item and not the second", func(t *testing.T) {
+		t.Parallel()
+
+		r := &Report{
+			Removed: 1,
+			Sources: []SourceReport{{
+				Name: "shared", Rev: "v1.0.0", Resolved: "aaaaaaa1111111111111111111111111111111111",
+				Items: []ItemReport{
+					{Verb: verbRemoved, ID: "agent:gone", Files: 1, Note: noteNotProvided},
+					{Verb: verbAdded, ID: "schema:tdd", Files: 12},
+				},
+			}},
+		}
+
+		assertLines(t, r.Lines(plainUI()), []string{
+			"shared  v1.0.0  (aaaaaaa)",
+			"",
+			"  removed  agent:gone  1 file    no longer provided",
+			"  added    schema:tdd  12 files",
+			"",
+			"0 files written, 1 removed - review with `git diff`",
+		})
+	})
+
+	// An item whose `from` names an empty directory contributes nothing and is still
+	// recorded, so the count can be zero on an item line rather than only in the summary.
+	t.Run("an item with no files", func(t *testing.T) {
+		t.Parallel()
+
+		r := &Report{
+			Sources: []SourceReport{{
+				Name: "shared", Rev: "v1.0.0", Resolved: "aaaaaaa1111111111111111111111111111111111",
+				Items: []ItemReport{{Verb: verbAdded, ID: "schema:empty", Files: 0}},
+			}},
+		}
+
+		assertLines(t, r.Lines(plainUI()), []string{
+			"shared  v1.0.0  (aaaaaaa)",
+			"",
+			"  added  schema:empty  0 files",
+			"",
+			"0 files written, 0 removed - review with `git diff`",
+		})
+	})
+
+	// Reachable once `graft update` exists: a source whose pin moved and whose every item
+	// held. The header stands alone, and is not followed by two blank lines.
+	t.Run("a source with a moved pin and no item lines", func(t *testing.T) {
+		t.Parallel()
+
+		r := &Report{
+			Written: 1,
+			Sources: []SourceReport{
+				{
+					Name: "shared", PrevRev: "v1.0.0", Rev: "v1.1.0",
+					PrevResolved: "aaaaaaa1111111111111111111111111111111111",
+					Resolved:     "bbbbbbb2222222222222222222222222222222222",
+				},
+				{
+					Name: "zeta", Rev: "v1.0.0", Resolved: "ccccccc3333333333333333333333333333333333",
+					Items: []ItemReport{{Verb: verbAdded, ID: "agent:z", Files: 1}},
+				},
+			},
+		}
+
+		assertLines(t, r.Lines(plainUI()), []string{
+			"shared  v1.0.0 -> v1.1.0  (aaaaaaa -> bbbbbbb)",
+			"",
+			"zeta  v1.0.0  (ccccccc)",
+			"",
+			"  added  agent:z  1 file",
+			"",
+			"1 file written, 0 removed - review with `git diff`",
+		})
+	})
+}

@@ -200,3 +200,40 @@ func TestRunPruneFileParentRefused(t *testing.T) {
 
 	repo.assertEntries("docs")
 }
+
+// internal/plan makes the write set and the prune set a difference over path strings, and
+// on a case-sensitive filesystem that is the end of it. On APFS and NTFS it is not: a
+// source renaming Foo.md to foo.md puts one path in each set naming one file, and pruning
+// it would delete the file the write just created — leaving graft.lock claiming a path that
+// is not there and a run that reported success.
+//
+// The comparison is by identity rather than by folded string, so a filesystem where the two
+// really are different files still performs both operations. That is what this test asserts
+// on each platform: the written file survives everywhere, and the old name survives only
+// where it is a file of its own.
+func TestRunNeverPrunesAFileItJustWrote(t *testing.T) {
+	t.Parallel()
+
+	repo := newTree(t)
+	repo.file(".claude/agents/Foo.md", "old\n")
+	src := newTree(t)
+	src.file("extras/foo.md", "new\n")
+
+	p := &plan.Plan{
+		Writes: []plan.Write{write("extras/foo.md", ".claude/agents/foo.md")},
+		Prune:  []string{".claude/agents/Foo.md"},
+		Lock:   lockOf(".claude/agents/foo.md"),
+	}
+	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// The file the lock claims is on disk with the source's bytes, whichever filesystem
+	// this is running on.
+	if got := repo.read(".claude/agents/foo.md"); got != "new\n" {
+		t.Errorf(".claude/agents/foo.md = %q, want %q", got, "new\n")
+	}
+	if !repo.exists(".claude/agents") {
+		t.Fatal(".claude/agents/ was removed")
+	}
+}

@@ -31,8 +31,13 @@ func (r *Report) Lines(u *ui.UI) []string {
 		if i > 0 {
 			out = append(out, "")
 		}
-		out = append(out, s.header(), "")
-		out = append(out, s.itemLines(u)...)
+		out = append(out, s.header())
+		// A source with a moved pin and no item lines is a header on its own. Emitting the
+		// blank line unconditionally would put two in a row before the next block.
+		if items := s.itemLines(u); len(items) > 0 {
+			out = append(out, "")
+			out = append(out, items...)
+		}
 	}
 	if len(out) > 0 {
 		out = append(out, "")

@@ -126,3 +126,76 @@ func TestRunReservedPaths(t *testing.T) {
 		}
 	})
 }
+
+// A case-insensitive filesystem — APFS by default, and NTFS — makes ".GIT/config" the same
+// file as ".git/config". A byte-exact comparison is therefore no refusal at all on the
+// platform most of this is developed on: the write lands in the real .git/config, and a
+// prune aimed there takes the repository's hooks with it.
+//
+// The fold is unconditional rather than per-platform, so the behavior and these tests are
+// the same everywhere. A directory genuinely named ".GIT" on a case-sensitive filesystem is
+// not a destination worth supporting.
+func TestRunReservedPathsFoldCase(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a destination", func(t *testing.T) {
+		t.Parallel()
+
+		for _, dest := range []string{".GIT/config", ".Git/config", "GRAFT.TOML", "Graft.Lock"} {
+			repo := newTree(t)
+			repo.file(".git/config", "[core]\n")
+			src := newTree(t)
+			src.file("extras/x", "[core]\n\tsshCommand = pwn\n")
+
+			p := &plan.Plan{
+				Writes: []plan.Write{write("extras/x", dest)},
+				Lock:   lockOf(dest),
+			}
+			if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
+				t.Errorf("writing %q was allowed", dest)
+			}
+			if got := repo.read(".git/config"); got != "[core]\n" {
+				t.Errorf("after writing %q, .git/config = %q", dest, got)
+			}
+		}
+	})
+
+	t.Run("a prune path", func(t *testing.T) {
+		t.Parallel()
+
+		for _, dest := range []string{".GIT/hooks/pre-commit", "GRAFT.LOCK"} {
+			repo := newTree(t)
+			repo.file(".git/hooks/pre-commit", "#!/bin/sh\n")
+
+			p := &plan.Plan{Prune: []string{dest}, Lock: emptyLock()}
+			if err := apply.Run(repo.dir, nil, p); err == nil {
+				t.Errorf("pruning %q was allowed", dest)
+			}
+			if !repo.exists(".git/hooks/pre-commit") {
+				t.Errorf("pruning %q removed the hook", dest)
+			}
+		}
+	})
+}
+
+// The floor refuses a path that names nothing rather than passing it downstream. Neither
+// internal/plan nor internal/lock can produce one, but this function exists to hold when a
+// check upstream is wrong.
+func TestRunReservedPathsRefuseEmpty(t *testing.T) {
+	t.Parallel()
+
+	for _, dest := range []string{"", "."} {
+		repo := newTree(t)
+		src := newTree(t)
+		src.file("extras/x", "x\n")
+
+		p := &plan.Plan{
+			Writes: []plan.Write{write("extras/x", dest)},
+			Lock:   emptyLock(),
+		}
+		if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
+			t.Errorf("writing %q was allowed", dest)
+		}
+		repo.assertEntries()
+	}
+}

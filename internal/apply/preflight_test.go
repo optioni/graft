@@ -122,3 +122,26 @@ func TestPreflightRefusesBeforeAnyWrite(t *testing.T) {
 		repo.assertEntries()
 	})
 }
+
+// graft.lock is not in p.Writes, so leaving it out of the pre-flight pass would mean a
+// repository where it is a directory applies the whole plan and then fails at the final
+// step — files written, files deleted, and no record of either.
+func TestPreflightChecksTheLocksOwnDestination(t *testing.T) {
+	t.Parallel()
+
+	repo := newTree(t)
+	repo.mkdir("graft.lock")
+	repo.file("docs/old.md", "old\n")
+	src := newTree(t)
+	src.file("extras/a.md", "a\n")
+
+	p := &plan.Plan{
+		Writes: []plan.Write{write("extras/a.md", "docs/a.md")},
+		Prune:  []string{"docs/old.md"},
+		Lock:   lockOf("docs/a.md"),
+	}
+	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	assertError(t, err, `cannot write "graft.lock": it exists and is not a regular file`)
+
+	repo.assertEntries("docs/", "docs/old.md", "graft.lock/")
+}

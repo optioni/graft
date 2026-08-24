@@ -34,11 +34,25 @@ const gitDir = ".git"
 // placed at either would be destroyed by the run that installed it, and the lock would then
 // claim a file a later prune would delete.
 func checkReserved(verb, over, p string) error {
-	if first, _, _ := strings.Cut(path.Clean(p), "/"); first == gitDir {
+	clean := path.Clean(p)
+
+	// A path that names nothing at all. Neither internal/plan nor internal/lock can produce
+	// one, and this function exists to hold when a check upstream is wrong.
+	if clean == "." || clean == "/" {
+		return fmt.Errorf("cannot %s %q: it does not name a file", verb, p)
+	}
+
+	// Compared case-insensitively, and unconditionally rather than per-platform. On APFS
+	// and on NTFS ".GIT/config" *is* ".git/config", so a byte-exact comparison is no
+	// refusal at all on the platform most of this is developed on — the write lands in the
+	// real file and a prune aimed there takes the repository with it. A directory genuinely
+	// named ".GIT" on a case-sensitive filesystem is not a destination worth supporting,
+	// and one rule everywhere beats a rule that holds on some machines.
+	if first, _, _ := strings.Cut(clean, "/"); strings.EqualFold(first, gitDir) {
 		return fmt.Errorf("cannot %s %q: graft never %ss inside %q", verb, p, verb, gitDir)
 	}
 	for _, own := range [...]string{manifest.Filename, lock.Filename} {
-		if path.Clean(p) == own {
+		if strings.EqualFold(clean, own) {
 			return fmt.Errorf("cannot %s %q: graft never %ss %s%q", verb, p, verb, over, own)
 		}
 	}
