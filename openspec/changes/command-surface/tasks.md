@@ -141,12 +141,12 @@ testing the detector must not require a stub.
 ## 4. The root command, `--version`, and help
 <!-- kind: behavior -->
 
-- [ ] 4.1 RED: Write failing tests for *The version line goes to stdout*, asserting the stdout
+- [x] 4.1 RED: Write failing tests for *The version line goes to stdout*, asserting the stdout
       buffer is byte-exactly `buildinfo.Format("v1.2.0", "abc1234", "2026-08-23") + "\n"` —
       built by **calling** `buildinfo.Format`, not by restating its output, so the two cannot
       drift; *An unbuilt binary still prints a version line*, all three strings empty; *A
       successful invocation exits 0*, asserting the returned `int` and an empty stderr
-- [ ] 4.2 RED: Write *No arguments prints help and succeeds* and *`--help` prints the same
+- [x] 4.2 RED: Write *No arguments prints help and succeeds* and *`--help` prints the same
       text as no arguments at all* at the unit tier: the first asserts stdout names `graft`,
       contains `Usage:`, and lists `--version` and `--help`; the second asserts `bytes.Equal`
       between the two stdout buffers. Do **not** assert that the help text omits `completion`:
@@ -154,10 +154,10 @@ testing the detector must not require a stub.
       assertion stays green with `DisableDefaultCmd` removed and cannot fail. Substrings
       and a relation, never a golden file — every later change adds a command, and a churning
       golden is a golden nobody reads (design.md → Test Strategy)
-- [ ] 4.3 GREEN: Add `Options` and `Main(o Options) int` in `internal/cli`, defaulting
+- [x] 4.3 GREEN: Add `Options` and `Main(o Options) int` in `internal/cli`, defaulting
       `Getenv` to `os.Getenv` and `IsTerminal` to `ui.IsTerminal` when nil, and building the
       `*ui.UI` from `ui.ColorEnabled(o.Getenv("NO_COLOR"), o.IsTerminal(o.Stdout))`
-- [ ] 4.4 GREEN: Build the cobra root command with `SilenceErrors` and `SilenceUsage` both
+- [x] 4.4 GREEN: Build the cobra root command with `SilenceErrors` and `SilenceUsage` both
       true, and install the streams with `SetOut(u.Out())` / `SetErr(u.Err())` — the UI's
       **recording** writers, not the process's real streams. This is not tidiness:
       `cobra.Command.Help()` returns `nil` unconditionally and discards its renderer's write
@@ -165,16 +165,16 @@ testing the detector must not require a stub.
       printed nothing anywhere. Routing cobra through the recorders makes that failure visible
       to `WriteError()`, and it also stops any cobra path reaching the real `os.Stdout` from
       inside a test (design.md → D2)
-- [ ] 4.5 GREEN: Declare `--version` as graft's own bool flag and handle it in `RunE`,
+- [x] 4.5 GREEN: Declare `--version` as graft's own bool flag and handle it in `RunE`,
       printing through `ui.Print`; with the flag absent, `RunE` calls `cmd.Help()`. Cobra's
       `Version` field is deliberately not used: it writes through a template straight to
       `OutOrStdout`, bypassing the package that owns machine-readable output
       (design.md → D5)
-- [ ] 4.6 GREEN: Set `CompletionOptions.DisableDefaultCmd = true` (design.md → D6)
-- [ ] 4.7 REFACTOR: Confirm the root command is built by one unexported constructor that
+- [x] 4.6 GREEN: Set `CompletionOptions.DisableDefaultCmd = true` (design.md → D6)
+- [x] 4.7 REFACTOR: Confirm the root command is built by one unexported constructor that
       takes the `*ui.UI` and the build strings, so a test can construct a root and register a
       command against it without going through `Main` — or state that no refactor was needed
-- [ ] 4.8 Run `go test ./internal/cli/ ./internal/ui/` — the acceptance test from group 0 is
+- [x] 4.8 Run `go test ./internal/cli/ ./internal/ui/` — the acceptance test from group 0 is
       still red at this point, because `cmd/graft` has not been rewired; confirm that is the
       only failure
 
