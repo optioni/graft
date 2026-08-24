@@ -23,6 +23,32 @@ last SHALL NOT be a document, so a separator opening the file, a separator closi
 both together introduce nothing and SHALL be accepted. A `---` inside a block scalar or a
 quoted string is not a marker and SHALL NOT be counted.
 
+A YAML directives prologue — a line opening with `%`, such as `%YAML 1.2` or `%TAG` — is an
+exception to that reading, because YAML requires a `---` to close one. That marker opens the
+one document rather than ending a document before it, so a region holding nothing but
+directives SHALL NOT be a document and such a file SHALL be accepted. The exception SHALL
+depend on the closing marker: in the last region no marker follows, so a directive there is
+not a prologue and SHALL be counted as content after a separator like any other. A `%` that
+is not a directive — inside a quoted string, a plain scalar, or a block scalar — SHALL NOT
+be treated as one.
+
+#### Scenario: A directives prologue is not a second document
+
+- **WHEN** `catalog.yaml` holds `%YAML 1.2`, then a line `---`, then a valid catalog
+- **THEN** the catalog is returned and no error is reported, because the `---` closes the
+  prologue and opens the file's single document rather than separating two
+- **AND** the same holds for a `%TAG` directive
+
+#### Scenario: A directive that no marker closes is content after a separator
+
+- **WHEN** `catalog.yaml` holds a valid catalog, then a line `---`, then `%YAML 1.2`, with
+  or without a mapping after it
+- **THEN** the error message is exactly
+  `catalog.yaml: multiple YAML documents; a catalog is a single document`
+- **AND** it is not the decoder's own complaint about a directive outside a document, which
+  would quote the file back naming the directive as the fault when the fault is that the
+  region is there at all
+
 #### Scenario: A second document is an error
 
 - **WHEN** `catalog.yaml` holds a valid catalog, then a line `---`, then a second mapping
@@ -233,7 +259,8 @@ need the source token's quoting rather than the decoded value.
 
 #### Scenario: A sign or separators do not change the answer
 
-- **WHEN** `catalog.yaml` holds `version: +99999999999999999999999999`, or
+- **WHEN** `catalog.yaml` holds `version: +99999999999999999999999999`,
+  `version: 99_999_999_999_999_999_999_999_999` with digit separators, or
   `version: "99999999999999999999999999"` quoted
 - **THEN** the error message is exactly
   `catalog.yaml: version <literal> is not supported by this graft; upgrade graft` with

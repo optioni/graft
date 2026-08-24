@@ -235,6 +235,26 @@ the group, and it was reached by measurement rather than by reading:
   to say should not exist. The decode is only reached when the count is one, so the
   multiple-documents message never competes with a decoder message.
 
+**D2a — A directives prologue is set aside, and only for its own line, and only when a
+marker closes it.** A file may open with `%YAML 1.2` or `%TAG`, and YAML requires a `---`
+after one. Under D2's plain reading that marker ends a region holding the directive's
+arguments — which arrive as ordinary tokens — so a perfectly ordinary catalog would be
+refused as two documents. The directive's line is therefore not content. Two bounds were
+measured rather than assumed, and each has a scenario:
+
+- **Only the directive's own line.** Setting the whole region aside until the next marker
+  makes `version: 1\n---\n%YAML 1.2\nkinds: …` count as *one* document, so a genuine second
+  document is reported as the decoder's `unexpected directive value` rather than as the
+  extra document it is. A directive is one line by definition, so the line is the bound.
+- **Only when a marker closes it.** A directive in the *last* region is closed by nothing,
+  so it is not a prologue; it is content a separator introduced. Without this the file
+  above ending at the directive counts one document and reaches the decoder for the same
+  wrong message.
+
+A `%` that is not a directive is not affected: measured against the pinned version, `%` in a
+quoted string, in a plain scalar (`note: 50% done`), and in a block scalar all lex as string
+content, never as `DirectiveType`.
+
 **D3 — `yaml.Unmarshal` stays.** Since D2 does not need the decoder to count, the decode
 path is untouched: no swap to `yaml.NewDecoder`, and therefore no risk that an existing
 message, an empty-file result, or a type choice moves underneath the existing suite.
@@ -244,7 +264,11 @@ discards nothing — and errors outright on a malformed second document, so it f
 scenarios the token count passes.
 
 **D4 — `os.Lstat` plus `Mode().IsRegular()`, before the read.** `Load`'s doc comment already
-claims it "reads no path other than the one it was given"; the check makes the claim true.
+claimed it "reads no path other than the one it was given"; the check makes a claim of that
+shape true, and the comment is narrowed to the one `Lstat` actually delivers — it answers
+for the final component only, so a symlinked *parent* directory is still traversed. Closing
+that belongs to the caller, and today's caller does close it: `source.ReadCatalog` holds the
+read inside an `os.Root`.
 The shape is not invented here: `internal/source`'s `List` refuses a non-regular `from` with
 `Lstat` and `Mode().IsRegular()` for the same reason, so the two rules read alike. The
 motivating leak is not reachable through today's only caller — `source.ReadCatalog` reads

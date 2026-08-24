@@ -25,25 +25,30 @@ import (
 // first marker or after the last is not, which is what makes a leading marker, a trailing
 // marker, and both together one document rather than two or three.
 func documents(src []byte) int {
-	// content[i] reports whether region i holds anything but comments.
+	// content[i] reports whether region i holds anything but comments and directives;
+	// directive[i] reports whether it holds a directive at all.
 	content := []bool{false}
-	directives := false
+	directive := []bool{false}
+	// directiveLine holds the line a directive is being read from, or 0 when none is.
+	// Lines are numbered from 1, so 0 matches nothing.
+	directiveLine := 0
 	for _, t := range lexer.Tokenize(string(src)) {
 		switch t.Type {
 		case token.DocumentHeaderType, token.DocumentEndType:
 			content = append(content, false)
-			directives = false
+			directive = append(directive, false)
+			directiveLine = 0
 		case token.CommentType:
 			// Not content: a comment after a trailing marker discards nothing.
 		case token.DirectiveType:
-			// A prologue such as "%YAML 1.2" is closed by a "---" that opens the one
-			// document rather than ending a document before it. YAML requires that
-			// marker, so everything from here to it belongs to the prologue: the
-			// directive's own arguments arrive as ordinary tokens and would otherwise
-			// make the region look like a document that the "---" then closed.
-			directives = true
+			// Only the directive's own line is set aside, and a directive is one line
+			// by definition: its arguments arrive as ordinary tokens and are what would
+			// otherwise be read as content. Anything on a later line is content in a
+			// region the marker really did open.
+			directive[len(directive)-1] = true
+			directiveLine = t.Position.Line
 		default:
-			if !directives {
+			if t.Position.Line != directiveLine {
 				content[len(content)-1] = true
 			}
 		}
@@ -52,6 +57,14 @@ func documents(src []byte) int {
 	n := 0
 	last := len(content) - 1
 	for i, held := range content {
+		// A directives prologue such as "%YAML 1.2" is closed by a "---" that opens
+		// the one document rather than ending a document before it, which is why a
+		// region holding nothing else is not a document. That reading depends on the
+		// marker: in the last region no marker follows, so nothing there is a prologue
+		// and the directive is content after a separator like any other.
+		if i == last && directive[i] {
+			held = true
+		}
 		if held || (i > 0 && i < last) {
 			n++
 		}

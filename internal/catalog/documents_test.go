@@ -46,10 +46,23 @@ func TestParse_MultipleDocuments(t *testing.T) {
 			in:   "---\n---\n" + one,
 		},
 		{
-			// The prologue rule suppresses a region; it must not suppress a
-			// document. The second "---" here separates rather than opens.
+			// The prologue rule sets a region aside; it must not set a document
+			// aside. The second "---" here separates rather than opens.
 			name: "a directives prologue before two documents",
 			in:   "%YAML 1.2\n---\n" + one + "---\nkinds:\n  schema:\n    to: \"x/\"\n",
+		},
+		{
+			// A directive after a separator is not a prologue: no marker closes it.
+			// The region is content the decoder drops, and reporting it as a
+			// directive syntax error would quote the file back for the wrong fault.
+			name: "a separator then a directive then content",
+			in:   one + "---\n%YAML 1.2\nkinds:\n  schema:\n    to: \"x/\"\n",
+		},
+		{
+			// The same, with nothing after the directive: still a region a
+			// separator opened and no marker closed.
+			name: "a separator then a directive alone",
+			in:   one + "---\n%YAML 1.2\n",
 		},
 	}
 

@@ -69,20 +69,56 @@
 - [x] 5.3 CHECK (confirmed: AGENTS.md's "Rules that are easy to get wrong" already carries asserted error strings, the `./internal/...` coverage scope, and `plan` pure / `apply` sole writer; ENGINEERING.md already carries the version-gating compatibility rule this change honours. No new recurring pitfall arose that belongs in a root file): Confirm no AGENTS.md or ENGINEERING.md change is warranted — the rules this change leans on (asserted error strings are a contract; coverage over `./internal/...`; `plan` pure and `apply` the sole writer) are already written there, and no new recurring pitfall arose that a root file should carry
 - [x] 5.4 VERIFY: `openspec validate catalog-hardening --strict` → `Change 'catalog-hardening' is valid` (the CLI has no `--change` flag; `--changes` is a different, plural option)
 
-## 6. Change Review
+## 6. A directives prologue opens a document
+<!-- kind: behavior -->
+
+- [x] 6.1 RED: `%YAML 1.2\n---\n<catalog>` was refused as two documents. The prologue's
+  arguments lex as ordinary tokens, so the region before the `---` looked like a document
+  that the marker then closed — but YAML *requires* that marker after a directive, so it
+  opens the file's one document rather than ending one. Two accepting cases added to
+  `TestParse_OneDocument` (`%YAML` and `%TAG`), both red before the fix
+- [x] 6.2 GREEN: In `documents`, set the directive's line aside rather than counting it as
+  content — bounded to that one line, since a directive is one line by definition
+- [x] 6.3 Found by the independent reviewer of group 7, and reproduced before fixing:
+  bounding the exception to the *region* instead of the line made
+  `<catalog>---\n%YAML 1.2\nkinds: …` count as **one** document, so a genuine second
+  document was reported as the decoder's `unexpected directive value` message quoting the
+  file back. Bounded to the directive's line, and then bounded again by the closing marker
+- [x] 6.4 GREEN: A directive is a prologue only when a marker closes it. In the last region
+  none follows, so a directive there is content after a separator like any other —
+  otherwise `<catalog>---\n%YAML 1.2` alone kept reaching the decoder for the same wrong
+  message
+- [x] 6.5 GUARD (green before and after): confirm a `%` that is not a directive is
+  unaffected — measured against the pinned goccy version, `%` in a quoted string, in a
+  plain scalar (`note: 50% done`), and in a block scalar all lex as string content and
+  never as `DirectiveType`, so no document body is affected
+- [x] 6.6 Concentration point — the refusing half is where the risk lives: two cases added
+  to `TestParse_MultipleDocuments` (`a separator then a directive then content`, `a
+  separator then a directive alone`) assert the exact
+  `catalog.yaml: multiple YAML documents; a catalog is a single document`, plus a third
+  (`a directives prologue before two documents`) proving the exception does not swallow a
+  real document. No existing asserted message moved
+- [x] 6.7 CHECK: Contract gate — the spec delta's *A catalog is a single YAML document*
+  requirement now states the prologue rule and both its bounds, with a scenario for the
+  accepting and the refusing case, and design.md carries the measurement as **D2a**. The
+  rule was written into the code before it was written into the spec; recording it here is
+  what makes it reviewable as specified rather than as a trailing patch
+- [x] 6.8 Run `go test -race ./...` — green across all nine packages
+
+## 7. Change Review
 <!-- kind: operational -->
 
-- [ ] 6.1 CHECK: Dispatch an independent reviewer — a separate subagent, not a fork of the implementing session — given proposal.md, specs/catalog-format/spec.md, design.md, tasks.md, and the diff, and told to report findings rather than edit the tree
-- [ ] 6.2 CHECK: Point the reviewer at this repository's concentration points and at what this change specifically risks: (a) every asserted error string matches the spec text character for character, and every message this change does not claim to move is unchanged; (b) the decoder swap moved no existing message and no existing behavior, empty input included; (c) `internal/plan` gained no code and no test needs a real directory to exercise plan logic; (d) this change computes no prune set and deletes nothing, so no foreign-file test applies — confirm that rather than assume it; (e) no fixture git repository was introduced; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it; (g) no code path lets a source repository cause anything to execute — the catalog is read and validated, never run; (h) the parse-time duplicate rule does not pre-empt `destination-computation`'s per-item rule, and the file-item case still works
-- [ ] 6.3 CHECK: Ask the reviewer to verify the plan's factual claims empirically rather than by reading — the trailing-`---` decode, the type the decoder returns for each version literal, and the `os.Root` behavior the symlink framing rests on
-- [ ] 6.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
-- [ ] 6.5 VERIFY: Confirm no blocking or unowned finding remains, `go test -race ./...` is green, and the working tree is committed
+- [ ] 7.1 CHECK: Dispatch an independent reviewer — a separate subagent, not a fork of the implementing session — given proposal.md, specs/catalog-format/spec.md, design.md, tasks.md, and the diff, and told to report findings rather than edit the tree
+- [ ] 7.2 CHECK: Point the reviewer at this repository's concentration points and at what this change specifically risks: (a) every asserted error string matches the spec text character for character, and every message this change does not claim to move is unchanged; (b) the decoder swap moved no existing message and no existing behavior, empty input included; (c) `internal/plan` gained no code and no test needs a real directory to exercise plan logic; (d) this change computes no prune set and deletes nothing, so no foreign-file test applies — confirm that rather than assume it; (e) no fixture git repository was introduced; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it; (g) no code path lets a source repository cause anything to execute — the catalog is read and validated, never run; (h) the parse-time duplicate rule does not pre-empt `destination-computation`'s per-item rule, and the file-item case still works
+- [ ] 7.3 CHECK: Ask the reviewer to verify the plan's factual claims empirically rather than by reading — the trailing-`---` decode, the type the decoder returns for each version literal, and the `os.Root` behavior the symlink framing rests on
+- [ ] 7.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
+- [ ] 7.5 VERIFY: Confirm no blocking or unowned finding remains, `go test -race ./...` is green, and the working tree is committed
 
-## 7. Lint & Verify
+## 8. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 7.1 CHECK: Inspect the intended verification commands and affected tiers — everything this change touches is under `./internal/...`, so the coverage gate applies; there is no acceptance tier, so `task lint`, `task cover`, and `task build` are the whole gate
-- [ ] 7.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
-- [ ] 7.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` above the 80% floor. `internal/catalog` is expected to fall from 99.5% to roughly 97%: the uncovered statements are the `Lstat` non-`ErrNotExist` wrap and the `ReadFile` error branch, both recorded in design.md → Risks as deliberately untested. Record the measured number here rather than restating the estimate
-- [ ] 7.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
-- [ ] 7.5 VERIFY: Run `openspec validate catalog-hardening --strict` — the change is valid
+- [ ] 8.1 CHECK: Inspect the intended verification commands and affected tiers — everything this change touches is under `./internal/...`, so the coverage gate applies; there is no acceptance tier, so `task lint`, `task cover`, and `task build` are the whole gate
+- [ ] 8.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
+- [ ] 8.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` above the 80% floor. `internal/catalog` is expected to fall from 99.5% to roughly 97%: the uncovered statements are the `Lstat` non-`ErrNotExist` wrap and the `ReadFile` error branch, both recorded in design.md → Risks as deliberately untested. Record the measured number here rather than restating the estimate
+- [ ] 8.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
+- [ ] 8.5 VERIFY: Run `openspec validate catalog-hardening --strict` — the change is valid

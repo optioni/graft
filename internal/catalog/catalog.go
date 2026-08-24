@@ -48,8 +48,10 @@ type Item struct {
 
 // Load reads catalog.yaml from path and parses it. A file that does not exist is the
 // failure-mode table's "not graftable" error: graft never falls back to guessing a
-// source's layout. Load creates, modifies, and deletes nothing, and reads no path
-// other than the one it was given.
+// source's layout. Load creates, modifies, and deletes nothing, and does not follow a
+// link named catalog.yaml. The guard is Lstat, which answers for the final component
+// only: a symlinked parent directory is still traversed, and containing that is the
+// caller's job — source.ReadCatalog holds the read inside an os.Root.
 func Load(path string) (*Catalog, error) {
 	name := filepath.Base(path)
 
