@@ -102,3 +102,34 @@ func changedLines(before, after string) []string {
 	}
 	return out
 }
+
+// An update writes nothing to standard output on any path. The success half is asserted
+// above; this is the failure half, across the same real process boundary — a diagnostic
+// belongs on the error stream just as much as a summary does.
+func TestGraftUpdateWritesNothingToStdoutOnFailure(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	repo := newSourceRepo(t)
+	repo.seedCatalog()
+	repo.commit("v1")
+	repo.tag("v1.0.0")
+
+	manifest := manifestFor(repo, "v1.0.0", "schema:tdd", "agent:*")
+	c := newConsumer(t, manifest)
+
+	got := runGraftIn(t, bin, c.dir, c.env, "update", "--to", "v9.9.9", "shared")
+
+	if got.code != 1 {
+		t.Fatalf("exit code = %d, want 1\nstderr:\n%s", got.code, got.stderr)
+	}
+	if got.stdout != "" {
+		t.Errorf("stdout = %q, want empty", got.stdout)
+	}
+	if want := "graft: source \"shared\": rev \"v9.9.9\" not found\n"; got.stderr != want {
+		t.Errorf("stderr = %q, want %q", got.stderr, want)
+	}
+	if after := c.read("graft.toml"); after != manifest {
+		t.Errorf("graft.toml moved on a failed run:\n%s", after)
+	}
+}

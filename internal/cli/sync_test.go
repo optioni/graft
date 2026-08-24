@@ -50,16 +50,24 @@ func TestSyncRejectsForceAndFrozen(t *testing.T) {
 	}
 }
 
-func TestHelpListsSync(t *testing.T) {
+// The commands section lists every subcommand graft has. It listed one when sync was the
+// only one; a command added later is listed by the same rule rather than by an amendment
+// here. What it may not list is a command SPEC.md's table does not name.
+func TestHelpListsTheCommandsGraftHas(t *testing.T) {
 	t.Parallel()
 
 	stdout, stderr, code := run(t, cli.Options{Args: []string{"--help"}})
 
-	if !strings.Contains(stdout, "sync") {
-		t.Errorf("help does not name sync:\n%s", stdout)
-	}
-	if !strings.Contains(stdout, "Make the tree match graft.lock") {
-		t.Errorf("help names sync without describing it:\n%s", stdout)
+	for name, short := range map[string]string{
+		"sync":   "Make the tree match graft.lock",
+		"update": "Re-resolve pins to their current shas and sync",
+	} {
+		if !strings.Contains(stdout, name) {
+			t.Errorf("help does not name %s:\n%s", name, stdout)
+		}
+		if !strings.Contains(stdout, short) {
+			t.Errorf("help names %s without describing it:\n%s", name, stdout)
+		}
 	}
 	// Neither a help command nor a completion command is offered: SPEC.md's command table
 	// names neither, and the flags section's "help for graft" is the --help flag, not one.

@@ -1,12 +1,8 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 
-	"github.com/optioni/graft/internal/source"
 	"github.com/optioni/graft/internal/sync"
 	"github.com/optioni/graft/internal/ui"
 )
@@ -41,24 +37,10 @@ cannot drift between syncs. Moving a pin is ` + "`graft update`" + `.`,
 			return nil
 		},
 
+		// The zero Update is what makes this a sync: no pin is re-resolved. `update` is the
+		// same tail with that field set, which is the whole difference between the two.
 		RunE: func(_ *cobra.Command, _ []string) error {
-			root, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("cannot determine the working directory: %w", err)
-			}
-			cacheRoot, err := source.DefaultCacheRoot()
-			if err != nil {
-				return err
-			}
-
-			report, err := sync.Run(sync.Options{Root: root, CacheRoot: cacheRoot, DryRun: dryRun})
-			if err != nil {
-				return err
-			}
-			for _, line := range report.Lines(u) {
-				u.Note(line)
-			}
-			return nil
+			return perform(u, sync.Options{DryRun: dryRun})
 		},
 	}
 

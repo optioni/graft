@@ -168,6 +168,7 @@ Sources and the items to install are declared in graft.toml.`,
 	// SPEC.md's command table is the contract. `sync` is on it; `help` is not, and cobra
 	// installs one the moment a subcommand exists — see newHelpCommand.
 	root.AddCommand(newSync(u))
+	root.AddCommand(newUpdate(u))
 	root.SetHelpCommand(newHelpCommand())
 
 	return root

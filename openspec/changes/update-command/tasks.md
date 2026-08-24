@@ -191,30 +191,30 @@ harness.
 ## 6. cli: the `update` command
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing tests for: *A second argument is a usage error*, *An unknown flag is
+- [x] 6.1 RED: Write failing tests for: *A second argument is a usage error*, *An unknown flag is
       a usage error* (`graft: unknown flag: --force` plus the hint line), *`--to` with no source is
       a usage error*, *`--to` with an empty rev is a usage error*, *An update leaves standard
       output byte-empty*, *A subcommand's own help goes to standard output* (`graft update --help`)
-- [ ] 6.2 RED: Extend the existing *Help lists the commands graft has* test to name `update` as
+- [x] 6.2 RED: Extend the existing *Help lists the commands graft has* test to name `update` as
       well as `sync`, and confirm it fails before the command is registered
-- [ ] 6.3 GREEN: Register `update` on the root with `--to` and `--dry-run`, and an argument
+- [x] 6.3 GREEN: Register `update` on the root with `--to` and `--dry-run`, and an argument
       validator producing `unknown argument "<argument>"`, `--to requires a source`, and
       `--to requires a rev` as usage errors — `--to`'s presence read through `Flags().Changed`, so
       an explicitly empty value is told apart from an absent flag. Cobra parses flags before it
       calls the argument validator, which is what makes that reachable there
-- [ ] 6.4 REFACTOR: Extract the tail `sync` and `update` now share — working directory,
+- [x] 6.4 REFACTOR: Extract the tail `sync` and `update` now share — working directory,
       `source.DefaultCacheRoot()`, `sync.Run`, and the report's lines through `ui.Note` — into one
       helper, so neither command holds a decision of its own
-- [ ] 6.5 CHECK: Contract gate on the existing surface — confirm every other current
+- [x] 6.5 CHECK: Contract gate on the existing surface — confirm every other current
       `internal/cli` test still passes **unchanged**, including *`--help` prints the same text as
       no arguments at all*, *`help` is not a command*, and *`help sync` is not a command either*
-- [ ] 6.6 Run `go test ./internal/cli/` — green
+- [x] 6.6 Run `go test ./internal/cli/` — green
 
 ## 7. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 7.1 VERIFY: Confirm the group 0 acceptance test now passes end to end
-- [ ] 7.2 REFACTOR: Fold any fixture helper this change duplicated into the package's existing
+- [x] 7.1 VERIFY: Confirm the group 0 acceptance test now passes end to end
+- [x] 7.2 REFACTOR: Fold any fixture helper this change duplicated into the package's existing
       one; do not share a helper across packages through a non-test file
 
 ## 8. Documentation: SPEC.md's invariant, its failure-mode table, and one AGENTS.md rule
