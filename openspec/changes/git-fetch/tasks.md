@@ -283,27 +283,27 @@ safe because an entry cannot exist unless it is complete.
 ## 10. Reading the catalog from a fetched tree
 <!-- kind: behavior -->
 
-- [ ] 10.1 RED: Write failing tests for *A catalog in the fetched tree parses*, asserting
+- [x] 10.1 RED: Write failing tests for *A catalog in the fetched tree parses*, asserting
       version, one kind, and one item whose id is `schema:tdd`; and *A source with no catalog
       is not graftable*, asserting the exact message `catalog.yaml not found: the source is
       not graftable` and that it is `internal/catalog`'s own wording rather than a second
       spelling of the same failure
-- [ ] 10.2 RED: Write *A `catalog.yaml` leaving the entry is not read*: plant a real file
+- [x] 10.2 RED: Write *A `catalog.yaml` leaving the entry is not read*: plant a real file
       outside the entry, symlink `catalog.yaml` at it with an absolute target, and assert the
       read fails and that the outside file's contents appear in neither the result nor the
       error. A source commits its own `catalog.yaml`, so it may commit a symlink under that
       name, and `os.ReadFile` follows one
-- [ ] 10.3 RED: Assert the entry is unchanged by the read — no file created, modified, or
+- [x] 10.3 RED: Assert the entry is unchanged by the read — no file created, modified, or
       deleted — and that no path other than `catalog.yaml` **resolved inside the entry** is
       opened
-- [ ] 10.4 GREEN: Add `ReadCatalog(entry string) (*catalog.Catalog, error)` reading the bytes
+- [x] 10.4 GREEN: Add `ReadCatalog(entry string) (*catalog.Catalog, error)` reading the bytes
       through `os.OpenRoot(entry)` and parsing them with `catalog.Parse`. Delegate to
       `catalog.Load` only on `fs.ErrNotExist` — where there is by definition no link to follow
       — so the not-graftable wording keeps exactly one owner (design.md → D12)
-- [ ] 10.5 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm the file
+- [x] 10.5 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm the file
       is still documented as living at the source's root under exactly that name, and that its
       absence is still an error with no fallback to guessing a layout
-- [ ] 10.6 Run `go test ./internal/source/` — no regressions
+- [x] 10.6 Run `go test ./internal/source/` — no regressions
 
 ## 11. Listing an item's `from`
 <!-- kind: behavior -->
@@ -312,52 +312,52 @@ safe because an entry cannot exist unless it is complete.
 churning — the same determinism requirement the lock itself carries, one layer earlier.
 Sorted, slash-separated, and stable across platforms, or every sync produces a diff.
 
-- [ ] 11.1 RED: Write failing tests for *A `from` naming a file lists exactly that file*,
+- [x] 11.1 RED: Write failing tests for *A `from` naming a file lists exactly that file*,
       asserting `Dir` is false and `Files` is exactly `["apply-orchestrator.md"]` — the base
       name, which is what `destination-computation` requires for a file item; *A `from` naming
       a directory lists its tree*, asserting exact slice equality **including order**, not set
       equality; *An empty directory lists nothing and is still a directory*; *A directory
       holding only empty subdirectories lists nothing*
-- [ ] 11.2 RED: Write *A symlink is not listed*, with the link pointing at
+- [x] 11.2 RED: Write *A symlink is not listed*, with the link pointing at
       `../../../../etc/passwd`, asserting the link's name is absent, the real file is present,
       and **no error** is returned — one stray link may not make a valid source unusable
-- [ ] 11.3 RED: Write failing tests for *A `from` that does not exist is an error naming the
+- [x] 11.3 RED: Write failing tests for *A `from` that does not exist is an error naming the
       item*, asserting `source "shared": item "schema:tdd": from "extras/gone" not found in
       the source tree`; and *A `from` naming a symlink is refused*, asserting `source
       "shared": item "schema:tdd": from "extras/tdd" is not a regular file or directory` and
       that the link target is never read. Both assert the returned listing is the zero value,
       so no caller can plan a write from a failed listing
-- [ ] 11.4 RED: Write *A `from` reached through a symlinked parent is refused*, the case
+- [x] 11.4 RED: Write *A `from` reached through a symlinked parent is refused*, the case
       refusing the last component alone does not cover: plant a real `id_rsa` outside the
       entry, make `extras` a symlink to that outside directory, and declare `from:
       extras/tdd`. Assert the listing fails and that neither `id_rsa` nor its contents appear
       anywhere. Verified to succeed without the fix — `os.Lstat` does not follow the final
       element but does resolve every intermediate one, and `catalog.inSource` sees nothing
       wrong with the string
-- [ ] 11.5 RED: Write *A `from` naming a submodule lists nothing*, against a fixture with a
+- [x] 11.5 RED: Write *A `from` naming a submodule lists nothing*, against a fixture with a
       committed gitlink, asserting a directory listing with zero files, no error, and that no
       second repository was contacted
-- [ ] 11.6 RED: Write *Listing changes nothing*: snapshot the entry's paths, modes, sizes, and
+- [x] 11.6 RED: Write *Listing changes nothing*: snapshot the entry's paths, modes, sizes, and
       bytes, take every listing above, and assert the snapshot is identical afterwards and
       that nothing was created in a consumer tree built beside it
-- [ ] 11.7 GREEN: Add `List(entry, name string, it catalog.Item) (plan.Listing, error)`
+- [x] 11.7 GREEN: Add `List(entry, name string, it catalog.Item) (plan.Listing, error)`
       returning `plan.Listing` **itself**, not a convertible twin — `source-listing`'s "usable
       with no adaptation, same type" is enforced by the type system rather than by a test
       (design.md → D1)
-- [ ] 11.8 GREEN: Do every path operation through `os.OpenRoot(entry)`, never through a joined
+- [x] 11.8 GREEN: Do every path operation through `os.OpenRoot(entry)`, never through a joined
       path: `root.Lstat(from)` for the file-or-directory question — `Lstat`, never `Stat`, so a
       symlink is answered about rather than followed — then `root.OpenRoot(from)` and
       `fs.WalkDir(fromRoot.FS(), ".")` for a directory, which contains the walk to the item's
       own subtree and never follows a link. Admit only `d.Type().IsRegular()`; relativise with
       `filepath.Rel`, convert with `filepath.ToSlash`, and sort ascending (design.md → D10, D11)
-- [ ] 11.9 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm the
+- [x] 11.9 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm the
       per-item `files` list this listing ultimately feeds is still documented as sorted by
       path and as the sole authority for deletion, so an unsorted listing here would churn the
       lock's diff on every sync
-- [ ] 11.10 REFACTOR: Confirm the item error prefix reuses group 5's closure shape rather than
+- [x] 11.10 REFACTOR: Confirm the item error prefix reuses group 5's closure shape rather than
       formatting `source %q: item %q: ` a second time, and that no read below an entry bypasses
       its `*os.Root`. Or state that no refactor was needed
-- [ ] 11.11 Run `go test ./internal/source/` — no regressions
+- [x] 11.11 Run `go test ./internal/source/` — no regressions
 
 ## 12. A fetched source drives a plan
 <!-- kind: behavior -->

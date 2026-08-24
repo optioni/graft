@@ -65,3 +65,17 @@ func sourceErrf(name string) func(format string, args ...any) error {
 		return fmt.Errorf("source %q: %s", name, fmt.Sprintf(format, args...))
 	}
 }
+
+// itemErrf is sourceErrf with an item id, for the failures that belong to one item's
+// from rather than to the source as a whole.
+func itemErrf(name, id string) func(format string, args ...any) error {
+	return func(format string, args ...any) error {
+		return fmt.Errorf("source %q: item %q: %s", name, id, fmt.Sprintf(format, args...))
+	}
+}
+
+// errf prefixes an error with the file it came from, the shape catalog.Load uses for a
+// read that fails for a reason other than absence.
+func errf(filename string, err error) error {
+	return fmt.Errorf("%s: %w", filename, err)
+}
