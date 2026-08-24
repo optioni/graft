@@ -1,10 +1,10 @@
 # Handoff — graft implementation
 
-Updated 2026-08-24 ~17:55 local, paused on a 5-hour session limit that resets **20:09**.
+Updated 2026-08-24, after `update-command` was finished and archived.
 
 ## Where things stand
 
-**7 of 12 changes archived.** `update-command` is the 8th and is roughly half implemented.
+**8 of 12 changes archived.** `list-command` is next and has not been started.
 
 | # | Change | State |
 |---|--------|-------|
@@ -15,30 +15,11 @@ Updated 2026-08-24 ~17:55 local, paused on a 5-hour session limit that resets **
 | 5 | `command-surface` | archived |
 | 6 | `catalog-hardening` | archived (not in IMPLEMENTATION-ORDER.md — added to close four findings `catalog-and-selectors` deferred) |
 | 7 | `sync-command` | archived — `graft sync` builds and runs |
-| 8 | `update-command` | **in flight, see below** |
-| 9 | `list-command` | not started |
+| 8 | `update-command` | archived — `graft update`, `graft update <source>` and `graft update --to` all build and run |
+| 9 | `list-command` | **next, not started** |
 | 10 | `add-command` | not started |
 | 11 | `add-picker` | not started |
 | 12 | `self-hosting` | not started |
-
-## Resuming `update-command`
-
-Artifacts are complete and committed (`4baf738`). `openspec/changes/update-command/` holds
-proposal, design, tasks, planning-review and delta specs.
-
-**`tasks.md` checkboxes are all unticked and are wrong** — the agent implemented without
-ticking them. Trust the commit log, not the checkboxes. Actually complete:
-
-- Group 1, manifest: move one rev in place — `84e2eda`
-- Group 2, apply: write `graft.toml`, immediately before the lock — `8f9cfcc`
-- Group 3, sync: re-resolution as a parameter, not a second sequence — `a2ca57f`
-
-**Group 4 is in progress.** `internal/sync/updateto_test.go` is committed as WIP: it is the
-RED test for `--to` moving the pin, and it does not compile yet. Start there.
-
-Remaining after group 4: group 0/7 (the outer acceptance loop — 0 was never written, so
-write it before 7 can go green), 5 (`--dry-run` under an update), 6 (the `update` CLI
-command), 8 (SPEC.md docs), 9 (Change Review), 10 (Lint & Verify), then archive.
 
 ## How to run the remaining changes
 
