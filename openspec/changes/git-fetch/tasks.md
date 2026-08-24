@@ -149,7 +149,7 @@ deliberate contract; changing one later is a contract change, never an incidenta
 able to aim a write outside the root graft chose.** Here the root is the cache rather than
 the working tree, and the derivation is pure so it can be checked before anything exists.
 
-- [ ] 6.1 RED: Write failing tests for *The cache path mirrors the remote and the sha*; *The
+- [x] 6.1 RED: Write failing tests for *The cache path mirrors the remote and the sha*; *The
       same repository over ssh and over HTTPS is one entry*, whose cases include a URL
       carrying **both** a `.git` suffix and a trailing slash — trimming them in the wrong
       order gives one repository two entries; *A filesystem remote gets an entry under
@@ -158,33 +158,33 @@ the working tree, and the derivation is pure so it can be checked before anythin
       the message `internal/plan` already produces, and the tail of `internal/lock`'s, which
       carries a `graft.lock: ` prefix of its own. Three packages must not disagree about what
       a valid `resolved` is
-- [ ] 6.2 RED: Write *A hostile remote cannot escape the cache root* as a table of hostile
+- [x] 6.2 RED: Write *A hostile remote cannot escape the cache root* as a table of hostile
       URLs — `..` segments, separators inside a segment, an empty host, a segment that is
       exactly `.` — asserting for each that `filepath.Rel(root, entry)` succeeds and its
       result contains no `..` segment. Assert containment with `filepath.Rel`, not by
       inspecting the string, because `filepath.Rel` is what actually answers the question
-- [ ] 6.3 RED: Every case asserts the cache root was **not created**, so deriving a path
+- [x] 6.3 RED: Every case asserts the cache root was **not created**, so deriving a path
       stays a pure function a caller can ask speculatively
-- [ ] 6.4 GREEN: Add `type Cache struct{ Root string }` and `func (c Cache) Entry(name, git,
+- [x] 6.4 GREEN: Add `type Cache struct{ Root string }` and `func (c Cache) Entry(name, git,
       sha string) (string, error)` returning `<Root>/<host>/<path…>/<sha>`. Parse the three
       URL forms `CloneURL` can produce — scheme, scp-style, filesystem path — reducing each to
       host plus path, dropping scheme, user, port, and a trailing `.git` (design.md → D6)
-- [ ] 6.5 GREEN: Trim a trailing `/` **before** a trailing `.git`, derive `local` as the host
+- [x] 6.5 GREEN: Trim a trailing `/` **before** a trailing `.git`, derive `local` as the host
       segment when the URL has none, and pass every segment through the unexported
       `safeSegment`: characters outside `[A-Za-z0-9._-]` become
       `-`, a segment of `.` or `..` is prefixed with `_`, empty segments are dropped. Refuse a
       bad `sha` before any of this
-- [ ] 6.6 REFACTOR: Confirm `safeSegment` is applied per segment after splitting — so a
+- [x] 6.6 REFACTOR: Confirm `safeSegment` is applied per segment after splitting — so a
       segment can neither contain a separator nor climb — and that it lives in this package
       with its own wording rather than being shared with `plan.insideRepo` or
       `lock.isRepoRelative`, which enforce different rules (design.md → Boundaries). Or state
       that no refactor was needed
-- [ ] 6.7 Run `go test ./internal/source/` — no regressions
+- [x] 6.7 Run `go test ./internal/source/` — no regressions
 
 ## 7. The default cache root
 <!-- kind: behavior -->
 
-- [ ] 7.1 RED: Write failing tests for *The default root under a home directory*; *`XDG_CACHE_HOME`
+- [x] 7.1 RED: Write failing tests for *The default root under a home directory*; *`XDG_CACHE_HOME`
       moves the default root*; *A relative `XDG_CACHE_HOME` is ignored*; *No home directory and
       no `XDG_CACHE_HOME` is an error*, asserting the prefix `cannot determine the cache root: `
       and that no relative fallback is returned — a cache inside whichever repository happened
@@ -192,15 +192,15 @@ the working tree, and the derivation is pure so it can be checked before anythin
       unexported seam with stub `getenv` and `home` functions, never `t.Setenv` — a test that
       has to set `HOME` is one edit away from writing to the developer's real cache
       (design.md → D7)
-- [ ] 7.2 RED: Each case asserts that neither `<home>/.cache` nor `<home>/.cache/graft` is
+- [x] 7.2 RED: Each case asserts that neither `<home>/.cache` nor `<home>/.cache/graft` is
       created, using paths under `t.TempDir()` so the assertion is real rather than notional
-- [ ] 7.3 GREEN: Add `defaultCacheRoot(getenv func(string) string, home func() (string,
+- [x] 7.3 GREEN: Add `defaultCacheRoot(getenv func(string) string, home func() (string,
       error)) (string, error)` honouring `XDG_CACHE_HOME` only when it is absolute, and the
       exported `DefaultCacheRoot()` calling it with `os.Getenv` and `os.UserHomeDir`
-- [ ] 7.4 REFACTOR: Confirm the cache root reaches `Cache` as a field the caller passes and is
+- [x] 7.4 REFACTOR: Confirm the cache root reaches `Cache` as a field the caller passes and is
       never read from a global inside the package, which is what keeps every test on its own
       root. Or state that no refactor was needed
-- [ ] 7.5 Run `go test ./internal/source/` — no regressions
+- [x] 7.5 Run `go test ./internal/source/` — no regressions
 
 ## 8. Fetching into the cache
 <!-- kind: behavior -->
