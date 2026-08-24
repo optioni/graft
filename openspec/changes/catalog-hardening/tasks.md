@@ -1,0 +1,88 @@
+<!-- No outer-loop acceptance group. No command reads a catalog yet, so there is no
+     end-to-end entry point to drive and no observable CLI change to assert. Recorded in
+     design.md → Test Strategy.
+
+     Four of this repository's task concentration points do not apply here, stated rather
+     than silently omitted: (a) the prune set — this change computes none and deletes
+     nothing, so no foreign-file test applies; (b) lock determinism — no lock is read or
+     written; (c) fixture git repositories — none is built, so the user.name/user.email
+     hazard does not arise; (d) `internal/plan` purity — no code and no test in this change
+     touches `plan`. The two that do apply are load-bearing throughout: every asserted
+     error string is a contract, and coverage is measured over `./internal/...`, which is
+     where all of this lands. -->
+
+## 1. A catalog is one YAML document
+<!-- kind: behavior -->
+
+- [ ] 1.1 RED: Write a failing table test `TestParse_MultipleDocuments` covering the four refusing scenarios — `A second document is an error`; `Content after a separator is reported even when it is malformed` (`---` then `kinds: [unclosed`); `An empty document between two separators is still a document` (a valid catalog, `---`, `---`, then another kind); `A file opening with two separators is more than one document` (`---`, `---`, `version: 1`) — each asserting exactly `catalog.yaml: multiple YAML documents; a catalog is a single document` and that no catalog is returned
+- [ ] 1.2 GUARD (expected green, and green before as well as after — these pin what the rule must *not* refuse): add the accepting cases to the same test — `A trailing separator with nothing after it is accepted` (bare, and followed only by a comment), `A leading separator is accepted, with or without a trailing one` (both spellings), and `A separator inside a scalar is not a separator` (a quoted `"---"` and a block scalar containing `---`)
+- [ ] 1.3 Confirm each refusing case fails for the reason design.md → D2 names, and that the reasons differ: the second-document case returns the first document's catalog with a nil error; the malformed case returns the decoder's syntax error quoting the file back; the adjacent-separator case returns the first catalog with the later kind silently missing; the two-leading-separators case returns `catalog.yaml: version is required` for a file that declares a version. A count taken from the decoder fixes only the first of the four
+- [ ] 1.4 GREEN: Add a document count over `lexer.Tokenize`'s tokens, taken before the decode: `token.DocumentHeaderType` and `token.DocumentEndType` split the stream into regions; a region holding any token other than a comment is a document, and so is an empty region between two markers; an empty region before the first marker or after the last is not
+- [ ] 1.5 GREEN: Refuse in `Parse` when the count exceeds one, before `yaml.Unmarshal` runs, so the message never competes with a decoder message — and leave the decode itself on `yaml.Unmarshal`, per design.md → D3, so no existing message or type choice moves underneath the suite
+- [ ] 1.6 REFACTOR: Keep the count in one small function whose comment says why it is not taken from the decoder — the adjacent-separator answer is the reason and is not self-evident from the code — or record that no refactor was warranted
+- [ ] 1.7 CHECK: Concentration point — confirm the decode path is untouched by re-running `TestParse_BadYAML` (a single malformed document must still report the decoder's message, not the multiple-documents one) and `TestParse_Shape`'s `an empty file is a missing version` case (a file with no content tokens is zero documents, not two)
+- [ ] 1.8 CHECK: Contract gate — re-read SPEC.md's `catalog.yaml` section and confirm it describes one document with three top-level keys, so refusing a second is the format's own reading rather than a new rule
+- [ ] 1.9 Run `go test -race ./internal/catalog/...` — green, no regressions
+
+## 2. Loading refuses a path that is not a regular file
+<!-- kind: behavior -->
+
+- [ ] 2.1 RED: Write a failing table test `TestLoad_NotARegularFile` covering `A symlinked catalog is refused without being read` (the link target is a *valid* catalog carrying a distinctive string, so the test cannot pass against an implementation that follows the link and fails to parse), `A dangling symlink is refused as a link, not as an absence`, and `A directory named catalog.yaml is refused` — each asserting exactly `catalog.yaml: not a regular file`, that no catalog is returned, and that the message contains neither the target's distinctive string nor `not graftable`
+- [ ] 2.2 Confirm the symlink case fails by *succeeding* — `Load` returns the target's catalog — rather than by returning some other error, which is what makes the finding a leak rather than a wrong message
+- [ ] 2.3 GREEN: Add an `os.Lstat` before the read in `Load`: `fs.ErrNotExist` keeps the not-graftable message, any other stat error keeps the existing `catalog.yaml: %w` wrapping, and a mode that is not `IsRegular()` returns the new message. Drop nothing else from the existing read path
+- [ ] 2.4 REFACTOR: Reduce the now-duplicated absence handling — `Lstat` and `ReadFile` can no longer both need it — to one place, or record that no refactor was warranted
+- [ ] 2.5 CHECK: Concentration point — `TestLoad_Unreadable` asserts the `catalog.yaml: ` prefix and the *absence* of `not graftable` for a directory named `catalog.yaml`. Confirm it still passes unchanged and that its file was not edited: the new message satisfies both assertions, and rewriting the test to match the implementation would defeat what it is for
+- [ ] 2.6 CHECK: Confirm the caller outside this package still behaves — run `go test -race ./internal/source/...` and confirm `TestReadCatalogSymlinkEscape` and the not-graftable delegation in `ReadCatalog`'s absence branch are both green, since that branch calls `catalog.Load` directly. Then check by hand the one case that moves: a **dangling relative symlink** named `catalog.yaml` inside a fetched entry reaches `Load` through that branch (`os.Root.ReadFile` reports it as `fs.ErrNotExist`) and now reports `catalog.yaml: not a regular file` rather than the not-graftable message. Confirm no `source-listing` scenario pins the old message — its not-graftable scenario is a tree with no `catalog.yaml` at all — and record the result here
+- [ ] 2.7 CHECK: Contract gate — re-read SPEC.md's failure-mode row "`catalog.yaml` missing or invalid" and confirm the new message is a case of *invalid* rather than a fourth outcome, and that `Load`'s doc comment now states something true
+- [ ] 2.8 Run `go test -race ./internal/catalog/... ./internal/source/...` — green, no regressions
+
+## 3. A version literal wider than the decoder's integers
+<!-- kind: behavior -->
+
+- [ ] 3.1 RED: Add failing cases to `TestParse_VersionErrors` for `A version literal wider than any integer type says to upgrade` (`version: 99999999999999999999999999`, asserting the literal appears in the message as written) and `A hugely negative version literal is not a known version`
+- [ ] 3.2 RED: Add the cases that bound the rule — `version: true`, `version: "99999999999999999999999999x"`, and the quoted `version: "-1"` under `A version that is neither an integer nor an integer literal is an error`, plus `A sign or separators do not change the answer` (`+99…` and the quoted wide literal, both reporting the upgrade message) — and confirm the existing `version: "1"` and `version: 1.5` cases are present and asserting `catalog.yaml: version must be an integer`, because they are what stops the shape rule over-reaching
+- [ ] 3.3 Confirm the two new refusing cases fail on the *non-integer* message rather than on the upgrade one, which is the finding: the decoder hands back a `string` and the type switch falls through
+- [ ] 3.4 GREEN: Add a `string` case to `checkVersion` that reads the literal's shape — optional `+`/`-`, decimal digits with optional `_` separators, and a value that **overflows** every 64-bit integer type — reporting the existing upgrade message for a positive literal and the existing not-a-known-version message for a negative one, printing the literal exactly as written. Strip `_` before the range test and count only `strconv.ErrRange`: `ParseUint` fails on `99…9_0` with `ErrSyntax`, and conflating the two failures routes that literal back to the non-integer message the case exists to avoid
+- [ ] 3.5 GREEN: Leave every other string on `version must be an integer`, and keep the existing `uint64`, `int64`, and `int` branches untouched — a literal that fits never arrives as a string, which is the whole reason the shape test is exact
+- [ ] 3.6 REFACTOR: Put the shape test in one small helper next to `checkVersion` with the reason in its comment, so a later reader cannot mistake it for a general number parser, or record that no refactor was warranted
+- [ ] 3.7 CHECK: Contract gate — re-read ENGINEERING.md → Compatibility ("a graft that meets a format version it does not know fails and says to upgrade — it never guesses, and never half-reads a newer file") and confirm the routing now honours it for every integer literal, whatever its width
+- [ ] 3.8 Run `go test -race ./internal/catalog/...` — green, no regressions
+
+## 4. Destinations are compared as paths, not as strings
+<!-- kind: behavior -->
+
+- [ ] 4.1 RED: Add failing cases to `TestParse_KindErrors` for `Two spellings of one destination are an error naming both` (`[".claude/agents/", ".claude/agents//"]`) and `A dot-slash prefix is the same destination` (`["a/b", "./a/b"]`), each asserting the exact `duplicate destination "<b>": same path as "<a>"` text, and confirm the existing identical-spelling case still asserts the unchanged one-string message
+- [ ] 4.2 GUARD (expected green, before and after): Write `TestParse_KindTrailingSlashIsNotADuplicate` for `A trailing slash makes two destinations, not one` (`["docs/{name}", "docs/{name}/"]`), asserting both entries survive in declared order — this is the case design.md → D7 narrows the finding around, and without it the obvious repair breaks a live `destination-computation` requirement
+- [ ] 4.3 GUARD (expected green, before and after): Add the case for `An uncleaned destination is carried verbatim` (`to: "./.claude//agents/"`) to `TestParse_Kinds`, asserting `To[0]` byte for byte, so "the comparison cleans, the value does not" is asserted rather than reviewed
+- [ ] 4.4 Confirm 4.1's cases fail because both spellings survive the raw-string comparison, and confirm 4.2 and 4.3 pass already — they are regression guards for behavior that must *not* change, which is why they are labelled GUARD rather than RED
+- [ ] 4.5 GREEN: Key the duplicate check in `destinations()` on `path.Clean(d)` with a trailing `/` re-appended when `d` ended in one, keep `To` verbatim, and emit the two-spelling message only when the two entries differ as strings — an identical pair keeps the existing message
+- [ ] 4.6 CHECK: Concentration point — run `go test -race ./internal/plan/...` and confirm `TestDestination_TrailingSlashAliasesAreOneDestination` and `TestDestination_TrailingSlashAliasesAreTwoDestinationsForAFileItem` are both green. `internal/plan` owns the per-item rule this comparison must not pre-empt, and those two tests are the boundary between them
+- [ ] 4.7 REFACTOR: Name the key function for what it is (a destination identity, not a cleaned path) and say in its comment why the trailing slash survives cleaning, or record that no refactor was warranted
+- [ ] 4.8 CHECK: Contract gate — re-read SPEC.md's `kinds.<kind>.to` bullets and the `destination-computation` requirement "Two entries SHALL be the same destination when they *mean* the same destination", and confirm the parse-time rule and the plan-time rule agree rather than overlap
+- [ ] 4.9 Run `go test -race ./...` — green, no regressions anywhere in the module
+
+## 5. Documentation
+<!-- kind: operational -->
+
+- [ ] 5.1 CHECK: Re-read `openspec/IMPLEMENTATION-ORDER.md` and confirm this change is absent from it, and that the file's own instruction ("This is a plan, not a commitment … Update this file when that happens rather than letting it drift") makes recording it the expected action rather than an optional tidy-up
+- [ ] 5.2 CHANGE: Add `catalog-hardening` to Phase 1 with one line of what it delivers and a dependency on `catalog-and-selectors`, and note in "Notes on the ordering" that it is a precondition of `sync-command` because that is where `Load` first becomes reachable. Document: `openspec/IMPLEMENTATION-ORDER.md`; audience: every future planning session; durable reason: a follow-up change that exists only in an archived tasks.md is invisible to the roadmap that is meant to be read first
+- [ ] 5.3 CHECK: Confirm no AGENTS.md or ENGINEERING.md change is warranted — the rules this change leans on (asserted error strings are a contract; coverage over `./internal/...`; `plan` pure and `apply` the sole writer) are already written there, and no new recurring pitfall arose that a root file should carry
+- [ ] 5.4 VERIFY: Run `openspec validate catalog-hardening --strict` and confirm it passes (the CLI has no `--change` flag; `--changes` is a different, plural option)
+
+## 6. Change Review
+<!-- kind: operational -->
+
+- [ ] 6.1 CHECK: Dispatch an independent reviewer — a separate subagent, not a fork of the implementing session — given proposal.md, specs/catalog-format/spec.md, design.md, tasks.md, and the diff, and told to report findings rather than edit the tree
+- [ ] 6.2 CHECK: Point the reviewer at this repository's concentration points and at what this change specifically risks: (a) every asserted error string matches the spec text character for character, and every message this change does not claim to move is unchanged; (b) the decoder swap moved no existing message and no existing behavior, empty input included; (c) `internal/plan` gained no code and no test needs a real directory to exercise plan logic; (d) this change computes no prune set and deletes nothing, so no foreign-file test applies — confirm that rather than assume it; (e) no fixture git repository was introduced; (f) no logic landed in `cmd/graft`, where the coverage gate cannot see it; (g) no code path lets a source repository cause anything to execute — the catalog is read and validated, never run; (h) the parse-time duplicate rule does not pre-empt `destination-computation`'s per-item rule, and the file-item case still works
+- [ ] 6.3 CHECK: Ask the reviewer to verify the plan's factual claims empirically rather than by reading — the trailing-`---` decode, the type the decoder returns for each version literal, and the `os.Root` behavior the symlink framing rests on
+- [ ] 6.4 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line reason, note SUGGESTIONs, and re-run affected tests
+- [ ] 6.5 VERIFY: Confirm no blocking or unowned finding remains, `go test -race ./...` is green, and the working tree is committed
+
+## 7. Lint & Verify
+<!-- kind: operational -->
+
+- [ ] 7.1 CHECK: Inspect the intended verification commands and affected tiers — everything this change touches is under `./internal/...`, so the coverage gate applies; there is no acceptance tier, so `task lint`, `task cover`, and `task build` are the whole gate
+- [ ] 7.2 VERIFY: Run `task lint` — golangci-lint reports 0 issues and `gofumpt -l .` prints nothing
+- [ ] 7.3 VERIFY: Run `task cover` — suite green under `-race` and total coverage over `./internal/...` above the 80% floor. `internal/catalog` is expected to fall from 99.5% to roughly 97%: the uncovered statements are the `Lstat` non-`ErrNotExist` wrap and the `ReadFile` error branch, both recorded in design.md → Risks as deliberately untested. Record the measured number here rather than restating the estimate
+- [ ] 7.4 VERIFY: Run `task build` — the binary compiles with the version ldflags
+- [ ] 7.5 VERIFY: Run `openspec validate catalog-hardening --strict` — the change is valid
