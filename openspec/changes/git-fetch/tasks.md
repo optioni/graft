@@ -66,24 +66,24 @@ Pure, and the only part of this change that touches no filesystem and no subproc
 The seam every later group uses: explicit argv, no shell, prompting disabled, stderr reduced
 to its first line.
 
-- [ ] 3.1 RED: Write a failing test for *git is not on PATH* — `t.Setenv("PATH", t.TempDir())`,
+- [x] 3.1 RED: Write a failing test for *git is not on PATH* — `t.Setenv("PATH", t.TempDir())`,
       then `Resolve` — asserting the exact message `git not found on PATH`. Assert it is not
       an `exec.Error` surfaced verbatim, which a user cannot act on
-- [ ] 3.2 GREEN: Add the unexported git runner: `exec.LookPath("git")` first, mapping its
+- [x] 3.2 GREEN: Add the unexported git runner: `exec.LookPath("git")` first, mapping its
       failure to `git not found on PATH`; `exec.Command` with an explicit argv and never a
       shell; the child's environment being the parent's plus `GIT_TERMINAL_PROMPT=0` and
       nothing else scrubbed (design.md → D3); stderr captured into a `bytes.Buffer`
-- [ ] 3.3 GREEN: Separate options from operands with `--` in every invocation that takes a
+- [x] 3.3 GREEN: Separate options from operands with `--` in every invocation that takes a
       URL — `ls-remote -- <url> <refs…>` and `remote add origin -- <url>` — as the second of
       the two independent guards in design.md → D2. An explicit argv alone does not stop a
       value from becoming a flag; argv position is not what git uses to tell one from the
       other
-- [ ] 3.4 GREEN: Add the unexported `firstLine` helper reducing a captured stderr buffer to
+- [x] 3.4 GREEN: Add the unexported `firstLine` helper reducing a captured stderr buffer to
       its first non-empty trimmed line, so a per-source error never carries git's terminal
       advice on later lines
-- [ ] 3.5 REFACTOR: Confirm every git invocation in the package goes through this one runner —
+- [x] 3.5 REFACTOR: Confirm every git invocation in the package goes through this one runner —
       no second `exec.Command` anywhere — or state that no refactor was needed
-- [ ] 3.6 Run `go test ./internal/source/` — no regressions
+- [x] 3.6 Run `go test ./internal/source/` — no regressions
 
 ## 4. Rev resolution
 <!-- kind: behavior -->
@@ -91,33 +91,33 @@ to its first line.
 `git ls-remote` against three explicit refs, with peeled tag beating tag beating branch, and
 a full sha short-circuiting before anything can fail environmentally.
 
-- [ ] 4.1 RED: Write failing tests for *A branch resolves to its tip*; *A lightweight tag
+- [x] 4.1 RED: Write failing tests for *A branch resolves to its tip*; *A lightweight tag
       resolves to its commit*; *An annotated tag resolves to the commit, not the tag object*;
       *A tag wins over a branch of the same name*; *A full sha passes through without
       contacting the remote*; *An uppercase sha is not treated as a sha*. Build every fixture
       with the group 1 helper. The annotated-tag test asserts both that the returned sha is
       the commit **and** that it differs from the tag object's own sha — asserting only the
       first would pass against an implementation that never peels
-- [ ] 4.2 RED: The full-sha test gives a clone URL naming a path that does not exist **and**
+- [x] 4.2 RED: The full-sha test gives a clone URL naming a path that does not exist **and**
       empties `PATH`, so it can only pass if no git command runs. Asserting merely that the
       value comes back would stay green against an implementation that resolves it remotely
-- [ ] 4.3 GREEN: Add `Resolve(name, git, rev string) (string, error)`. Return `rev` unchanged
+- [x] 4.3 GREEN: Add `Resolve(name, git, rev string) (string, error)`. Return `rev` unchanged
       when it is 40 lowercase hex characters, **before** `exec.LookPath` (design.md → D5)
-- [ ] 4.4 GREEN: Invoke `git ls-remote -- <url> refs/tags/<rev> refs/tags/<rev>^{}
+- [x] 4.4 GREEN: Invoke `git ls-remote -- <url> refs/tags/<rev> refs/tags/<rev>^{}
       refs/heads/<rev>`, and compare each output line's ref column to those three names with
       `==` rather than trusting the pattern match — `ls-remote` matches the tail of a ref
       name, so a pattern alone would let `refs/heads/x/refs/tags/v1` answer for `v1`
       (design.md → D4)
-- [ ] 4.5 GREEN: Apply the precedence peeled tag → tag → branch, so a pin names the immutable
+- [x] 4.5 GREEN: Apply the precedence peeled tag → tag → branch, so a pin names the immutable
       thing
-- [ ] 4.6 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm `resolved`
+- [x] 4.6 CHECK: Contract gate — re-read SPEC.md's `graft.lock` section and confirm `resolved`
       is still documented as the sha a `rev` became, that `rev` records the request
       unchanged, and that the format carries no content hash this resolution would have to
       produce
-- [ ] 4.7 REFACTOR: Confirm the three ref names are constructed in one place and used by both
+- [x] 4.7 REFACTOR: Confirm the three ref names are constructed in one place and used by both
       the invocation and the comparison, so they cannot drift apart, or state that no refactor
       was needed
-- [ ] 4.8 Run `go test ./internal/source/` — no regressions
+- [x] 4.8 Run `go test ./internal/source/` — no regressions
 
 ## 5. Rev resolution failures
 <!-- kind: behavior -->
@@ -125,22 +125,22 @@ a full sha short-circuiting before anything can fail environmentally.
 **Concentration point.** Error strings are asserted by tests. Every message below is a
 deliberate contract; changing one later is a contract change, never an incidental edit.
 
-- [ ] 5.1 RED: Write failing tests for *A rev no ref matches*, asserting `source "shared": rev
+- [x] 5.1 RED: Write failing tests for *A rev no ref matches*, asserting `source "shared": rev
       "v9.9.9" not found`; *An abbreviated sha is not a rev*, asserting `source "shared": rev
       "47f73fc" not found` against a repository where that abbreviation is real; *An empty
       rev*, asserting `source "shared": rev is empty` with `PATH` emptied to prove no git ran;
       *An unreachable remote*, asserting the prefix `source "shared": cannot reach "<url>": `
-- [ ] 5.2 RED: The unreachable-remote test additionally asserts the message contains no
+- [x] 5.2 RED: The unreachable-remote test additionally asserts the message contains no
       newline, so git's later lines of terminal advice cannot leak into a per-source error,
       and asserts that the failure is distinguishable from the not-found one — one is a typo
       in `graft.toml`, the other a network or permission problem
-- [ ] 5.3 GREEN: Return the empty-rev error before any lookup; map a zero-exit run with no
+- [x] 5.3 GREEN: Return the empty-rev error before any lookup; map a zero-exit run with no
       matching ref line to the not-found error; map a non-zero exit to the unreachable error
       carrying `firstLine` of stderr. On every failure the returned sha is `""`, asserted in
       each case
-- [ ] 5.4 REFACTOR: Extract the per-source error prefix into one closure, as `catalog.errf`
+- [x] 5.4 REFACTOR: Extract the per-source error prefix into one closure, as `catalog.errf`
       and `plan.itemErrf` already do, or state that no refactor was needed
-- [ ] 5.5 Run `go test ./internal/source/` — no regressions
+- [x] 5.5 Run `go test ./internal/source/` — no regressions
 
 ## 6. The cache path
 <!-- kind: behavior -->
