@@ -1,66 +1,63 @@
-# Handoff — unattended implementation run
+# Handoff — graft implementation
 
-Started 2026-08-23 ~22:55 local. Session limit resets 03:10.
+Updated 2026-08-24 ~17:55 local, paused on a 5-hour session limit that resets **20:09**.
 
-## What is running
+## Where things stand
 
-A background workflow (`graft-implementation`, run `wf_0d58089b-bd1`) implements the 11
-changes in `openspec/IMPLEMENTATION-ORDER.md` **sequentially, in dependency order**. Two
-agents per change:
+**7 of 12 changes archived.** `update-command` is the 8th and is roughly half implemented.
 
-1. **artifacts** — `opsx:ff` generates proposal, specs, design, tasks, planning-review;
-   `openspec validate --strict`; commit.
-2. **implement** — works every task group in its declared lifecycle, dispatches a separate
-   reviewer for the Change Review group, runs `task ci`, then `opsx:archive`.
+| # | Change | State |
+|---|--------|-------|
+| 1 | `manifest-and-lock` | archived |
+| 2 | `catalog-and-selectors` | archived |
+| 3 | `destination-and-plan` | archived |
+| 4 | `git-fetch` | archived |
+| 5 | `command-surface` | archived |
+| 6 | `catalog-hardening` | archived (not in IMPLEMENTATION-ORDER.md — added to close four findings `catalog-and-selectors` deferred) |
+| 7 | `sync-command` | archived — `graft sync` builds and runs |
+| 8 | `update-command` | **in flight, see below** |
+| 9 | `list-command` | not started |
+| 10 | `add-command` | not started |
+| 11 | `add-picker` | not started |
+| 12 | `self-hosting` | not started |
 
-Sequential rather than parallel on purpose: parallel changes in one repo means git
-conflicts with nobody awake to resolve them.
+## Resuming `update-command`
 
-**Fail-fast.** If either agent reports failure, the run halts there and skips the rest
-rather than stacking nine changes on a broken foundation. Every completed change is
-committed and archived, so the halt point is a clean boundary.
+Artifacts are complete and committed (`4baf738`). `openspec/changes/update-command/` holds
+proposal, design, tasks, planning-review and delta specs.
 
-## Where to look
+**`tasks.md` checkboxes are all unticked and are wrong** — the agent implemented without
+ticking them. Trust the commit log, not the checkboxes. Actually complete:
 
-- `/workflows` — live progress
-- Transcript: `~/.claude/projects/-Users-juusopiikkila-Code-openspec-schemas/b1f64033-a64b-40c7-ac7f-e72a5e8c2a5f/subagents/workflows/wf_0d58089b-bd1`
-- `journal.jsonl` in that directory records each agent's actual return value
-- `git log --oneline` — one or more commits per completed change
-- `openspec/changes/archive/` — completed changes
-- `openspec/changes/<name>/` (not archive) — a change that was started but not finished
+- Group 1, manifest: move one rev in place — `84e2eda`
+- Group 2, apply: write `graft.toml`, immediately before the lock — `8f9cfcc`
+- Group 3, sync: re-resolution as a parameter, not a second sequence — `a2ca57f`
 
-## To resume after a halt
+**Group 4 is in progress.** `internal/sync/updateto_test.go` is committed as WIP: it is the
+RED test for `--to` moving the pin, and it does not compile yet. Start there.
 
-```sh
-export PATH="/opt/homebrew/bin:$PATH"
-cd ~/Code/graft
-git log --oneline -20
-ls openspec/changes/           # in-progress change, if any
-task ci                        # is the tree green?
-```
+Remaining after group 4: group 0/7 (the outer acceptance loop — 0 was never written, so
+write it before 7 can go green), 5 (`--dry-run` under an update), 6 (the `update` CLI
+command), 8 (SPEC.md docs), 9 (Change Review), 10 (Lint & Verify), then archive.
 
-Then either continue the in-progress change with `/opsx:apply <name>`, or re-run the
-workflow from the first unfinished change.
+## How to run the remaining changes
 
-## State when this started
+One agent per change, `apply-orchestrator`, strictly sequential. **Nothing else may write
+to the tree while an agent holds it** — two writers is what caused commits `29b866a`,
+`9e00a34` and part of `54228be` to be reverted by `69783de` on 08-24.
 
-- 9 commits on `main`, **none pushed**. `origin` is `git@github.com:optioni/graft.git`.
-- `~/Code/openspec-schemas` is **3 commits ahead of its origin**, also unpushed.
-- `task ci` green: lint, 100% coverage over `./internal`, build.
-- `goreleaser check` clean.
-- Go 1.27.0, task, gofumpt, golangci-lint, goreleaser installed via brew this session.
+Every agent prompt must carry: `export PATH="/opt/homebrew/bin:$PATH"` before `task`/`go`/
+`openspec`/`golangci-lint`; you are the only writer, stop rather than revert; never push;
+coverage is 80% over `./internal/...`; `internal/plan` stays pure and `internal/apply` is
+the sole writer; fixture git repos need repo-level `user.name`/`user.email`; error strings
+are asserted contract; retry API server errors rather than abandoning the step.
 
-## Known gaps, deliberate
+Do not run `graft sync`/`graft update` against this repo's own `.claude/agents/` or
+`openspec/schemas/` until `self-hosting` — test against fixtures in a temp directory.
 
-- `HOMEBREW_TAP_TOKEN` is not set as a repo secret, and `optioni/homebrew-tap` has no
-  commits. No release can succeed until both are done. GoReleaser creates `Casks/graft.rb`
-  on the first release.
-- The dogfood CI job is inert until `self-hosting` (change 11) lands `graft.toml`.
-- `openspec/schemas/tdd/` and `.claude/agents/` are hand-copied from `openspec-schemas`.
-  Agents were told not to edit them.
+## Not done, and not forgotten
 
-## Environment trap
-
-`/opt/homebrew/bin` is **not** on a non-interactive shell's PATH. Every agent was told to
-`export PATH="/opt/homebrew/bin:$PATH"` before any go/task command. If something failed
-with "command not found: go", that is why.
+- **Nothing is pushed.** `origin` (`git@github.com:optioni/graft.git`) is empty. This is
+  why a scheduled *cloud* resume cannot work — it would clone nothing.
+- `HOMEBREW_TAP_TOKEN` is not set as a repo secret; `~/Code/homebrew-tap` has no commits.
+- `openspec-schemas` has 3 unpushed commits.
