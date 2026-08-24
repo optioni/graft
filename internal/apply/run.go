@@ -33,6 +33,20 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 	}
 	defer func() { _ = repo.Close() }()
 
+	// Before anything is opened, let alone written: a reserved path is decidable from the
+	// plan alone, and discovering one halfway through would leave the tree partly applied
+	// for a condition graft could see coming.
+	for _, w := range p.Writes {
+		if err := checkReservedWrite(w.Dest); err != nil {
+			return err
+		}
+	}
+	for _, dest := range p.Prune {
+		if err := checkReservedRemove(dest); err != nil {
+			return err
+		}
+	}
+
 	src := &sources{dirs: trees, open: map[string]*os.Root{}}
 	defer src.close()
 

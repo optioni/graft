@@ -84,17 +84,17 @@ destination's own type, because a safe write cannot be written without deciding 
 ## 4. apply: reserved paths
 <!-- kind: behavior -->
 
-- [ ] 4.1 RED: Write failing tests for: *A destination inside .git is refused*, *A prune path
+- [x] 4.1 RED: Write failing tests for: *A destination inside .git is refused*, *A prune path
       inside .git is refused*, *A destination of graft.toml or graft.lock is refused*, *A path
       merely beginning with .git is not inside it* — the last asserting `.github/workflows/ci.yml`
       and `.gitignore` are both written
-- [ ] 4.2 GREEN: Refuse a destination or prune path whose **first path segment** is `.git`, or
+- [x] 4.2 GREEN: Refuse a destination or prune path whose **first path segment** is `.git`, or
       which equals `graft.toml` or `graft.lock`, with the four messages design.md → Contracts
       lists. The rule is on the segment, never a string prefix
-- [ ] 4.3 REFACTOR: State in a comment why this floor is here rather than in `internal/plan`:
+- [x] 4.3 REFACTOR: State in a comment why this floor is here rather than in `internal/plan`:
       `.git/config` does not escape the repo root, so no planning rule catches it, and a file
       placed there is invisible to the `git diff` that is SPEC.md's whole review story
-- [ ] 4.4 Run `go test ./internal/apply/` — green
+- [x] 4.4 Run `go test ./internal/apply/` — green
 
 ## 5. apply: executing the prune set
 <!-- kind: behavior -->
