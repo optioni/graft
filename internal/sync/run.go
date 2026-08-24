@@ -1,7 +1,9 @@
 package sync
 
 import (
+	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/optioni/graft/internal/apply"
 	"github.com/optioni/graft/internal/catalog"
@@ -28,6 +30,36 @@ type Options struct {
 	// DryRun stops after the plan is built. Nothing is written, nothing is deleted, and
 	// no directory is created.
 	DryRun bool
+
+	// Update makes this run a `graft update`: the sources it names have their revs
+	// re-resolved rather than taken from the lock. A nil Update is `graft sync`, which
+	// re-resolves nothing — the zero Options is exactly the sync behavior, so this field
+	// is the one difference between the two commands.
+	Update *Update
+}
+
+// Update names what a `graft update` run moves.
+type Update struct {
+	// Source is the one source to re-resolve, or "" for every source the manifest
+	// declares. An empty name cannot collide with a real one: manifest.Parse refuses a
+	// source whose name is empty.
+	Source string
+
+	// To is the rev to write into graft.toml for Source before anything is resolved, or ""
+	// to leave the manifest alone.
+	//
+	// It is honoured only together with Source, and that is a precondition rather than a
+	// checked error: `graft update --to <rev>` with no source is refused by the command
+	// surface, where it earns the hint line a usage error carries. A guard here would be a
+	// branch no user can reach.
+	To string
+}
+
+// refreshes reports whether this run re-resolves the named source rather than taking its
+// sha from the lock. A nil Update is `graft sync` and refreshes nothing, which is what keeps
+// rev = "main" from drifting between syncs.
+func (o Options) refreshes(name string) bool {
+	return o.Update != nil && (o.Update.Source == "" || o.Update.Source == name)
 }
 
 // Run makes the tree match the lock and returns what changed.
@@ -37,7 +69,7 @@ type Options struct {
 // problem — source "shared": …, graft.toml: …, catalog.yaml: … — so a second layer of
 // context here would say the same thing twice.
 func Run(o Options) (*Report, error) {
-	m, err := manifest.Load(filepath.Join(o.Root, manifest.Filename))
+	m, data, err := manifest.Read(filepath.Join(o.Root, manifest.Filename))
 	if err != nil {
 		return nil, err
 	}
@@ -46,10 +78,34 @@ func Run(o Options) (*Report, error) {
 		return nil, err
 	}
 
-	// Before the first resolution and the first fetch. A manifest whose rev moved cannot
-	// be honoured until `graft update` moves the lock with it, and finding that out after
-	// a network round trip would be finding it out too late.
-	if err := lock.CheckPins(m.Sources, current); err != nil {
+	// Before the first resolution and the first fetch, and before the manifest is edited.
+	// A mistyped source name must produce this message rather than the manifest editor's
+	// refusal, which would be technically true about a table that does not exist and of no
+	// use to anyone.
+	if o.Update != nil && o.Update.Source != "" && !declares(m, o.Update.Source) {
+		return nil, fmt.Errorf("%s has no source %q", manifest.Filename, o.Update.Source)
+	}
+
+	moved, err := movePin(o, data)
+	if err != nil {
+		return nil, err
+	}
+	if moved != nil {
+		// The run resolves what will be on disk, not what was. Re-parsing the edited bytes
+		// rather than mutating the parsed manifest is the only way to prove the two are the
+		// same thing — see movePin.
+		if m, err = manifest.Parse(moved, manifest.Filename); err != nil {
+			return nil, err
+		}
+	}
+
+	// Narrowed to the sources this run does not re-resolve. A disagreement is real for a
+	// source whose sha still comes from the lock, and it is precisely what re-resolving the
+	// source repairs — so checking it against a source being updated would refuse the run
+	// that fixes it. A manifest whose rev moved cannot otherwise be honoured until
+	// `graft update` moves the lock with it, and finding that out after a network round
+	// trip would be finding it out too late.
+	if err := lock.CheckPins(pinned(o, m), current); err != nil {
 		return nil, err
 	}
 
@@ -75,10 +131,73 @@ func Run(o Options) (*Report, error) {
 	if o.DryRun {
 		return report, nil
 	}
-	if err := apply.Run(o.Root, res.trees, p); err != nil {
+
+	// The manifest edit reaches disk here or not at all: it is an argument to the apply, so
+	// --dry-run returning above leaves graft.toml exactly as it was, and a refusal inside
+	// internal/apply leaves it there too.
+	var opts []apply.Option
+	if moved != nil {
+		opts = append(opts, apply.WithManifest(moved))
+	}
+	if err := apply.Run(o.Root, res.trees, p, opts...); err != nil {
 		return nil, err
 	}
 	return report, nil
+}
+
+// declares reports whether the manifest holds a source of this name.
+func declares(m *manifest.Manifest, name string) bool {
+	return slices.ContainsFunc(m.Sources, func(s manifest.Source) bool { return s.Name == name })
+}
+
+// pinned is the sources whose pins must agree with the lock: every one this run does not
+// re-resolve.
+//
+// The filtering is here rather than inside lock.CheckPins because *which* sources to ask
+// about is a decision about this run, and internal/lock's job is the lock's format. Order is
+// preserved, and manifest.Parse sorts by name, so a lock disagreeing on several sources
+// always names the same one.
+func pinned(o Options, m *manifest.Manifest) []manifest.Source {
+	if o.Update == nil {
+		return m.Sources
+	}
+	out := make([]manifest.Source, 0, len(m.Sources))
+	for _, s := range m.Sources {
+		if !o.refreshes(s.Name) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// movePin returns the graft.toml bytes this run will write, or nil when it writes none.
+//
+// The returned bytes are re-parsed by the caller before anything uses them, and the source's
+// rev in the re-parse is checked against what was asked for. That check is not belt and
+// braces: manifest.SetRev edits text, and a text edit's real failure is landing on the wrong
+// line — a commented-out key, a key in a sub-table — which produces a file that parses
+// perfectly while the run resolves the old rev. Comparing the value turns every failure in
+// that class into a failed run.
+func movePin(o Options, data []byte) ([]byte, error) {
+	if o.Update == nil || o.Update.To == "" || o.Update.Source == "" {
+		return nil, nil
+	}
+
+	moved, err := manifest.SetRev(data, o.Update.Source, o.Update.To)
+	if err != nil {
+		return nil, err
+	}
+	edited, err := manifest.Parse(moved, manifest.Filename)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range edited.Sources {
+		if s.Name == o.Update.Source && s.Rev == o.Update.To {
+			return moved, nil
+		}
+	}
+	return nil, fmt.Errorf("%s: source %q: the pin did not move to %q",
+		manifest.Filename, o.Update.Source, o.Update.To)
 }
 
 // resolved is what walking the manifest's sources produces: the planner's inputs, the
@@ -116,7 +235,9 @@ func resolve(o Options, m *manifest.Manifest, current *lock.Lock) (resolved, err
 
 	for _, s := range m.Sources {
 		sha, known := pinned[s.Name]
-		if !known {
+		// The one branch that tells a sync from an update. Everything below it — the fetch,
+		// the catalog, the expansion, the listing — is the same code either way.
+		if !known || o.refreshes(s.Name) {
 			var err error
 			if sha, err = source.Resolve(s.Name, s.Git, s.Rev); err != nil {
 				return resolved{}, err

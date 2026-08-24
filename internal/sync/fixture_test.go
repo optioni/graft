@@ -249,3 +249,56 @@ func assertErrorContains(t *testing.T, err error, want string) {
 		t.Errorf("error = %q, want one mentioning %q", err.Error(), want)
 	}
 }
+
+// update performs a `graft update` over every source the manifest declares.
+func (c *consumer) update() (*sync.Report, error) {
+	c.t.Helper()
+	return c.updateWith(sync.Update{})
+}
+
+// updateSource performs `graft update <name>`.
+func (c *consumer) updateSource(name string) (*sync.Report, error) {
+	c.t.Helper()
+	return c.updateWith(sync.Update{Source: name})
+}
+
+// updateTo performs `graft update --to <rev> <name>`.
+func (c *consumer) updateTo(name, rev string) (*sync.Report, error) {
+	c.t.Helper()
+	return c.updateWith(sync.Update{Source: name, To: rev})
+}
+
+func (c *consumer) updateWith(u sync.Update) (*sync.Report, error) {
+	c.t.Helper()
+	o := c.options()
+	o.Update = &u
+	return sync.Run(o)
+}
+
+// cacheEntries lists everything under the consumer's fetch cache, so "nothing was fetched"
+// is one comparison rather than a guess.
+func (c *consumer) cacheEntries() []string {
+	c.t.Helper()
+	var out []string
+	err := filepath.WalkDir(c.cache, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if rel, relErr := filepath.Rel(c.cache, p); relErr == nil && rel != "." {
+			out = append(out, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	if err != nil {
+		c.t.Fatalf("walking the cache: %v", err)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func (c *consumer) assertCacheEmpty() {
+	c.t.Helper()
+	if got := c.cacheEntries(); len(got) != 0 {
+		c.t.Errorf("the cache holds %v, want nothing fetched", got)
+	}
+}
