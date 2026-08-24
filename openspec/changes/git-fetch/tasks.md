@@ -36,29 +36,29 @@ eleven groups green locally and red in CI.
 
 Pure, and the only part of this change that touches no filesystem and no subprocess.
 
-- [ ] 2.1 RED: Write failing table tests for *Shorthand expands to HTTPS*; *A URL carrying a
+- [x] 2.1 RED: Write failing table tests for *Shorthand expands to HTTPS*; *A URL carrying a
       scheme is passed through*; *An scp-style address is passed through*; *A filesystem path
       is passed through* — the last covering both `/srv/mirrors/openspec-schemas` and
       `../sibling-repo`. Assert that no directory is created and no command is run by giving
       the test no temp dir at all
-- [ ] 2.2 RED: Write *A remote that looks like an option is refused*, asserting `source
+- [x] 2.2 RED: Write *A remote that looks like an option is refused*, asserting `source
       "shared": git "--upload-pack=./pwn.sh" may not begin with "-"`, and assert the same
       refusal from `Resolve` and from `Fetch` with `PATH` emptied, so a green test cannot mean
       "git ran and declined". This is a verified arbitrary-execution path, not a hypothetical:
       `git ls-remote --upload-pack=./pwn.sh refs/tags/v1` runs the script and promotes the
       refspec to the repository operand (design.md → D2)
-- [ ] 2.3 GREEN: Add `CloneURL(name, git string) (string, error)`, refusing a value beginning
+- [x] 2.3 GREEN: Add `CloneURL(name, git string) (string, error)`, refusing a value beginning
       with `-` before anything else, then expanding only the shorthand form — no scheme, no
       `user@host:` prefix, not a filesystem path, and a first segment that looks like a
       hostname — to `https://` + the value, and passing every other form through unchanged
-- [ ] 2.4 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm `git` is
+- [x] 2.4 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm `git` is
       still documented as "anything `git clone` accepts" with shorthand `host/owner/repo`
       expanding to HTTPS, and that expansion still rewrites nothing else. Record that refusing
       a leading `-` narrows "anything `git clone` accepts" deliberately: a leading-dash value
       is not a remote `git clone` accepts, it is an option
-- [ ] 2.5 REFACTOR: Confirm the hostname test is one predicate used once, or state that no
+- [x] 2.5 REFACTOR: Confirm the hostname test is one predicate used once, or state that no
       refactor was needed
-- [ ] 2.6 Run `go test ./internal/source/` — no regressions
+- [x] 2.6 Run `go test ./internal/source/` — no regressions
 
 ## 3. Running git, and its absence
 <!-- kind: behavior -->
