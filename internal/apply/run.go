@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"slices"
 
 	"github.com/optioni/graft/internal/lock"
 	"github.com/optioni/graft/internal/plan"
@@ -91,7 +92,17 @@ func writeFile(repo *os.Root, dest string, data []byte) error {
 // following: an os.Root stops a path leaving the repository but happily follows a symlink
 // that stays inside it, so a repo-owned link at a destination would redirect the write to
 // a path no lock claims and no prune could ever reach.
+//
+// The ancestors come first, because an Lstat of the destination itself under a bad ancestor
+// fails with the operating system's own "not a directory" — a message naming neither the
+// destination nor the path the reader has to go and fix.
 func checkDestination(repo *os.Root, dest string) error {
+	if bad, err := badAncestor(repo, dest); err != nil {
+		return writeErrf(dest, "%v", err)
+	} else if bad != "" {
+		return writeErrf(dest, "%q is not a directory", bad)
+	}
+
 	fi, err := repo.Lstat(dest)
 	switch {
 	case isNotExist(err):
@@ -102,6 +113,43 @@ func checkDestination(repo *os.Root, dest string) error {
 		return writeErrf(dest, "it exists and is not a regular file")
 	}
 	return nil
+}
+
+// badAncestor returns the shallowest existing ancestor of p that is not a directory, or
+// the empty string when every one of them is.
+//
+// This is the half of containment an os.Root does not provide. A root refuses a path that
+// leaves it and follows a symlink that stays inside it, so a link in the ancestry silently
+// relocates whatever is done at the end of the path — a write lands where graft.lock does
+// not say, and a deletion reaches a file the lock never claimed. A symlink to a directory
+// is not a directory here, which is the whole point, and Lstat is what keeps it that way.
+//
+// The walk stops at the first ancestor that does not exist. Everything below such an
+// ancestor is created fresh by this package, so there is nothing there to be surprised by.
+func badAncestor(repo *os.Root, p string) (string, error) {
+	for _, dir := range ancestors(p) {
+		fi, err := repo.Lstat(dir)
+		switch {
+		case isNotExist(err):
+			return "", nil
+		case err != nil:
+			return "", err
+		case !fi.IsDir():
+			return dir, nil
+		}
+	}
+	return "", nil
+}
+
+// ancestors lists p's parent directories, shallowest first, so the offender reported is
+// always the shallowest one and a path with two of them names the same one every time.
+func ancestors(p string) []string {
+	var out []string
+	for dir := path.Dir(p); dir != "." && dir != "/"; dir = path.Dir(dir) {
+		out = append(out, dir)
+	}
+	slices.Reverse(out)
+	return out
 }
 
 // writeLock serializes the plan's lock into the repository. It is called last, after every

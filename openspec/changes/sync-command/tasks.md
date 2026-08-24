@@ -71,15 +71,15 @@ symlink that stays inside it. The root alone is therefore not the floor it looks
 this group is where that gap is closed on the write side. Group 2 already owns the
 destination's own type, because a safe write cannot be written without deciding it.
 
-- [ ] 3.1 RED: Write failing tests for: *A destination under a symlinked parent is refused* and
+- [x] 3.1 RED: Write failing tests for: *A destination under a symlinked parent is refused* and
       *A destination whose parent is a regular file is named*
-- [ ] 3.2 GREEN: Walk the destination's ancestors from the top; an ancestor that exists and is
+- [x] 3.2 GREEN: Walk the destination's ancestors from the top; an ancestor that exists and is
       not a directory fails with `cannot write "<path>": "<ancestor>" is not a directory`,
       naming the shallowest one. A symlink to a directory is not a directory here
-- [ ] 3.3 REFACTOR: Extract the two predicates — "exists and is a regular file", "exists and is
+- [x] 3.3 REFACTOR: Extract the two predicates — "exists and is a regular file", "exists and is
       a directory" — so group 5's prune-side checks share them and "graft only ever writes
       regular files" is stated once
-- [ ] 3.4 Run `go test ./internal/apply/` — green
+- [x] 3.4 Run `go test ./internal/apply/` — green
 
 ## 4. apply: reserved paths
 <!-- kind: behavior -->
