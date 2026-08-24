@@ -116,6 +116,19 @@ func TestParse_KindErrors(t *testing.T) {
 			want: `catalog.yaml: kind "agent": duplicate destination ".claude/agents/"`,
 		},
 		{
+			// One destination under two spellings. Both are named, because a message
+			// repeating one string would send the reader looking for two identical
+			// entries that are not in the file.
+			name: "one destination spelled two ways",
+			in:   "version: 1\nkinds:\n  agent:\n    to: [\".claude/agents/\", \".claude/agents//\"]\n",
+			want: `catalog.yaml: kind "agent": duplicate destination ".claude/agents//": same path as ".claude/agents/"`,
+		},
+		{
+			name: "a dot-slash prefix names the same destination",
+			in:   "version: 1\nkinds:\n  agent:\n    to: [\"a/b\", \"./a/b\"]\n",
+			want: `catalog.yaml: kind "agent": duplicate destination "./a/b": same path as "a/b"`,
+		},
+		{
 			name: "flatten is not a boolean",
 			in:   "version: 1\nkinds:\n  agent:\n    to: \"x/\"\n    flatten: \"yes\"\n",
 			want: `catalog.yaml: kind "agent": flatten must be a boolean`,
@@ -178,5 +191,48 @@ provides:
 	}
 	if len(c.Items) != 1 {
 		t.Errorf("len(Items) = %d, want 1", len(c.Items))
+	}
+}
+
+// TestParse_KindTrailingSlashIsNotADuplicate guards the boundary the duplicate rule must
+// not cross. A trailing slash is a no-op for a directory item and significant for a file
+// item, so destination-computation requires this pair to be one destination for the first
+// and two for the second — a comparison that cleaned the slash away would make a catalog
+// that spec requires to work unparseable.
+func TestParse_KindTrailingSlashIsNotADuplicate(t *testing.T) {
+	t.Parallel()
+
+	const in = "version: 1\nkinds:\n  doc:\n    to: [\"docs/{name}\", \"docs/{name}/\"]\n"
+
+	c, err := catalog.Parse([]byte(in), "catalog.yaml")
+	if err != nil {
+		t.Fatalf("Parse() error = %v, want nil", err)
+	}
+	want := []string{"docs/{name}", "docs/{name}/"}
+	got := c.Kinds["doc"].To
+	if len(got) != len(want) {
+		t.Fatalf("To = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("To[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// TestParse_KindUncleanedDestinationIsVerbatim: the comparison cleans, the value does
+// not. destination-computation reads the raw string and a trailing slash changes what it
+// means, so a cleaned Kind.To would change the destination rather than describe it.
+func TestParse_KindUncleanedDestinationIsVerbatim(t *testing.T) {
+	t.Parallel()
+
+	const in = "version: 1\nkinds:\n  agent:\n    to: \"./.claude//agents/\"\n"
+
+	c, err := catalog.Parse([]byte(in), "catalog.yaml")
+	if err != nil {
+		t.Fatalf("Parse() error = %v, want nil", err)
+	}
+	if got, want := c.Kinds["agent"].To[0], "./.claude//agents/"; got != want {
+		t.Errorf("To[0] = %q, want %q", got, want)
 	}
 }
