@@ -257,3 +257,51 @@ func TestRunDestinationSymlinkRefused(t *testing.T) {
 		t.Error("the symlink was removed; graft may not delete what it did not write")
 	}
 }
+
+// internal/source never lists anything but a regular file, so a plan reaching here with a
+// directory or a link as a source path means something upstream changed. The refusal is
+// worded as a read failure because that is what it is: there are no bytes to copy.
+func TestRunSourcePathNotRegular(t *testing.T) {
+	t.Parallel()
+
+	for name, seed := range map[string]func(*tree){
+		"a directory": func(x *tree) { x.file("extras/dir/inner.md", "x\n") },
+		"a symlink":   func(x *tree) { x.file("extras/real.md", "x\n"); x.symlink("real.md", "extras/dir") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			repo := newTree(t)
+			src := newTree(t)
+			seed(src)
+
+			p := &plan.Plan{
+				Writes: []plan.Write{write("extras/dir", "docs/x.md")},
+				Lock:   lockOf("docs/x.md"),
+			}
+			err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+			assertError(t, err, `source "shared": cannot read "extras/dir": not a regular file`)
+
+			repo.assertEntries()
+		})
+	}
+}
+
+// A registered tree that is not there at all. The message names the read the caller was
+// about to attempt, because "the cache entry is missing" is not something a user can act
+// on and the file that was wanted is.
+func TestRunUnopenableSourceTree(t *testing.T) {
+	t.Parallel()
+
+	repo := newTree(t)
+	missing := newTree(t).path("no-such-entry")
+
+	p := &plan.Plan{
+		Writes: []plan.Write{write("extras/x.md", "docs/x.md")},
+		Lock:   lockOf("docs/x.md"),
+	}
+	err := apply.Run(repo.dir, map[string]string{"shared": missing}, p)
+	assertErrorPrefix(t, err, `source "shared": cannot read "extras/x.md": `)
+
+	repo.assertEntries()
+}

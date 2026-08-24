@@ -76,6 +76,11 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 // Every failure is ignored, including the ordinary one of a directory that still holds
 // something. This runs after the prunes and before the lock is written, so failing here
 // would strand the sync in the state it is least able to explain, over a tidying step.
+//
+// The pre-flight pass already refuses a prune path with a non-directory ancestor, so the
+// skip below is unreachable through Run today and is deliberately kept anyway. It is the
+// last line between this walk and a user's `vendor -> shared` link, it costs one Lstat,
+// and the pass that makes it redundant is one refactor away from not doing so.
 func removeEmptyDirs(repo *os.Root, prune []string) {
 	seen := map[string]struct{}{}
 	var candidates []string

@@ -122,3 +122,23 @@ func TestRunMidFlightFailureKeepsPreviousLock(t *testing.T) {
 		t.Errorf("ok/a.md = %q, want %q", got, "a\n")
 	}
 }
+
+// A lock that cannot be written fails the run. It is the last operation, so everything
+// else already happened — which is exactly why it cannot be allowed to pass quietly: the
+// tree would then hold files no lock claims and no later prune could reach.
+func TestRunUnwritableLock(t *testing.T) {
+	t.Parallel()
+
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits do not deny anything")
+	}
+
+	repo := newTree(t)
+	if err := os.Chmod(repo.dir, 0o555); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(repo.dir, 0o755) })
+
+	err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()})
+	assertErrorPrefix(t, err, `cannot write "graft.lock": `)
+}
