@@ -105,18 +105,18 @@ terminal test is the one impure call, split exactly as `source.DefaultCacheRoot`
 `defaultCacheRoot` (design.md → D9). Testing the rule must not require a terminal, and
 testing the detector must not require a stub.
 
-- [ ] 3.1 RED: Write failing table tests for `ColorEnabled(noColor string, terminal bool)`
+- [x] 3.1 RED: Write failing table tests for `ColorEnabled(noColor string, terminal bool)`
       covering *A terminal with NO_COLOR unset gets colour*; *NO_COLOR set to any non-empty
       value drops colour*, with the cases `1`, `0`, and `false` — `0` and `false` are the two
       a naive truthiness check gets wrong; *NO_COLOR set to the empty string does not drop
       colour*, which is the published `NO_COLOR` convention; *A redirected stdout drops
       colour*
-- [ ] 3.2 RED: Write *Styling with colour off is byte-identical to the input*: apply `Bold`
+- [x] 3.2 RED: Write *Styling with colour off is byte-identical to the input*: apply `Bold`
       and `Dim` to `removed  agent:phase-orchestrator` with colour disabled and assert `==`
       against the input, including unchanged length. Assert the colour-enabled direction too —
       the result begins with an escape sequence and still contains the input — so a helper
       that always returns its argument cannot pass
-- [ ] 3.3 RED: Write *A character device that is not a terminal is not a terminal* against the
+- [x] 3.3 RED: Write *A character device that is not a terminal is not a terminal* against the
       **real** `IsTerminal`: a `bytes.Buffer`, both ends of a real `os.Pipe`, and a real
       `*os.File` opened at `/dev/null`. `/dev/null` is the case that motivates the dependency
       — it has the character-device mode bit set, so `fi.Mode()&os.ModeCharDevice != 0`
@@ -126,17 +126,17 @@ testing the detector must not require a stub.
       skips, it fails permanently here and on the `macos-latest` CI leg. Record in the test
       file that the one unasserted step is `term.IsTerminal` returning true, which is
       `golang.org/x/term`'s own contract (design.md → Risks)
-- [ ] 3.4 GREEN: Add `ColorEnabled(noColor string, terminal bool) bool` — enabled when
+- [x] 3.4 GREEN: Add `ColorEnabled(noColor string, terminal bool) bool` — enabled when
       `noColor == ""` and `terminal` — and `IsTerminal(w io.Writer) bool` type-asserting to
       `*os.File` and calling `term.IsTerminal(int(f.Fd()))`, returning false for anything that
       is not an `*os.File`
-- [ ] 3.5 GREEN: Add `Bold` and `Dim` as methods on `*UI`, returning their argument unchanged
+- [x] 3.5 GREEN: Add `Bold` and `Dim` as methods on `*UI`, returning their argument unchanged
       when colour is disabled
-- [ ] 3.6 REFACTOR: Confirm nothing in `internal/ui` reads an environment variable or a global
+- [x] 3.6 REFACTOR: Confirm nothing in `internal/ui` reads an environment variable or a global
       stream — `os.Getenv`, `os.Stdout`, and `os.Stderr` appear nowhere in the package — so a
       test cannot be made to pass by the developer's shell. Or state that no refactor was
       needed
-- [ ] 3.7 Run `go test ./internal/ui/` — no regressions
+- [x] 3.7 Run `go test ./internal/ui/` — no regressions
 
 ## 4. The root command, `--version`, and help
 <!-- kind: behavior -->
