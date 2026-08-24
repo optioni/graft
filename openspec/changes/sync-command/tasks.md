@@ -204,24 +204,24 @@ tests characterize it rather than driving it. What they add is the evidence — 
 **the repository**, not the machine, or every test in this group and the next four fails on a
 clean CI runner.
 
-- [ ] 10.1 RED: Add `internal/sync/fixture_test.go` — a fixture source repository helper and a
+- [x] 10.1 RED: Add `internal/sync/fixture_test.go` — a fixture source repository helper and a
       consumer-directory helper — then write failing tests for: *A first sync installs what the
       manifest asks for*, *A second sync changes nothing*, *A missing manifest is refused
       before anything else happens*, *A source with no lock entry is resolved once and
       recorded*
-- [ ] 10.2 RED: Write failing tests for the pin rule: *A moved branch does not move the pin*
+- [x] 10.2 RED: Write failing tests for the pin rule: *A moved branch does not move the pin*
       (the branch advances with a new file after the lock is written; the sync installs the
       recorded sha and `resolved` does not change), *A bumped rev in the manifest points at
       graft update*, *The pin check precedes the network*, *A source dropped from the manifest
       is pruned without being fetched*
-- [ ] 10.3 GREEN: Implement `sync.Options{Root, CacheRoot, DryRun}` and `sync.Run` performing
+- [x] 10.3 GREEN: Implement `sync.Options{Root, CacheRoot, DryRun}` and `sync.Run` performing
       SPEC.md's steps in order: load manifest, load lock, `lock.CheckPins`, then per source
       take the sha from the lock or `source.Resolve` it, `Cache.Fetch`, `source.ReadCatalog`,
       `catalog.Expand`, `source.List` per item, `plan.Build`, `apply.Run`
-- [ ] 10.4 REFACTOR: Confirm by reading the function that the fetch loop cannot be entered
+- [x] 10.4 REFACTOR: Confirm by reading the function that the fetch loop cannot be entered
       before `lock.CheckPins` returns, and that a source absent from the manifest reaches
       neither `Resolve` nor `Fetch`; the two tests in 10.2 are what prove it
-- [ ] 10.5 Run `go test ./internal/sync/` — green
+- [x] 10.5 Run `go test ./internal/sync/` — green
 
 ## 11. sync: failure modes leave the tree untouched
 <!-- kind: behavior -->
