@@ -103,22 +103,22 @@ destination's own type, because a safe write cannot be written without deciding 
 owns the prune set, so it carries the tests proving a foreign file survives — beside a synced
 file, in the ancestry of a pruned path, and in a directory holding files no lock records.
 
-- [ ] 5.1 RED: Write failing tests for: *A foreign file in a shared destination survives every
+- [x] 5.1 RED: Write failing tests for: *A foreign file in a shared destination survives every
       operation* (all three variants in the scenario), *Unrecorded files in a destination
       directory are never enumerated*, *A prune path that is already gone is not an error*, *A
       prune path that is a directory is refused*, *A prune path that is a symlink is refused*
-- [ ] 5.2 RED: Write failing tests for the ancestry rule: *A prune path under a symlinked
+- [x] 5.2 RED: Write failing tests for the ancestry rule: *A prune path under a symlinked
       parent is refused* — the lock claims `vendor/x.md`, `vendor` has become a link to
       `docs/`, and `docs/x.md` must still exist afterwards — and *A prune path whose parent is
       a regular file is refused*
-- [ ] 5.3 GREEN: Delete each prune path through the repository's `os.Root`, skipping a path
+- [x] 5.3 GREEN: Delete each prune path through the repository's `os.Root`, skipping a path
       that does not exist, failing a path that is not a regular file with
       `cannot remove "<path>": it is not a regular file`, and failing an ancestor that is not a
       directory with `cannot remove "<path>": "<ancestor>" is not a directory`
-- [ ] 5.4 REFACTOR: Confirm `RemoveAll` appears nowhere in `internal/apply`, that the only
+- [x] 5.4 REFACTOR: Confirm `RemoveAll` appears nowhere in `internal/apply`, that the only
       deletion call is `Remove` on a path just confirmed regular, and that no directory listing
       is performed anywhere in the package
-- [ ] 5.5 Run `go test ./internal/apply/` — green
+- [x] 5.5 Run `go test ./internal/apply/` — green
 
 ## 6. apply: removing directories the prune set left empty
 <!-- kind: behavior -->

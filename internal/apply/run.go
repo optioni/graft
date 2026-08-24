@@ -60,7 +60,51 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 		}
 	}
 
+	for _, dest := range p.Prune {
+		if err := removeFile(repo, dest); err != nil {
+			return err
+		}
+	}
+
 	return writeLock(repo, p.Lock)
+}
+
+// removeFile deletes one pruned path, or refuses it.
+//
+// The only deletion this package performs is a Remove on a path it has just confirmed to
+// be a regular file whose ancestry is all directories. There is no RemoveAll anywhere, and
+// there is no directory listing: the prune set handed in is the only source of deletions,
+// which is what makes a file absent from graft.lock invisible here rather than merely
+// spared.
+//
+// A path that does not exist is skipped without complaint. The lock still claims a file a
+// user deleted by hand, so it is still in the prune set, and there is nothing to do about
+// that.
+func removeFile(repo *os.Root, dest string) error {
+	if bad, err := badAncestor(repo, dest); err != nil {
+		return removeErrf(dest, "%v", err)
+	} else if bad != "" {
+		return removeErrf(dest, "%q is not a directory", bad)
+	}
+
+	fi, err := repo.Lstat(dest)
+	switch {
+	case isNotExist(err):
+		return nil
+	case err != nil:
+		return removeErrf(dest, "%v", err)
+	case !fi.Mode().IsRegular():
+		// A directory, a symlink, or a device at a path the lock claims means the tree is
+		// not what the lock says it is. Removing a link would succeed however full its
+		// target is, and removing a directory tree is the one mistake this design exists
+		// to prevent.
+		return removeErrf(dest, "it is not a regular file")
+	}
+
+	if err := repo.Remove(dest); err != nil && !isNotExist(err) {
+		return removeErrf(dest, "%v", err)
+	}
+	return nil
 }
 
 // writeFile puts data at dest, creating the parent directories it needs.
@@ -218,6 +262,11 @@ func (s *sources) close() {
 // is what the reader has to go and look at.
 func writeErrf(dest, format string, args ...any) error {
 	return fmt.Errorf("cannot write %q: %s", dest, fmt.Sprintf(format, args...))
+}
+
+// removeErrf words every failure to delete one pruned path, mirroring writeErrf.
+func removeErrf(dest, format string, args ...any) error {
+	return fmt.Errorf("cannot remove %q: %s", dest, fmt.Sprintf(format, args...))
 }
 
 // sourceErrf carries the per-source prefix every other package in graft uses, so a run
