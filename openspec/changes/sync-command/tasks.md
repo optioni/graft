@@ -287,22 +287,22 @@ and until this change none of its rows had ever been reached through a whole run
 ## 14. sync: rendering the report
 <!-- kind: behavior -->
 
-- [ ] 14.1 RED: Write failing tests for: *An updated and a removed item align in one block* —
+- [x] 14.1 RED: Write failing tests for: *An updated and a removed item align in one block* —
       pinning the exact bytes of SPEC.md's own example, **including that no line carries
       trailing whitespace** — *Two sources are separated by a blank line*, *The summary counts
       every planned write*, *A sync that only removes still reports zero written*, *A single
       file is reported in the singular*, *A dry run says nothing was written*, *With colour off
       the report is plain text*, *With colour on only the verb and the note are styled*
-- [ ] 14.2 GREEN: Implement `(*Report).Lines(u *ui.UI) []string` — header, blank, item lines,
+- [x] 14.2 GREEN: Implement `(*Report).Lines(u *ui.UI) []string` — header, blank, item lines,
       blank, summary. The verb and the id are padded to the widest of their column in that
       source's block and followed by two spaces; the count is padded and followed by two spaces
       **only when a note follows it**, so a line with no note ends at the count
-- [ ] 14.3 GREEN: Style the verb with `u.Bold` and a removed item's note with `u.Dim`, after
+- [x] 14.3 GREEN: Style the verb with `u.Bold` and a removed item's note with `u.Dim`, after
       the padding is computed, so enabling colour never moves a column
-- [ ] 14.4 REFACTOR: Diff the rendered block against SPEC.md's Output section character by
+- [x] 14.4 REFACTOR: Diff the rendered block against SPEC.md's Output section character by
       character, trailing whitespace included, and keep the fixture in the test rather than in
       a comment
-- [ ] 14.5 Run `go test ./internal/sync/` — green
+- [x] 14.5 Run `go test ./internal/sync/` — green
 
 ## 15. cli: the `sync` subcommand and the `help` refusal
 <!-- kind: behavior -->
