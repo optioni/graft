@@ -55,15 +55,30 @@ type source struct {
 // error: the consumer's request is the one input graft cannot infer. Load creates,
 // modifies, and deletes nothing.
 func Load(path string) (*Manifest, error) {
+	m, _, err := Read(path)
+	return m, err
+}
+
+// Read is Load plus the bytes it parsed, for a caller that has to edit the file it read.
+// Re-reading the path to get them would be reading a file that could have changed between
+// the two reads, and moving a pin in bytes nobody parsed is how a manifest gets corrupted.
+//
+// Like Load it creates, modifies, and deletes nothing. On any error it returns no bytes,
+// so a failed read can never be followed by an edit of whatever was returned.
+func Read(path string) (*Manifest, []byte, error) {
 	name := filepath.Base(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("%s not found", name)
+			return nil, nil, fmt.Errorf("%s not found", name)
 		}
-		return nil, fmt.Errorf("%s: %w", name, err)
+		return nil, nil, fmt.Errorf("%s: %w", name, err)
 	}
-	return Parse(data, name)
+	m, err := Parse(data, name)
+	if err != nil {
+		return nil, nil, err
+	}
+	return m, data, nil
 }
 
 // Parse decodes and validates graft.toml bytes. filename appears only as the error

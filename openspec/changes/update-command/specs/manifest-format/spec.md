@@ -144,8 +144,8 @@ file.
 
 ### Requirement: A rev that cannot be written literally is refused rather than escaped
 
-A rev containing a quotation mark, a backslash, or a character for which `unicode.IsControl`
-reports true SHALL be refused, before any scanning, with
+A rev containing a quotation mark of either kind, a backslash, or a character for which
+`unicode.IsControl` reports true SHALL be refused, before any scanning, with
 
 ```
 graft.toml: rev "<rev>" contains a quote, a backslash, or a control character
