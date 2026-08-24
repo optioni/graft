@@ -179,20 +179,23 @@ actually has. The **contract gate** is unchanged and is the point of the group.
 - [x] 8.4 VERIFY: Run `go test ./internal/apply/` — green
 
 ## 9. apply: containment
-<!-- kind: behavior -->
+<!-- kind: refactor -->
 
-- [ ] 9.1 RED: Write failing tests for: *A destination escaping the root fails rather than
+**Reclassified during implementation**, like group 8 and for the same reason: the `os.Root`
+containment was put in place by group 2 as the mechanism the package is built on, so these
+tests characterize it rather than driving it. What they add is the evidence — plans
+`plan.Build` would refuse to produce, which is the only way to reach the floor at all.
+
+- [x] 9.1 CHARACTERIZE: Write tests for *A destination escaping the root fails rather than
       being written*, *A source path escaping the fetched tree fails rather than being read*,
-      *A missing repository root is named* — the first two driven by hand-built plans, because
-      `plan.Build` refuses to produce them
-- [ ] 9.2 GREEN: Route every repository path through the root's `os.Root` and every source
-      read through that source's, and fail a root that cannot be opened with
-      `cannot open the repository root "<path>": <reason>`
-- [ ] 9.3 REFACTOR: Confirm no path in the package is built with `filepath.Join(root, ...)`
-      and then passed to an `os` function — the containment is the `os.Root`, not a string
-      check — and that the ancestor rules from groups 3 and 5 are documented as the half the
-      `os.Root` does not provide
-- [ ] 9.4 Run `go test -race ./internal/apply/` — green
+      and *A missing repository root is named*, the first two driven by hand-built plans
+- [x] 9.2 REFACTOR: None. The containment is two `os.OpenRoot` calls; there is nothing to
+      extract that would not just be a second name for one of them
+- [x] 9.3 VERIFY: Confirm no path in the package is built with `filepath.Join(root, ...)` and
+      then passed to an `os` function — the containment is the `os.Root`, not a string check —
+      and that the ancestor rules from groups 3 and 5 are documented as the half the `os.Root`
+      does not provide
+- [x] 9.4 VERIFY: Run `go test -race ./internal/apply/` — green
 
 ## 10. sync: the resolution sequence and the pin rule
 <!-- kind: behavior -->
