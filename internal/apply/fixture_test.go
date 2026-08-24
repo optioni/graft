@@ -51,6 +51,14 @@ func (x *tree) fileMode(path, content string, mode fs.FileMode) {
 	}
 }
 
+// mkdir creates a directory and its parents.
+func (x *tree) mkdir(path string) {
+	x.t.Helper()
+	if err := os.MkdirAll(x.path(path), 0o755); err != nil {
+		x.t.Fatalf("MkdirAll %s: %v", path, err)
+	}
+}
+
 // symlink creates a link at path pointing at target, which is interpreted relative to
 // the link's own directory exactly as the operating system does.
 func (x *tree) symlink(target, path string) {

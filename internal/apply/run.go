@@ -66,7 +66,51 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 		}
 	}
 
+	removeEmptyDirs(repo, p.Prune)
+
 	return writeLock(repo, p.Lock)
+}
+
+// removeEmptyDirs removes the directories the prune set left empty, deepest first.
+//
+// Only the ancestry of a pruned path is ever a candidate. A walk of the tree looking for
+// empty directories would be the same mistake as scanning a destination directory for
+// files to prune: a directory that was already empty before the sync was not emptied by
+// graft, and removing it would be graft deleting something it has no record of.
+//
+// A candidate is examined without following it and removed only if it is a directory.
+// "A non-empty directory fails harmlessly" is true of directories and false of symlinks —
+// unlinking one succeeds however full its target is — so a bare Remove would delete a
+// user's vendor -> shared convenience link, a path absent from graft.lock.
+//
+// Every failure is ignored, including the ordinary one of a directory that still holds
+// something. This runs after the prunes and before the lock is written, so failing here
+// would strand the sync in the state it is least able to explain, over a tidying step.
+func removeEmptyDirs(repo *os.Root, prune []string) {
+	seen := map[string]struct{}{}
+	var candidates []string
+	for _, dest := range prune {
+		for _, dir := range ancestors(dest) {
+			if _, dup := seen[dir]; dup {
+				continue
+			}
+			seen[dir] = struct{}{}
+			candidates = append(candidates, dir)
+		}
+	}
+	// Descending order tries a child before its parent: a parent is a prefix of its
+	// child, so it sorts first ascending. The repository root is not among them —
+	// ancestors stops before ".".
+	slices.Sort(candidates)
+	slices.Reverse(candidates)
+
+	for _, dir := range candidates {
+		fi, err := repo.Lstat(dir)
+		if err != nil || !fi.IsDir() {
+			continue
+		}
+		_ = repo.Remove(dir)
+	}
 }
 
 // removeFile deletes one pruned path, or refuses it.

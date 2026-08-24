@@ -123,19 +123,19 @@ file, in the ancestry of a pruned path, and in a directory holding files no lock
 ## 6. apply: removing directories the prune set left empty
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing tests for: *An emptied directory chain is removed*, *A directory
+- [x] 6.1 RED: Write failing tests for: *An emptied directory chain is removed*, *A directory
       still holding a foreign file is kept*, *An unrelated empty directory is left alone*, *A
       symlinked ancestor of a pruned path is not removed*, *A pruned path at the repository
       root removes nothing*
-- [ ] 6.2 GREEN: After the prune set has run, walk each pruned path's ancestors upward, deepest
+- [x] 6.2 GREEN: After the prune set has run, walk each pruned path's ancestors upward, deepest
       first. `Lstat` each candidate and remove it **only if it is a directory** — unlinking a
       symlink succeeds however full its target is, so a bare `Remove` would delete a user's
       `vendor -> docs` link. A removal that fails for any reason is ignored
-- [ ] 6.3 REFACTOR: Derive the candidate set from the pruned paths only, deduplicated and
+- [x] 6.3 REFACTOR: Derive the candidate set from the pruned paths only, deduplicated and
       ordered so a child is always tried before its parent, with the repository root never a
       candidate; state in a comment why a walk of the tree would be the same mistake as
       scanning for files to prune
-- [ ] 6.4 Run `go test ./internal/apply/` — green
+- [x] 6.4 Run `go test ./internal/apply/` — green
 
 ## 7. apply: the pre-flight pass
 <!-- kind: behavior -->

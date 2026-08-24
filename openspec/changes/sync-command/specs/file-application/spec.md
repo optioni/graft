@@ -31,13 +31,17 @@ writing only `graft.lock`.
 
 - **WHEN** a plan is applied whose prune set names `openspec/schemas/tdd/templates/old.md` and
   whose writes include `openspec/schemas/tdd/templates/new.md`, that directory holding nothing
-  else
-- **THEN** the apply succeeds, `templates/` still exists holding `new.md` only, and `old.md`
-  is gone — an outcome only the documented order produces, since pruning first would have
-  emptied the directory before the write refilled it, and removing directories before pruning
-  would have left `old.md` behind
+  else, while a second prune set empties `docs/` entirely
+- **THEN** the apply succeeds, `templates/` still exists holding `new.md` only, `old.md` is
+  gone, `docs/` is gone, and `graft.lock` records the new state
+- **AND** each of those pins one adjacency the order requires: `docs/` disappearing puts the
+  directory removal **after** the prune, since a removal computed first would have found
+  `docs/` still occupied; `templates/` surviving puts it **after** the writes; and a failed
+  prune leaving the previous lock puts the lock **after** everything
 - **AND** ordering is asserted through effects the real filesystem produces, not through an
-  observation seam: `internal/apply` exposes one function and no injection point
+  observation seam: `internal/apply` exposes one function and no injection point. Two orders
+  that no effect can tell apart are not distinguished, because a test that claimed to would
+  be asserting the implementation rather than the behavior
 
 #### Scenario: An empty plan writes only the lock
 
