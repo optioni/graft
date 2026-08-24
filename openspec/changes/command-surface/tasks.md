@@ -41,19 +41,23 @@ Plumbing, so no RED: a `go.mod` entry is not a behavior, and a test asserting a 
 listed only proves the same string was typed twice. The check is that the toolchain resolves
 and the tree still builds.
 
-- [ ] 1.1 CHECK: Ask the module proxy for the newest stable versions rather than recalling
+- [x] 1.1 CHECK: Ask the module proxy for the newest stable versions rather than recalling
       them — `go list -m -versions github.com/spf13/cobra` and `go list -m -versions
       golang.org/x/term` — and record what they were on the day of the change
-- [ ] 1.2 CHECK: Confirm `go.mod` currently requires only `github.com/BurntSushi/toml` and
+- [x] 1.2 CHECK: Confirm `go.mod` currently requires only `github.com/BurntSushi/toml` and
       `github.com/goccy/go-yaml`, so the diff this group produces is exactly the two direct
       additions and their indirect closure
-- [ ] 1.3 CHECK: Persistence gate — confirm what this change requires of stored data:
+- [x] 1.3 CHECK: Persistence gate — confirm what this change requires of stored data:
       migration, backfill, seeding, cache invalidation, and index rebuild are **all none**.
       This change reads no lock, writes no cache entry, and opens no file for writing
       (design.md → Persistence and Rollout)
-- [ ] 1.4 CHANGE: `go get github.com/spf13/cobra@<latest>` and `go get
-      golang.org/x/term@<latest>`, then `go mod tidy`
-- [ ] 1.5 VERIFY: Run `task build` and `task lint` — the module resolves, the tree compiles,
+- [x] 1.4 CHANGE: `go get github.com/spf13/cobra@<latest>` and `go get
+      golang.org/x/term@<latest>`. **Do not run `go mod tidy` here** — nothing imports either
+      module yet, so tidy prunes both straight back out; they land as `// indirect` and are
+      promoted to direct requirements by the `go mod tidy` at the end of group 4, once the
+      first import exists. Discovered by running it: tidy reverted `go.mod` to its two
+      original requires
+- [x] 1.5 VERIFY: Run `task build` and `task lint` — the module resolves, the tree compiles,
       and `gofumpt -l` is silent. That the dependencies are usable is what the build proves;
       no test asserts their presence
 
