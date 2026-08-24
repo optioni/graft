@@ -207,12 +207,18 @@ These hold or the run aborts before writing:
   applying one fails partway through, and since the lock is written last the file already
   written would be left outside `graft.lock`, where no later prune could reach it.
 - **`from` stays inside the source tree.**
-- **graft never writes inside `.git`, and never over `graft.toml` or `graft.lock`.** Neither
-  escapes the repo root, so no planning rule catches them; the refusal is a floor under the
-  writer. A file placed in `.git/` is invisible to the git diff that is the whole of the
-  review story below, and `.git/config` alone turns placing a file into running a program
-  through `core.fsmonitor`, `core.sshCommand`, or an alias. The rule is on a path's first
-  segment, so `.github/workflows/` and `.gitignore` are ordinary destinations.
+- **No path arriving in a plan is ever inside `.git`, or is `graft.toml` or `graft.lock`.**
+  Neither escapes the repo root, so no planning rule catches them; the refusal is a floor
+  under the writer. A file placed in `.git/` is invisible to the git diff that is the whole
+  of the review story below, and `.git/config` alone turns placing a file into running a
+  program through `core.fsmonitor`, `core.sshCommand`, or an alias. The rule is on a path's
+  first segment, so `.github/workflows/` and `.gitignore` are ordinary destinations.
+
+  The rule is about provenance rather than about a path string. Every destination and every
+  pruned path is named by a source's catalog, and that is what it governs. graft's own two
+  files are written from bytes graft built itself: `graft.lock` by every run, and
+  `graft.toml` by `graft update --to`, immediately before the lock. graft writes inside
+  `.git` on no path at all.
 - **Every ancestor of a path graft writes or deletes is a directory**, checked without
   following it. A symlink to a directory is not one: a write through a symlinked parent lands
   where `graft.lock` does not say, and a lock claiming `vendor/x.md` where `vendor` has become
@@ -245,6 +251,10 @@ is why the destination is shown before install and why a consumer override alway
 | Network unavailable, cache hit | Proceeds. |
 | Network unavailable, cache miss | Error naming what it needed to fetch. |
 | Manifest `rev` differs from the lock's | Error naming both, and pointing at `graft update`. |
+| `update` names a source `graft.toml` does not declare | Error: `graft.toml has no source "<name>"`. Decided before anything is resolved, fetched, or edited, so a mistyped name is never reported as a manifest shape it could not rewrite. |
+| `--to` against a manifest where `rev` is not a plain key under `[sources.<name>]` | Error: `graft.toml: source "<name>": cannot move the pin: rev is not a plain key under [sources.<name>]`. Refused rather than guessed at: `graft.toml` is a file graft did not write. |
+| A `--to` rev that cannot be written literally into a TOML string | Error: `graft.toml: rev "<rev>" contains a quote, a backslash, or a control character`. It could otherwise close the string it is written into and append a key the consumer never wrote. |
+| `--to` given without a source, or with an empty rev | Usage error, with the hint line. |
 | A synced file was edited in place | Silently overwritten. `git diff` is the report. |
 | A destination exists and is not a regular file | Error naming the path. Never opened, never truncated. |
 | A pruned path exists and is not a regular file | Error naming the path. Never removed. |

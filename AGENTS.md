@@ -64,17 +64,26 @@ internal/cli/       the cobra command surface; internal/ui owns both streams
   not say, and a lock claiming `vendor/x.md` where `vendor` became a link to `docs` deletes
   `docs/x.md`. The same trap sits in the empty-directory walk: unlinking a symlink succeeds
   however full its target is, so "a non-empty directory fails harmlessly" is false for links.
-- **graft never writes inside `.git`, nor over `graft.toml` or `graft.lock`.** Neither escapes
-  the repo root, so no planning rule catches them. A file in `.git/` is invisible to the
+- **No path a *plan* names is ever inside `.git`, or is `graft.toml` or `graft.lock`.** Neither
+  escapes the repo root, so no planning rule catches them. A file in `.git/` is invisible to the
   `git diff` that is graft's entire review story, and `.git/config` turns placing a file into
   running a program. The rule is on the first path segment — `.github/` and `.gitignore` are
-  ordinary destinations.
+  ordinary destinations. It is about provenance, not a path string: graft writes its own two
+  files from bytes it built itself — `graft.lock` on every run, `graft.toml` under
+  `graft update --to` — and writes inside `.git` on no path at all.
 - **Lock serialization is deterministic** — sources by name, items by id, files by path.
   Assert byte equality across two runs, not semantic equality, or every sync churns the
   diff.
 - **`sync` never re-resolves a pin.** It installs what the lock says. Only `update` moves
   a pin. Re-resolving on sync would make `rev = "main"` drift silently, which defeats the
   point of pinning.
+- **`graft.toml` is a human's file.** The pin moves by replacing one value in place, never by
+  re-serializing a parsed manifest: re-encoding deletes every comment, normalizes the alignment
+  SPEC.md's own example uses, and turns a one-line pin move into a whole-file diff nobody reads.
+  A shape the editor cannot rewrite exactly is refused rather than guessed at — a wrong guess
+  corrupts the consumer's own request, and a wrong *target* looks like success while the run
+  resolves the old rev. Any change that writes `graft.toml` needs a test asserting the result
+  differs from the original in exactly one line.
 - **Error strings are asserted by tests.** For a CLI this small the failure-mode table is
   the product. Changing a message is a deliberate contract change.
 - **graft executes nothing from a source, but it does place.** It reads `catalog.yaml`

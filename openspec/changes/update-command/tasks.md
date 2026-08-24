@@ -220,27 +220,30 @@ harness.
 ## 8. Documentation: SPEC.md's invariant, its failure-mode table, and one AGENTS.md rule
 <!-- kind: operational -->
 
-- [ ] 8.1 CHECK: List the user-visible conditions this change adds against SPEC.md's Failure modes
+- [x] 8.1 CHECK: List the user-visible conditions this change adds against SPEC.md's Failure modes
       table and confirm none is already there — `graft.toml has no source`, the two `SetRev`
       refusals, and the `--to` usage errors. Confirm `rev` not found needs **no** new row, being
       already covered
-- [ ] 8.2 CHANGE: Amend SPEC.md → Invariants. The bullet reading "graft never writes inside
+- [x] 8.2 CHANGE: Amend SPEC.md → Invariants. The bullet reading "graft never writes inside
       `.git`, and never over `graft.toml` or `graft.lock`" is false as written once `--to` exists;
       scope the refusal to paths arriving in a plan and name graft's own manifest write as the
       exception, matching the argument design.md makes. Confirm the sentence is not duplicated in
       AGENTS.md or ENGINEERING.md before editing only SPEC.md
-- [ ] 8.3 CHANGE: Add rows to SPEC.md's Failure modes table for `graft.toml has no source` and the
+      — **it is duplicated**: AGENTS.md carries the same claim in its own words, so both were
+      scoped rather than only SPEC.md. Leaving AGENTS.md saying the false half would have made
+      the rule a reader trusts the one that is wrong. ENGINEERING.md does not carry it.
+- [x] 8.3 CHANGE: Add rows to SPEC.md's Failure modes table for `graft.toml has no source` and the
       two `SetRev` refusals, worded exactly as the messages the code produces. Collapse the two
       `--to` usage errors into **one** row — SPEC.md's table holds no row for `sync`'s existing
       `unknown argument`, and the Output section already generalises usage errors
-- [ ] 8.4 CHANGE: Add one rule to AGENTS.md's "Rules that are easy to get wrong": `graft.toml` is
+- [x] 8.4 CHANGE: Add one rule to AGENTS.md's "Rules that are easy to get wrong": `graft.toml` is
       a human's file, so the pin is moved by replacing one value in place rather than by
       re-serializing a parsed manifest, a shape that cannot be edited exactly is refused rather
       than guessed at, and any change writing `graft.toml` needs a test asserting the result
       differs in exactly one line. Two to five lines, with the evidence clause its neighbours have.
       Leave the existing "`sync` never re-resolves a pin" rule **unedited** — this change is the
       command it points at, so it becomes more load-bearing rather than stale
-- [ ] 8.5 VERIFY: Re-read the amended SPEC.md rows against the error strings the tests assert and
+- [x] 8.5 VERIFY: Re-read the amended SPEC.md rows against the error strings the tests assert and
       confirm each is character-for-character the message the code produces
 
 ## 9. Change Review
