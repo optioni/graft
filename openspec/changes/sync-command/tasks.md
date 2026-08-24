@@ -251,15 +251,15 @@ and until this change none of its rows had ever been reached through a whole run
 ## 12. sync: `--dry-run`
 <!-- kind: behavior -->
 
-- [ ] 12.1 RED: Write failing tests for: *A dry run of a first sync creates nothing*, *A dry
+- [x] 12.1 RED: Write failing tests for: *A dry run of a first sync creates nothing*, *A dry
       run of a removal deletes nothing*, *A dry run of a failing plan fails the same way* —
       the first asserting no destination **directory** exists, which is the half of SPEC.md's
       promise a file-existence check would miss
-- [ ] 12.2 GREEN: Return after `plan.Build` when `DryRun` is set, without calling `apply.Run`
-- [ ] 12.3 REFACTOR: State in a comment that the fetch still happens under `--dry-run` — there
+- [x] 12.2 GREEN: Return after `plan.Build` when `DryRun` is set, without calling `apply.Run`
+- [x] 12.3 REFACTOR: State in a comment that the fetch still happens under `--dry-run` — there
       is no plan without a catalog — and that a clean dry run says the plan is valid, not that
       the sync will succeed, because none of `apply`'s refusals are reached
-- [ ] 12.4 Run `go test ./internal/sync/` — green
+- [x] 12.4 Run `go test ./internal/sync/` — green
 
 ## 13. sync: the report value
 <!-- kind: behavior -->

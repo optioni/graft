@@ -155,6 +155,14 @@ func (c *consumer) run() (*sync.Report, error) {
 	return sync.Run(c.options())
 }
 
+// dryRun performs the same sync with --dry-run.
+func (c *consumer) dryRun() (*sync.Report, error) {
+	c.t.Helper()
+	o := c.options()
+	o.DryRun = true
+	return sync.Run(o)
+}
+
 func (c *consumer) read(path string) string {
 	c.t.Helper()
 	data, err := os.ReadFile(filepath.Join(c.dir, filepath.FromSlash(path)))

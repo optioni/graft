@@ -63,6 +63,17 @@ func Run(o Options) (*Report, error) {
 		return nil, err
 	}
 
+	// --dry-run stops here. Everything before this point created, modified, and deleted
+	// nothing in the repository, so returning is the whole implementation of "touches
+	// nothing, including creating no directories".
+	//
+	// The fetch above still happened, and that is not a leak: there is no plan without a
+	// catalog and no catalog without a fetch, and internal/source writes under the cache
+	// root only. The cost is that a dry run reaches none of internal/apply's refusals, so
+	// a clean one says the plan is valid rather than that the sync will succeed.
+	if o.DryRun {
+		return &Report{}, nil
+	}
 	if err := apply.Run(o.Root, res.trees, p); err != nil {
 		return nil, err
 	}
