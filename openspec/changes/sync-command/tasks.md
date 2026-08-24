@@ -140,19 +140,19 @@ file, in the ancestry of a pruned path, and in a directory holding files no lock
 ## 7. apply: the pre-flight pass
 <!-- kind: behavior -->
 
-- [ ] 7.1 RED: Write failing tests for: *A refused destination leaves every write unapplied*,
+- [x] 7.1 RED: Write failing tests for: *A refused destination leaves every write unapplied*,
       *A refused prune path leaves every write unapplied*, *A missing source file is refused
       before anything is written* — each asserting that no destination exists, nothing was
       deleted, and `graft.lock` is unchanged
-- [ ] 7.2 GREEN: Hoist every check from groups 2 through 6 into one pass that runs before the
+- [x] 7.2 GREEN: Hoist every check from groups 2 through 6 into one pass that runs before the
       first write: source registered, source path a regular file, destination not reserved,
       destination ancestors all directories, destination regular if it exists; and for each
       prune path, not reserved, ancestors all directories, regular if it exists
-- [ ] 7.3 REFACTOR: Leave the checks in place at their point of use where they cost nothing,
+- [x] 7.3 REFACTOR: Leave the checks in place at their point of use where they cost nothing,
       or remove them where the pass makes them dead — but state in a comment that the pass is
       not a lock on the filesystem: a condition can change between the check and the write, and
       that case is allowed to fail mid-flight
-- [ ] 7.4 Run `go test ./internal/apply/` — green
+- [x] 7.4 Run `go test ./internal/apply/` — green
 
 ## 8. apply: writing graft.lock last
 <!-- kind: behavior -->

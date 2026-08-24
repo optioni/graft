@@ -33,22 +33,12 @@ func Run(root string, trees map[string]string, p *plan.Plan) error {
 	}
 	defer func() { _ = repo.Close() }()
 
-	// Before anything is opened, let alone written: a reserved path is decidable from the
-	// plan alone, and discovering one halfway through would leave the tree partly applied
-	// for a condition graft could see coming.
-	for _, w := range p.Writes {
-		if err := checkReservedWrite(w.Dest); err != nil {
-			return err
-		}
-	}
-	for _, dest := range p.Prune {
-		if err := checkReservedRemove(dest); err != nil {
-			return err
-		}
-	}
-
 	src := &sources{dirs: trees, open: map[string]*os.Root{}}
 	defer src.close()
+
+	if err := preflight(repo, src, p); err != nil {
+		return err
+	}
 
 	for _, w := range p.Writes {
 		data, err := src.read(w.Source, w.From)
@@ -125,6 +115,23 @@ func removeEmptyDirs(repo *os.Root, prune []string) {
 // user deleted by hand, so it is still in the prune set, and there is nothing to do about
 // that.
 func removeFile(repo *os.Root, dest string) error {
+	if err := checkPrune(repo, dest); err != nil {
+		return err
+	}
+	if err := repo.Remove(dest); err != nil && !isNotExist(err) {
+		return removeErrf(dest, "%v", err)
+	}
+	return nil
+}
+
+// checkPrune refuses a prune path graft could not have written. A directory, a symlink, or
+// a device at a path the lock claims means the tree is not what the lock says it is:
+// removing a link would succeed however full its target is, and removing a directory tree
+// is the one mistake this design exists to prevent.
+//
+// A path that does not exist is not a refusal — it is a file the user deleted by hand, and
+// there is nothing to do about that.
+func checkPrune(repo *os.Root, dest string) error {
 	if bad, err := badAncestor(repo, dest); err != nil {
 		return removeErrf(dest, "%v", err)
 	} else if bad != "" {
@@ -138,15 +145,42 @@ func removeFile(repo *os.Root, dest string) error {
 	case err != nil:
 		return removeErrf(dest, "%v", err)
 	case !fi.Mode().IsRegular():
-		// A directory, a symlink, or a device at a path the lock claims means the tree is
-		// not what the lock says it is. Removing a link would succeed however full its
-		// target is, and removing a directory tree is the one mistake this design exists
-		// to prevent.
 		return removeErrf(dest, "it is not a regular file")
 	}
+	return nil
+}
 
-	if err := repo.Remove(dest); err != nil && !isNotExist(err) {
-		return removeErrf(dest, "%v", err)
+// preflight decides every refusal in this package before the first byte is written.
+//
+// All of them come down to an Lstat: a reserved path, a source file that is not a regular
+// file, a destination that is not one, an ancestor that is not a directory. Discovering one
+// halfway through would guarantee a partial apply — and, because the lock is written last
+// and so never gets written at all, the identical failure would repeat on every subsequent
+// sync, leaving the user a stuck command and a tree graft cannot describe.
+//
+// It is not a lock on the filesystem. A condition checked here can change before the write
+// that depends on it, and that case is allowed to fail mid-flight; the checks stay at their
+// point of use for exactly that reason. What this pass removes is the failures graft can see
+// coming, which is all a pre-flight pass can ever do.
+func preflight(repo *os.Root, src *sources, p *plan.Plan) error {
+	for _, w := range p.Writes {
+		if err := checkReservedWrite(w.Dest); err != nil {
+			return err
+		}
+		if err := src.check(w.Source, w.From); err != nil {
+			return err
+		}
+		if err := checkDestination(repo, w.Dest); err != nil {
+			return err
+		}
+	}
+	for _, dest := range p.Prune {
+		if err := checkReservedRemove(dest); err != nil {
+			return err
+		}
+		if err := checkPrune(repo, dest); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -271,27 +305,54 @@ type sources struct {
 	open map[string]*os.Root
 }
 
+// root returns the named source's fetched tree, opening it on first use. from appears only
+// in the error, which is the read the caller was about to attempt.
+func (s *sources) root(name, from string) (*os.Root, error) {
+	if root, ok := s.open[name]; ok {
+		return root, nil
+	}
+	fail := sourceErrf(name)
+	dir, registered := s.dirs[name]
+	if !registered {
+		return nil, fail("no fetched tree")
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fail("cannot read %q: %v", from, err)
+	}
+	s.open[name] = root
+	return root, nil
+}
+
+// check reports whether from names a regular file in the source's tree, without reading it
+// and without following a link at its last component.
+func (s *sources) check(name, from string) error {
+	root, err := s.root(name, from)
+	if err != nil {
+		return err
+	}
+	fail := sourceErrf(name)
+	fi, err := root.Lstat(from)
+	switch {
+	case err != nil:
+		return fail("cannot read %q: %v", from, err)
+	case !fi.Mode().IsRegular():
+		return fail("cannot read %q: not a regular file", from)
+	}
+	return nil
+}
+
 // read returns the bytes of from within the named source's fetched tree. Every read goes
 // through that tree's own os.Root, so a source path cannot reach whatever sits beside the
 // entry in the fetch cache.
 func (s *sources) read(name, from string) ([]byte, error) {
-	fail := sourceErrf(name)
-	root, ok := s.open[name]
-	if !ok {
-		dir, registered := s.dirs[name]
-		if !registered {
-			return nil, fail("no fetched tree")
-		}
-		var err error
-		if root, err = os.OpenRoot(dir); err != nil {
-			return nil, fail("cannot read %q: %v", from, err)
-		}
-		s.open[name] = root
+	root, err := s.root(name, from)
+	if err != nil {
+		return nil, err
 	}
-
 	data, err := root.ReadFile(from)
 	if err != nil {
-		return nil, fail("cannot read %q: %v", from, err)
+		return nil, sourceErrf(name)("cannot read %q: %v", from, err)
 	}
 	return data, nil
 }
