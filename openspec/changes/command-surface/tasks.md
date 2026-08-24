@@ -69,33 +69,33 @@ producing package already wrote is the whole format, and every message in SPEC.m
 failure-mode table locates its own problem — a second layer of context would say the same
 thing twice.
 
-- [ ] 2.1 RED: Write failing tests in `internal/ui` for *Machine-readable output goes to
+- [x] 2.1 RED: Write failing tests in `internal/ui` for *Machine-readable output goes to
       stdout only*; *A note leaves stdout untouched*; *An error report leaves stdout
       untouched*. Each asserts the other stream is **byte-empty**, not merely "does not
       contain" — `stdout == ""` is the assertion that would go red if the split inverted
-- [ ] 2.2 RED: Write *A failure-mode-table message is reported verbatim after the prefix*
+- [x] 2.2 RED: Write *A failure-mode-table message is reported verbatim after the prefix*
       using a real message this repository already produces — `source "shared": selector
       "agent:*" matches no item; catalog provides schema:tdd`, `internal/catalog`'s own
       wording — asserting the stderr buffer is byte-exactly `graft: ` + that message + `\n`.
       A message invented for the test would not catch a printer that mangles quoting
-- [ ] 2.3 RED: Write *A nil error reports nothing*, asserting both buffers are byte-empty
-- [ ] 2.4 GREEN: Add `internal/ui/ui.go` with `type UI`, `New(out, err io.Writer, color
+- [x] 2.3 RED: Write *A nil error reports nothing*, asserting both buffers are byte-empty
+- [x] 2.4 GREEN: Add `internal/ui/ui.go` with `type UI`, `New(out, err io.Writer, color
       bool) *UI`, and `Print`, `Note`, and `Fail`, each taking a plain `string` — no `Printf`
       and no variadic `Note`, because `unparam` flags a format parameter never given
       arguments and `fmt.Sprintf` is right there. `Fail(nil)` returns without writing;
       `Fail(err)` writes `graft: ` + `err.Error()` + `\n` to the error stream and nothing
       anywhere else. Give every exported declaration its own doc comment: revive's `exported`
       rule counts a comment shared by two declarations as a comment on neither
-- [ ] 2.5 GREEN: Wrap each stream in an unexported recorder that keeps the first write
+- [x] 2.5 GREEN: Wrap each stream in an unexported recorder that keeps the first write
       failure, and expose `WriteError() error` plus `Out()` and `Err()` returning those
       recorders (design.md → D11). `Out()` and `Err()` exist so cobra writes *through* the UI
       in group 4 rather than around it; without them a `graft --help` whose stdout is full
       exits `0` having printed nothing, because `cobra.Command.Help()` returns `nil`
       unconditionally and discards its renderer's error
-- [ ] 2.6 REFACTOR: Confirm every write in the package goes through the recorder for its
+- [x] 2.6 REFACTOR: Confirm every write in the package goes through the recorder for its
       stream, so no report line can reach a stream directly and skip the write-error
       recording — or state that no refactor was needed
-- [ ] 2.7 Run `go test ./internal/ui/` — no regressions
+- [x] 2.7 Run `go test ./internal/ui/` — no regressions
 
 ## 3. The colour decision and terminal detection
 <!-- kind: behavior -->
