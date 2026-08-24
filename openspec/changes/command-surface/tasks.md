@@ -346,15 +346,20 @@ unexecuted. This group's job is to leave nothing there.
 ## 10. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 10.1 CHECK: Inspect the intended verification commands and affected tiers — two tiers
+- [x] 10.1 CHECK: Inspect the intended verification commands and affected tiers — two tiers
       here, unit across `./internal/ui/` and `./internal/cli/`, and one acceptance test inside
       `./internal/cli/` that compiles and runs the real binary. Confirm the acceptance tier is
       under `./internal/` and therefore visible to both `task cover` and CI, rather than beside
       `main.go` where neither would run it
-- [ ] 10.2 VERIFY: Run `task lint` — golangci-lint clean and `gofumpt -l` silent, 0 errors
-- [ ] 10.3 VERIFY: Run `task test` — `go test -race ./...` green
-- [ ] 10.4 VERIFY: Run `task cover` — at or above the 80% floor measured over `./internal/...`,
-      and report `internal/ui`'s and `internal/cli`'s own figures alongside the total
-- [ ] 10.5 VERIFY: Run `task build` — the binary builds, which is Go's type check, and run it
-      once by hand with `--version` and with no arguments to see the real streams
-- [ ] 10.6 VERIFY: Run `openspec validate command-surface --strict` — clean
+- [x] 10.2 VERIFY: Run `task lint` — golangci-lint clean and `gofumpt -l` silent, 0 errors
+- [x] 10.3 VERIFY: Run `task test` — `go test -race ./...` green
+- [x] 10.4 VERIFY: Run `task cover` — at or above the 80% floor measured over `./internal/...`,
+      and report `internal/ui`'s and `internal/cli`'s own figures alongside the total.
+      **97.8% total** against a floor of 80; `internal/ui` **100.0%**, `internal/cli`
+      **97.3%** — the shortfall is `Main`'s two nil-default branches, recorded as
+      design.md → Q5
+- [x] 10.5 VERIFY: Run `task build` — the binary builds, which is Go's type check, and run it
+      once by hand with `--version` and with no arguments to see the real streams. Done:
+      `--version` prints one line to stdout and exits 0; a bare run prints help and exits 0;
+      `graft frobnicate` prints the two-line refusal to stderr and exits 1
+- [x] 10.6 VERIFY: Run `openspec validate command-surface --strict` — clean
