@@ -27,14 +27,25 @@ import (
 func documents(src []byte) int {
 	// content[i] reports whether region i holds anything but comments.
 	content := []bool{false}
+	directives := false
 	for _, t := range lexer.Tokenize(string(src)) {
 		switch t.Type {
 		case token.DocumentHeaderType, token.DocumentEndType:
 			content = append(content, false)
+			directives = false
 		case token.CommentType:
 			// Not content: a comment after a trailing marker discards nothing.
+		case token.DirectiveType:
+			// A prologue such as "%YAML 1.2" is closed by a "---" that opens the one
+			// document rather than ending a document before it. YAML requires that
+			// marker, so everything from here to it belongs to the prologue: the
+			// directive's own arguments arrive as ordinary tokens and would otherwise
+			// make the region look like a document that the "---" then closed.
+			directives = true
 		default:
-			content[len(content)-1] = true
+			if !directives {
+				content[len(content)-1] = true
+			}
 		}
 	}
 

@@ -45,6 +45,12 @@ func TestParse_MultipleDocuments(t *testing.T) {
 			name: "two leading separators",
 			in:   "---\n---\n" + one,
 		},
+		{
+			// The prologue rule suppresses a region; it must not suppress a
+			// document. The second "---" here separates rather than opens.
+			name: "a directives prologue before two documents",
+			in:   "%YAML 1.2\n---\n" + one + "---\nkinds:\n  schema:\n    to: \"x/\"\n",
+		},
 	}
 
 	for _, tt := range tests {
@@ -83,6 +89,17 @@ func TestParse_OneDocument(t *testing.T) {
 		{
 			name: "a marker inside a block scalar",
 			in:   "version: 1\nkinds:\n  agent:\n    to: |\n      ---\n      still one document\n",
+		},
+		{
+			// A directives prologue is closed by ---, which is the same marker that
+			// separates two documents. It opens the one document rather than ending
+			// a document before it, so it must not be counted.
+			name: "a YAML directive before the document",
+			in:   "%YAML 1.2\n---\n" + one,
+		},
+		{
+			name: "a tag directive before the document",
+			in:   "%TAG ! tag:example.com,2026:\n---\n" + one,
 		},
 	}
 
