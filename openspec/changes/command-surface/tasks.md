@@ -185,7 +185,7 @@ testing the detector must not require a stub.
 deliberate contract. `unknown command "<arg>"` is graft's own; `unknown flag: <flag>` is
 pflag's and is passed through on purpose (design.md → Contracts).
 
-- [ ] 5.1 RED: Write failing tests for *An unknown command names the argument*; *`version` is
+- [x] 5.1 RED: Write failing tests for *An unknown command names the argument*; *`version` is
       not a command*; *No completion command is offered*; *An unknown flag is a usage error
       too*; *An unknown shorthand flag is a usage error*, asserting pflag's own
       `unknown shorthand flag: 'v' in -v` — a different message from the long-flag case, and
@@ -193,60 +193,60 @@ pflag's and is passed through on purpose (design.md → Contracts).
       unrecognised argument is named*, asserting `frobnicate` is present and `wibble` absent.
       Each asserts the exit code is `1`, the **stdout buffer is byte-empty**, and the exact
       stderr text
-- [ ] 5.1a RED: Write *Cobra's hidden completion protocol is refused too* for `__complete` and
+- [x] 5.1a RED: Write *Cobra's hidden completion protocol is refused too* for `__complete` and
       `__completeNoDesc`. `CompletionOptions.DisableDefaultCmd` does not remove these: cobra
       registers them on every `Execute`, and with the flag set `graft __complete ''` still
       exits `0` and writes `:0` to stdout, bypassing both the UI and the argument validator.
       Assert the stdout buffer is byte-empty, which is what goes red if the refusal is absent
       (design.md → D6)
-- [ ] 5.2 RED: Write *A usage error carries a hint on its own line*, asserting stderr is
+- [x] 5.2 RED: Write *A usage error carries a hint on its own line*, asserting stderr is
       exactly two lines, that the second is `run "graft --help" for usage`, and that the
       second carries **no** `graft: ` prefix — it is not a second failure. Assert also that
       the full usage block does not appear, which is what `SilenceUsage` is for
-- [ ] 5.3 RED: Write *A command that returns an error exits 1* and *A command that succeeds
+- [x] 5.3 RED: Write *A command that returns an error exits 1* and *A command that succeeds
       exits 0* as in-package tests that register a test-only command on the root — the only
       way to exercise routing before `sync` exists (design.md → Test Boundaries). The failing
       one returns the real wording `source "shared": rev "v9.9.9" not found` and asserts **no**
       hint line follows, so a usage-error marker applied to everything cannot pass
-- [ ] 5.4 RED: Write *Output that cannot be written is not a silent success*: give `Main` a
+- [x] 5.4 RED: Write *Output that cannot be written is not a silent success*: give `Main` a
       stdout that fails every write with `disk full`, run `--version`, and assert the exit code
       is `1` and stderr holds exactly `graft: cannot write output: disk full`. Assert it fails —
       an implementation that ignores write errors returns `0` here, which is the whole point
-- [ ] 5.4a RED: Write *Help that cannot be written is not a silent success either* against the
+- [x] 5.4a RED: Write *Help that cannot be written is not a silent success either* against the
       same failing stdout, for `--help` and for no arguments at all. Both must exit `1`. This
       is the case that fails without task 4.4's recording writers, and it covers the two most
       common invocations, so a green here is the evidence that `Help()`'s discarded error was
       actually closed
-- [ ] 5.5 RED: Write *The colour decision follows stdout and never stderr* as an **identity**
+- [x] 5.5 RED: Write *The colour decision follows stdout and never stderr* as an **identity**
       assertion, not an output one: the `Options.IsTerminal` stub records every writer it is
       asked about, and `TestMainColorFollowsStdout` asserts it was asked about `Options.Stdout`
       and never about `Options.Stderr`. Nothing in this change emits styled output through
       `Main` and `UI`'s colour flag is unexported, so an output-based assertion here would
       either be a no-op or force an accessor open; the identity assertion goes red if the
       wiring is inverted
-- [ ] 5.6 GREEN: Add the root's `Args` validator returning `usagef("unknown command %q",
+- [x] 5.6 GREEN: Add the root's `Args` validator returning `usagef("unknown command %q",
       args[0])`, and `SetFlagErrorFunc` wrapping pflag's error in the same unexported
       `usageError` type. Refuse by graft's own validator rather than by matching cobra's
       message text (design.md → D3, D4)
-- [ ] 5.6a GREEN: Refuse `__complete` and `__completeNoDesc` in `Main` before `Execute` is
+- [x] 5.6a GREEN: Refuse `__complete` and `__completeNoDesc` in `Main` before `Execute` is
       reached, through the same `usagef` path. Match the two literal names as the **first**
       argument only — a `__` prefix rule could swallow a future command — and keep the two
       lines adjacent to `DisableDefaultCmd` so enabling completion later removes both together
       (design.md → D6)
-- [ ] 5.7 GREEN: Map the outcome to an exit code in `Main`: `Execute`'s error, or failing
+- [x] 5.7 GREEN: Map the outcome to an exit code in `Main`: `Execute`'s error, or failing
       that `ui.WriteError()`; report it with `ui.Fail`; append the hint with `ui.Note` when
       `errors.As` finds a `usageError`; return `1`, else `0`. Define no third code —
       SPEC.md admits `0` and `1` (design.md → D4)
-- [ ] 5.8 CHECK: Contract gate — re-read SPEC.md's **Output** section, its **Exit codes**
+- [x] 5.8 CHECK: Contract gate — re-read SPEC.md's **Output** section, its **Exit codes**
       line, and its **failure-mode table**, and confirm what was built still matches: stdout
       carries machine-readable output only, progress and errors go to stderr, colour drops
       when stdout is not a TTY or `NO_COLOR` is set, and the only codes are `0` and `1`.
       Confirm no message in the failure-mode table is reworded by this change — the format
       wraps, it does not rewrite
-- [ ] 5.9 REFACTOR: Confirm `usagef` is the single constructor for the class and that nothing
+- [x] 5.9 REFACTOR: Confirm `usagef` is the single constructor for the class and that nothing
       compares an error's text to decide whether it is a usage error — or state that no
       refactor was needed
-- [ ] 5.10 Run `go test ./internal/cli/ ./internal/ui/` — no regressions beyond the still-red
+- [x] 5.10 Run `go test ./internal/cli/ ./internal/ui/` — no regressions beyond the still-red
       acceptance test
 
 ## 6. Wiring `cmd/graft`

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -53,18 +55,46 @@ func Main(o Options) int {
 	// literally, so the two streams cannot disagree about it.
 	u := ui.New(o.Stdout, o.Stderr, ui.ColorEnabled(getenv("NO_COLOR"), isTerminal(o.Stdout)))
 
+	// Refused before Execute, because cobra registers these two on every run regardless of
+	// CompletionOptions.DisableDefaultCmd, and they never reach the argument validator.
+	if len(o.Args) > 0 && (o.Args[0] == completeCmd || o.Args[0] == completeNoDescCmd) {
+		return report(u, usagef("unknown command %q", o.Args[0]))
+	}
+
 	root := newRoot(u, o)
 	root.SetArgs(o.Args)
+	return execute(u, root)
+}
 
+// execute runs a prepared root and turns its outcome into an exit code.
+func execute(u *ui.UI, root *cobra.Command) int {
 	err := root.Execute()
 	if err == nil {
-		err = u.WriteError()
+		// Checked only when the command itself succeeded: an error from the command is the
+		// more useful thing to report, and a write failure usually caused it anyway.
+		if werr := u.WriteError(); werr != nil {
+			err = fmt.Errorf("cannot write output: %w", werr)
+		}
 	}
-	if err != nil {
-		u.Fail(err)
-		return 1
+	return report(u, err)
+}
+
+// report renders an outcome and returns the exit code for it. There is no third code:
+// SPEC.md admits 0 for success and 1 for error, and a code invented for a class of failure
+// is a contract a script starts depending on the moment it exists.
+func report(u *ui.UI, err error) int {
+	if err == nil {
+		return 0
 	}
-	return 0
+	u.Fail(err)
+
+	// One line rather than the whole usage block: the block for a tool with six commands
+	// buries the sentence that says what went wrong.
+	var usage usageError
+	if errors.As(err, &usage) {
+		u.Note(hintLine)
+	}
+	return 1
 }
 
 // newRoot builds graft's root command. It is separate from Main so a test can register a
@@ -85,6 +115,17 @@ Sources and the items to install are declared in graft.toml.`,
 		// whose error format is the contract.
 		SilenceErrors: true,
 		SilenceUsage:  true,
+
+		// graft's own validator, not a match against cobra's message text: the wording is
+		// graft's contract, and cobra names the parent command in a way that is noise at the
+		// root. It is consulted only when no subcommand matched, so it keeps working
+		// unchanged once `sync` is registered.
+		Args: func(_ *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return usagef("unknown command %q", args[0])
+			}
+			return nil
+		},
 
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if showVersion {
@@ -109,5 +150,30 @@ Sources and the items to install are declared in graft.toml.`,
 	root.SetOut(u.Out())
 	root.SetErr(u.Err())
 
+	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError{err} })
+
 	return root
+}
+
+// The names of cobra's hidden completion protocol commands. They are matched literally
+// rather than by a "__" prefix, so a future command cannot be swallowed by the rule.
+const (
+	completeCmd       = "__complete"
+	completeNoDescCmd = "__completeNoDesc"
+)
+
+// hintLine follows a usage error. It is not a second failure and carries no "graft: ".
+const hintLine = `run "graft --help" for usage`
+
+// usageError marks the class of failure that earns the hint line: graft was asked for
+// something it does not have, rather than failing at something it does.
+type usageError struct{ err error }
+
+func (e usageError) Error() string { return e.err.Error() }
+func (e usageError) Unwrap() error { return e.err }
+
+// usagef is the single constructor for the class. Nothing compares an error's text to
+// decide whether it is a usage error.
+func usagef(format string, a ...any) error {
+	return usageError{fmt.Errorf(format, a...)}
 }
