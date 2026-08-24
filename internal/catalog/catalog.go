@@ -50,11 +50,32 @@ type Item struct {
 // other than the one it was given.
 func Load(path string) (*Catalog, error) {
 	name := filepath.Base(path)
-	data, err := os.ReadFile(path)
+
+	// Lstat, never Stat, and before the read rather than after it: Stat would answer
+	// about a symlink's target, and os.ReadFile would then read it. A source commits its
+	// own catalog.yaml, so it may commit a link under that name — and a decoder error
+	// quotes the offending lines back, which would hand a source the contents of any
+	// file the invoking user can read. A rule enforced after the read is enforced too
+	// late, because the read is the thing being prevented.
+	//
+	// internal/source refuses a non-regular `from` the same way, for the same reason.
+	info, err := os.Lstat(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("%s not found: the source is not graftable", name)
 		}
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	if !info.Mode().IsRegular() {
+		// A symlink, a directory, a device, or a fifo. One message for all of them: the
+		// reader's next move is the same, and naming a link's target would be the leak.
+		return nil, errf(name, "not a regular file")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// Absence is Lstat's answer above, so this is a read that failed for another
+		// reason — a permission denial, or the file changing underneath us.
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	return Parse(data, name)
