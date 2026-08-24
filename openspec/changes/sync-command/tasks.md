@@ -38,50 +38,48 @@ why the group is kept.
 ## 2. apply: writing planned files
 <!-- kind: behavior -->
 
-- [ ] 2.1 RED: Write failing tests for: *A file is copied into a directory that does not exist
+- [x] 2.1 RED: Write failing tests for: *A file is copied into a directory that does not exist
       yet*, *A hand-edited synced file is overwritten*, *An executable source file lands as a
       non-executable one*, *An executable destination is made non-executable*, *A source file
       that cannot be read fails the apply*, *A write naming an unregistered source fails
       before it is attempted*, *An empty plan writes only the lock*, *Nothing outside the plan
-      is touched*
-- [ ] 2.2 GREEN: Implement `apply.Run(root string, trees map[string]string, p *plan.Plan)
+      is touched*, *A directory at a destination is refused*, *A symlink at a destination is
+      refused rather than followed* — the last two belong here rather than in group 3 because
+      the safe write in 2.2 removes an existing destination, and removing one it has not
+      confirmed regular is the mistake this whole package exists to avoid
+- [x] 2.2 GREEN: Implement `apply.Run(root string, trees map[string]string, p *plan.Plan)
       error` — open an `os.Root` at `root` and one at each source's tree, and for each write in
       plan order create the destination's parents at `0755`, remove an existing destination,
       and create the file with `O_EXCL` at `0644`
-- [ ] 2.3 GREEN: Remove-then-create rather than truncate-in-place, because the permission
+- [x] 2.3 GREEN: Remove-then-create rather than truncate-in-place, because the permission
       argument to a create-and-truncate open applies only when the file is created — a
       destination someone once ran `chmod +x` on would otherwise stay executable while graft
       replaced its contents. The *An executable destination is made non-executable* test is
       the one that fails without it
-- [ ] 2.4 GREEN: Add the two per-source error strings the specification pins —
+- [x] 2.4 GREEN: Add the two per-source error strings the specification pins —
       `source "<name>": no fetched tree` and `source "<name>": cannot read "<path>": <reason>`
       — through one error helper, following `internal/source`'s `sourceErrf`
-- [ ] 2.5 REFACTOR: Keep the write loop free of any decision the plan did not make — no
+- [x] 2.5 REFACTOR: Keep the write loop free of any decision the plan did not make — no
       content comparison, no stat-based skip, no ordering of its own
-- [ ] 2.6 Run `go test ./internal/apply/` — green, no regressions elsewhere
+- [x] 2.6 Run `go test ./internal/apply/` — green, no regressions elsewhere
 
-## 3. apply: refusing a destination that is not a regular file, and an ancestor that is not a directory
+## 3. apply: an ancestor that is not a directory
 <!-- kind: behavior -->
 
 **Concentration point.** `os.Root` refuses a path that leaves the root but **follows** a
 symlink that stays inside it. The root alone is therefore not the floor it looks like, and
-this group is where that gap is closed on the write side.
+this group is where that gap is closed on the write side. Group 2 already owns the
+destination's own type, because a safe write cannot be written without deciding it.
 
-- [ ] 3.1 RED: Write failing tests for: *A directory at a destination is refused*, *A symlink
-      at a destination is refused rather than followed* — asserting the link's target still
-      holds its original bytes, which a check after the open would not catch — *A destination
-      under a symlinked parent is refused*, *A destination whose parent is a regular file is
-      named*
-- [ ] 3.2 GREEN: `Lstat` the destination without following it; a path that exists and is not a
-      regular file fails with
-      `cannot write "<path>": it exists and is not a regular file`
-- [ ] 3.3 GREEN: Walk the destination's ancestors from the top; an ancestor that exists and is
+- [ ] 3.1 RED: Write failing tests for: *A destination under a symlinked parent is refused* and
+      *A destination whose parent is a regular file is named*
+- [ ] 3.2 GREEN: Walk the destination's ancestors from the top; an ancestor that exists and is
       not a directory fails with `cannot write "<path>": "<ancestor>" is not a directory`,
       naming the shallowest one. A symlink to a directory is not a directory here
-- [ ] 3.4 REFACTOR: Extract the two predicates — "exists and is a regular file", "exists and is
-      a directory" — so group 6's prune-side checks share them and "graft only ever writes
+- [ ] 3.3 REFACTOR: Extract the two predicates — "exists and is a regular file", "exists and is
+      a directory" — so group 5's prune-side checks share them and "graft only ever writes
       regular files" is stated once
-- [ ] 3.5 Run `go test ./internal/apply/` — green
+- [ ] 3.4 Run `go test ./internal/apply/` — green
 
 ## 4. apply: reserved paths
 <!-- kind: behavior -->
