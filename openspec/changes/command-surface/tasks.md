@@ -292,24 +292,27 @@ unexecuted. This group's job is to leave nothing there.
 ## 8. Documentation
 <!-- kind: operational -->
 
-- [ ] 8.1 CHECK: Re-read SPEC.md's **Output** and **Exit codes** sections and identify what is
+- [x] 8.1 CHECK: Re-read SPEC.md's **Output** and **Exit codes** sections and identify what is
       now true and undocumented. The error format `graft: <message>` is the one durable fact
       this change establishes that SPEC.md does not state, and SPEC.md is where the
       failure-mode table already lives
-- [ ] 8.2 CHANGE: Add to SPEC.md's Output section a short paragraph pinning the error format —
+- [x] 8.2 CHANGE: Add to SPEC.md's Output section a short paragraph pinning the error format —
       `graft: ` plus the message, one line, on stderr; a usage error additionally pointing at
       `graft --help`; and `NO_COLOR` disabling colour when present and non-empty. Net addition
       to SPEC.md: ~5 lines. It replaces nothing, because nothing there says it today
-- [ ] 8.3 CHANGE: Rewrite — do not append to — AGENTS.md's existing coverage rule under "Rules
+- [x] 8.3 CHANGE: Rewrite — do not append to — AGENTS.md's existing coverage rule under "Rules
       that are easy to get wrong". It currently says logic in `cmd/graft` is invisible to the
       gate; the sharper and more useful fact this change found is that `task ci` runs `lint`,
       `cover`, and `build`, and `cover` runs `go test` over `./internal/...` only, so a test
       outside `./internal/` **never runs in CI at all**. Add, in the same edit, that every byte
       a user sees is written by `internal/ui` and that `cmd/graft` prints nothing. Net change:
       ~4 lines, of which ~2 replace existing text
-- [ ] 8.4 VERIFY: Confirm no section of SPEC.md, PRD.md, ENGINEERING.md, or AGENTS.md now
+- [x] 8.4 VERIFY: Confirm no section of SPEC.md, PRD.md, ENGINEERING.md, or AGENTS.md now
       contradicts what was built, and that `openspec/IMPLEMENTATION-ORDER.md`'s Phase 4 row
-      for `command-surface` still describes this change accurately
+      for `command-surface` still describes this change accurately. One contradiction found
+      outside that list and corrected: `openspec/config.yaml`'s context block said "Cobra is
+      the intended command surface but is not added yet", which would have misled every
+      future change's planning. Net change: one line rewritten, none added
 
 ## 9. Change Review
 <!-- kind: operational -->

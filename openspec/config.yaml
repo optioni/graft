@@ -5,8 +5,8 @@ context: |
   repository it runs in — agents, OpenSpec schemas, skills — pinned and reproducible.
   See PRD.md for motivation, SPEC.md for behavior, ENGINEERING.md for conventions.
 
-  Tech stack: Go 1.27, no runtime dependency beyond `git` on PATH. Cobra is the
-  intended command surface but is not added yet. Read `go.mod` for the module's current
+  Tech stack: Go 1.27, no runtime dependency beyond `git` on PATH. Cobra is the command
+  surface; `internal/ui` owns both output streams. Read `go.mod` for the module's current
   dependencies rather than assuming a count; a new one is a decision to argue in the
   proposal, not a rule to obey. Built and tested through `task`; released with
   GoReleaser.

@@ -83,8 +83,14 @@ internal/apply/     the only package that writes to the working tree
   nothing ever re-fetches one that exists — which means a partial entry is wrong forever.
   Fetch into a sibling temporary directory and publish by rename, and treat a lost race
   on that rename as a hit rather than an error.
-- **Coverage is measured over `./internal/...` only.** Logic in `cmd/graft` is invisible
-  to the gate — which is the reason to keep it out of there.
+- **A test outside `./internal/...` never runs.** `task ci` is lint, cover, and build, and
+  `cover` is the only one that runs `go test` — over `./internal/...` So logic in
+  `cmd/graft` is not merely invisible to the coverage gate, it is unexecuted by CI. That is
+  why `cli.Main` returns an exit code and `main` is one call.
+- **Every byte a user sees is written by `internal/ui`**, which owns both streams and the
+  one colour decision. Anything that renders its own output — cobra's help — is handed
+  `ui.Out()`/`ui.Err()` rather than the real streams, because `cobra.Command.Help()`
+  discards its renderer's write error and would exit 0 having printed nothing.
 - **Fixture git repos need `user.name` and `user.email` set on the repo**, not the
   machine, or commits fail on a clean CI runner.
 

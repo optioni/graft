@@ -238,9 +238,14 @@ is why the destination is shown before install and why a consumer override alway
 ## Output
 
 Machine-readable output goes to stdout; progress, summaries, and errors to stderr, so a
-pipe is never corrupted. Color is dropped when stdout is not a TTY or `NO_COLOR` is set.
-There are no spinners, no progress bars, and no behavior that exists only on a TTY apart
-from the `add` picker.
+pipe is never corrupted. Color is dropped when stdout is not a TTY or `NO_COLOR` is set —
+`NO_COLOR` counting as set when it is present and not empty, whatever its value. One
+decision covers both streams. There are no spinners, no progress bars, and no behavior that
+exists only on a TTY apart from the `add` picker.
+
+An error is one line on stderr: `graft: ` followed by the message from the table above,
+unaltered — each already locates its own problem. Asking graft for something it does not
+have adds a second line, `run "graft --help" for usage`, rather than a wall of usage.
 
 Changes are reported per item with the words `added`, `updated`, and `removed` — not
 symbols — at item granularity:
