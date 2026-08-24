@@ -22,6 +22,11 @@ import (
 // a higher version is refused outright rather than half-read.
 const Version = 1
 
+// Filename is the one spelling of graft's own record. It lives here rather than at each
+// call site because two packages now name the file — this one reads it, and internal/apply
+// writes it — and a string literal in two places is a rename that goes half done.
+const Filename = "graft.lock"
+
 // Lock is a parsed graft.lock.
 type Lock struct {
 	Version int

@@ -16,6 +16,12 @@ import (
 	"github.com/optioni/graft/internal/itemid"
 )
 
+// Filename is the one spelling of the consumer's manifest. It lives here rather than at
+// each call site because two packages now name the file — this one reads it, and the
+// command that loads it locates it — and a string literal in two places is a rename that
+// goes half done.
+const Filename = "graft.toml"
+
 // Manifest is a parsed graft.toml. Sources are ordered by name so that every error
 // and every downstream walk is independent of TOML map iteration order.
 type Manifest struct {

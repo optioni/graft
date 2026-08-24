@@ -23,16 +23,16 @@ why the group is kept.
 ## 1. Filename constants and the apply package scaffold
 <!-- kind: operational -->
 
-- [ ] 1.1 CHECK: Confirm `graft.toml` and `graft.lock` are currently spelled only inside
+- [x] 1.1 CHECK: Confirm `graft.toml` and `graft.lock` are currently spelled only inside
       `internal/manifest` and `internal/lock` doc comments and tests, so exporting a constant
       introduces no second spelling
-- [ ] 1.2 CHANGE: Add `manifest.Filename = "graft.toml"` and `lock.Filename = "graft.lock"`,
+- [x] 1.2 CHANGE: Add `manifest.Filename = "graft.toml"` and `lock.Filename = "graft.lock"`,
       each with a doc comment saying it is the one spelling of that file's name
-- [ ] 1.3 CHANGE: Create `internal/apply/apply.go` holding only the package doc comment —
+- [x] 1.3 CHANGE: Create `internal/apply/apply.go` holding only the package doc comment —
       `apply` is the only package permitted to create, modify, or delete anything in the
       repository graft runs in; it derives nothing, and every path it touches comes from the
       plan it was given
-- [ ] 1.4 VERIFY: `go build ./...` succeeds and `go test ./internal/manifest/ ./internal/lock/`
+- [x] 1.4 VERIFY: `go build ./...` succeeds and `go test ./internal/manifest/ ./internal/lock/`
       is green
 
 ## 2. apply: writing planned files
