@@ -307,34 +307,34 @@ and until this change none of its rows had ever been reached through a whole run
 ## 15. cli: the `sync` subcommand and the `help` refusal
 <!-- kind: behavior -->
 
-- [ ] 15.1 RED: Write failing tests for: *An argument to sync is a usage error*, *There is no
+- [x] 15.1 RED: Write failing tests for: *An argument to sync is a usage error*, *There is no
       flag to make sync re-resolve or refuse to overwrite* (`--force` and `--frozen` both
       unknown flags), *Help lists the commands graft has*, *`help` is not a command*, *`help
       sync` is not a command either*, *A failing sync leaves standard output byte-empty*
-- [ ] 15.2 GREEN: Register `sync` on the root with `--dry-run`, its own argument validator
+- [x] 15.2 GREEN: Register `sync` on the root with `--dry-run`, its own argument validator
       producing `unknown argument "<argument>"` as a usage error, and a `RunE` that builds
       `sync.Options` from the working directory and `source.DefaultCacheRoot()`, then writes
       each report line through `ui.Note`
-- [ ] 15.3 GREEN: Refuse the literal argument `help` in `Main`, beside the existing
+- [x] 15.3 GREEN: Refuse the literal argument `help` in `Main`, beside the existing
       `__complete` and `__completeNoDesc` guards. Do **not** use `SetHelpCommand` with a
       placeholder: cobra adds whatever it is given to the root as a real command, so the
       placeholder's own name would become a working, undocumented command
-- [ ] 15.4 CHECK: Contract gate on the existing surface — confirm every current `internal/cli`
+- [x] 15.4 CHECK: Contract gate on the existing surface — confirm every current `internal/cli`
       test still passes **unchanged**, which is what carries the two scenarios this change
       restates without altering: *No arguments prints help and succeeds* and *`--help` prints
       the same text as no arguments at all*. Both must still write byte-identical text to
       stdout, now including the commands section
-- [ ] 15.5 Run `go test ./internal/cli/` — green
+- [x] 15.5 Run `go test ./internal/cli/` — green
 
 ## 16. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 16.1 VERIFY: Confirm the group 0 acceptance test now passes end to end
-- [ ] 16.2 RED: Write the two remaining acceptance scenarios against the same harness — *A
+- [x] 16.1 VERIFY: Confirm the group 0 acceptance test now passes end to end
+- [x] 16.2 RED: Write the two remaining acceptance scenarios against the same harness — *A
       successful sync leaves standard output byte-empty* and *The report never reaches standard
       output* — and confirm each fails for the reason it names before making it pass
-- [ ] 16.3 GREEN: Make both pass without changing the harness
-- [ ] 16.4 REFACTOR: Fold the fixture-repository helpers into one place per package if group 0
+- [x] 16.3 GREEN: Make both pass without changing the harness
+- [x] 16.4 REFACTOR: Fold the fixture-repository helpers into one place per package if group 0
       and group 10 duplicated them; do not share a helper across packages through a non-test
       file
 

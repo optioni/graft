@@ -212,3 +212,112 @@ func TestGraftSyncInstallsWhatTheManifestAsksFor(t *testing.T) {
 		}
 	}
 }
+
+// The report is a summary, and SPEC.md sends summaries to the error stream so a pipe
+// carries only what a program can consume. A sync writes nothing to standard output on any
+// path, which is asserted here across a real process boundary rather than across two
+// buffers a test wired up itself.
+func TestGraftSyncReportGoesToStderr(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	repo := newSourceRepo(t)
+	repo.seedCatalog()
+	repo.commit("v1")
+	repo.tag("v1.0.0")
+
+	c := newConsumer(t, manifestFor(repo, "v1.0.0", "schema:tdd", "agent:*"))
+
+	first := runGraftIn(t, bin, c.dir, c.env, "sync")
+	if first.code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr:\n%s", first.code, first.stderr)
+	}
+	if first.stdout != "" {
+		t.Errorf("stdout = %q, want empty", first.stdout)
+	}
+	for _, want := range []string{"added  agent:reviewer", "added  schema:tdd", "3 files written, 0 removed"} {
+		if !strings.Contains(first.stderr, want) {
+			t.Errorf("the report does not contain %q:\n%s", want, first.stderr)
+		}
+	}
+	// A pipe is not a terminal, so colour is dropped and the report is plain text.
+	if strings.ContainsRune(first.stderr, '\x1b') {
+		t.Errorf("the report carries colour on a pipe:\n%q", first.stderr)
+	}
+
+	// A sync with nothing to do says so, and says nothing else.
+	second := runGraftIn(t, bin, c.dir, c.env, "sync")
+	if second.code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr:\n%s", second.code, second.stderr)
+	}
+	if second.stderr != "up to date\n" {
+		t.Errorf("stderr = %q, want %q", second.stderr, "up to date\n")
+	}
+	if second.stdout != "" {
+		t.Errorf("stdout = %q, want empty", second.stdout)
+	}
+}
+
+// A dropped item is reported with the note that says why it went, and --dry-run reports the
+// same thing while changing nothing.
+func TestGraftSyncReportsRemovals(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	repo := newSourceRepo(t)
+	repo.seedCatalog()
+	repo.commit("v1")
+	repo.tag("v1.0.0")
+
+	c := newConsumer(t, manifestFor(repo, "v1.0.0", "schema:tdd", "agent:*"))
+	if got := runGraftIn(t, bin, c.dir, c.env, "sync"); got.code != 0 {
+		t.Fatalf("first sync: %s", got.stderr)
+	}
+
+	c.writeFile("graft.toml", manifestFor(repo, "v1.0.0", "schema:tdd"))
+
+	dry := runGraftIn(t, bin, c.dir, c.env, "sync", "--dry-run")
+	if dry.code != 0 {
+		t.Fatalf("dry run: exit %d\n%s", dry.code, dry.stderr)
+	}
+	for _, want := range []string{"removed  agent:reviewer", "no longer installed", "to remove - nothing written"} {
+		if !strings.Contains(dry.stderr, want) {
+			t.Errorf("the dry-run report does not contain %q:\n%s", want, dry.stderr)
+		}
+	}
+	if c.read(".claude/agents/reviewer.md") != "# reviewer\n" {
+		t.Error("the dry run deleted the file it reported")
+	}
+
+	real := runGraftIn(t, bin, c.dir, c.env, "sync")
+	if real.code != 0 {
+		t.Fatalf("sync: exit %d\n%s", real.code, real.stderr)
+	}
+	if !strings.Contains(real.stderr, "review with `git diff`") {
+		t.Errorf("the report does not point at git diff:\n%s", real.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(c.dir, ".claude")); err == nil {
+		t.Error(".claude/ was left behind after its only file was pruned")
+	}
+}
+
+// A sync that fails writes nothing to standard output, so a caller piping graft never has
+// to tell a report from an error.
+func TestGraftSyncStdoutEmptyOnFailure(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	dir := t.TempDir()
+
+	got := runGraftIn(t, bin, dir, []string{"XDG_CACHE_HOME=" + t.TempDir()}, "sync")
+
+	if got.code != 1 {
+		t.Errorf("exit code = %d, want 1", got.code)
+	}
+	if got.stdout != "" {
+		t.Errorf("stdout = %q, want empty", got.stdout)
+	}
+	if want := "graft: graft.toml not found\n"; got.stderr != want {
+		t.Errorf("stderr = %q, want %q", got.stderr, want)
+	}
+}
