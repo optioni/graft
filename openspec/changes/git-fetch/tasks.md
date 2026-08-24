@@ -209,42 +209,42 @@ the working tree, and the derivation is pure so it can be checked before anythin
 working tree, and it does not exist yet. This group writes files for the first time in the
 project, and every one of them must land under the cache root the caller named.
 
-- [ ] 8.1 RED: Write failing tests for *A first fetch writes the tree*, asserting file
+- [x] 8.1 RED: Write failing tests for *A first fetch writes the tree*, asserting file
       contents and that the entry holds **no `.git`**; *A fetch of an older commit gets that
       commit's tree*, asserting a file added by the second commit is absent
-- [ ] 8.2 RED: Write *A source's `.gitattributes` does not alter the cached bytes* against a
+- [x] 8.2 RED: Write *A source's `.gitattributes` does not alter the cached bytes* against a
       fixture committing `* text eol=crlf` and `*.md ident`, asserting each entry file is
       byte-identical to `git cat-file blob <sha>:<path>` rather than to a literal a test
       author guessed. Verified failure without the fix: the blob `hello\nworld\n` lands as
       `hello\r\nworld\r\n` and `$Id$` becomes a real hash. The reason this is not cosmetic
       is `filter=lfs`, which selects a driver whose command comes from the **consumer's** git
       config — a source-controlled file causing a program to run
-- [ ] 8.3 RED: Write *A fetch writes nothing outside the cache root* as a positive assertion:
+- [x] 8.3 RED: Write *A fetch writes nothing outside the cache root* as a positive assertion:
       build a fixture consumer tree under a second `t.TempDir()` holding `graft.toml`,
       `graft.lock`, and a destination directory, snapshot every path and its bytes, run the
       fetch, and assert the snapshot is identical. A test that only checks the cache root
       would stay green if a write landed anywhere else
-- [ ] 8.4 GREEN: Add `func (c Cache) Fetch(name, git, sha string) (string, error)`: create the
+- [x] 8.4 GREEN: Add `func (c Cache) Fetch(name, git, sha string) (string, error)`: create the
       entry's parent, `os.MkdirTemp` a sibling scaffold there so the publishing rename stays
       within one filesystem, `os.Mkdir` the work tree inside it — `checkout --work-tree`
       fails with `fatal: this operation must be run in a work tree` without it — and `defer
       os.RemoveAll` the scaffold on every path
-- [ ] 8.5 GREEN: Fetch with the bare git directory **beside** the work tree, never inside it,
+- [x] 8.5 GREEN: Fetch with the bare git directory **beside** the work tree, never inside it,
       so no `.git` ever exists within the tree that is published: `init -q --bare tmp/git`,
       `remote add origin -- <url>`, `fetch --depth 1 --no-tags -q origin <sha>`, then
       `-c attr.tree=4b825dc642cb6eb9a060e54bf8d69288fbee4904 -c core.bare=false
       --work-tree=tmp/tree checkout -q --detach FETCH_HEAD`. `attr.tree` pointed at the empty
       tree is what disables the source's in-tree `.gitattributes`; `-c core.autocrlf=false -c
       core.eol=lf` was tried and does not close it (design.md → D8, D9)
-- [ ] 8.6 CHECK: Persistence gate — confirm what this change requires of stored data:
+- [x] 8.6 CHECK: Persistence gate — confirm what this change requires of stored data:
       migration, backfill, seeding, and index rebuild all **none**; cache invalidation
       **none by construction**, because an entry is keyed by an immutable commit sha, which is
       exactly why an incomplete entry would be wrong forever and why group 9 exists
       (design.md → Persistence and Rollout)
-- [ ] 8.7 REFACTOR: Confirm the fetch writes nothing outside `c.Root` — no temp file in the
+- [x] 8.7 REFACTOR: Confirm the fetch writes nothing outside `c.Root` — no temp file in the
       system temp directory, no config written to the user's home — or state that no refactor
       was needed
-- [ ] 8.8 Run `go test ./internal/source/` — no regressions
+- [x] 8.8 Run `go test ./internal/source/` — no regressions
 
 ## 9. Cache hits, fetch failures, and atomic publication
 <!-- kind: behavior -->
@@ -252,12 +252,12 @@ project, and every one of them must land under the cache root the caller named.
 The offline guarantee and its precondition. A hit runs no git command at all, which is only
 safe because an entry cannot exist unless it is complete.
 
-- [ ] 9.1 RED: Write a failing test for *A second fetch of the same sha works with the remote
+- [x] 9.1 RED: Write a failing test for *A second fetch of the same sha works with the remote
       gone*: fetch, then `os.RemoveAll` the source repository **and** `t.Setenv("PATH",
       t.TempDir())`, then fetch again and assert the same entry with readable files. Deleting
       the repository alone is not enough — emptying `PATH` is what proves no git command ran,
       which is what SPEC.md's "network unavailable, cache hit: proceeds" actually claims
-- [ ] 9.2 RED: Write failing tests for *A cache miss with no reachable remote is an error
+- [x] 9.2 RED: Write failing tests for *A cache miss with no reachable remote is an error
       naming both*, asserting the prefix `source "shared": cannot fetch "<sha>" from "<url>": `
       and no newline in the message. The prefix is graft's and is asserted exactly; git's own
       first line is not, because over the local transport two processes write the same pipe and
@@ -266,19 +266,19 @@ safe because an entry cannot exist unless it is complete.
       entry's path; and *A fetch into an unusable cache root fails without a partial entry*,
       with the root a regular file, asserting the prefix `source "shared": cannot create cache
       entry for "<sha>": ` and that the file's bytes are unchanged
-- [ ] 9.3 RED: Write *A failed fetch leaves the cache as it found it*, asserting both that the
+- [x] 9.3 RED: Write *A failed fetch leaves the cache as it found it*, asserting both that the
       entry path does not exist **and** that the entry's parent directory holds no leftover
       directory of any name. Asserting only the entry path would stay green against an
       implementation that abandons its scaffold
-- [ ] 9.4 GREEN: Return the entry immediately when it already exists as a directory, before
+- [x] 9.4 GREEN: Return the entry immediately when it already exists as a directory, before
       `exec.LookPath` and before any subprocess
-- [ ] 9.5 GREEN: Publish by `os.Rename(tmp/tree, entry)`. When the rename fails because the
+- [x] 9.5 GREEN: Publish by `os.Rename(tmp/tree, entry)`. When the rename fails because the
       destination exists, re-`Stat` the entry and treat a directory there as a hit rather than
       an error — two runs racing on one sha both want the same immutable tree (design.md → D8)
-- [ ] 9.6 REFACTOR: Confirm every error path leaves the cache root exactly as it found it, and
+- [x] 9.6 REFACTOR: Confirm every error path leaves the cache root exactly as it found it, and
       that the cleanup is a single `defer` rather than a removal repeated per failure branch.
       Or state that no refactor was needed
-- [ ] 9.7 Run `go test ./internal/source/` — no regressions
+- [x] 9.7 Run `go test ./internal/source/` — no regressions
 
 ## 10. Reading the catalog from a fetched tree
 <!-- kind: behavior -->
