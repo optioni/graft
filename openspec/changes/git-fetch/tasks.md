@@ -414,7 +414,7 @@ because it is the only test that can fail for a reason none of the others can.
 ## 14. Change Review
 <!-- kind: operational -->
 
-- [ ] 14.1 CHECK: Dispatch an independent reviewer — a fresh subagent given only proposal.md,
+- [x] 14.1 CHECK: Dispatch an independent reviewer — a fresh subagent given only proposal.md,
       the three spec files, design.md, tasks.md, and the diff, never a fork of the
       implementing session — with these concentration points named: (a) a cache hit runs **no**
       git command, and the test would go red if it did; (b) no path this package writes can
@@ -428,27 +428,34 @@ because it is the only test that can fail for a reason none of the others can.
       `.gitattributes` can select a filter driver; (h) no read below an entry can resolve
       outside it, through any component of `from` and not only its last; (i) nothing was added
       to `cmd/graft`, where the coverage gate cannot see it
-- [ ] 14.1a CHECK: Name to that reviewer the three execution and containment holes an earlier
+- [x] 14.1a CHECK: Name to that reviewer the three execution and containment holes an earlier
       review already found and this plan closes, and ask specifically whether the fixes hold:
       a `git` value beginning with `-`, a committed `.gitattributes`, and a symlinked parent
       component of `from`. A reviewer told only the general shape of the threat tends to
       re-derive the same three; the useful answer is a fourth
-- [ ] 14.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
-      one-line reason, note each SUGGESTION, and re-run the affected tests
-- [ ] 14.3 VERIFY: Confirm no blocking or unowned finding remains, and that any contract
+- [x] 14.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
+      one-line reason, note each SUGGESTION, and re-run the affected tests. The reviewer
+      found one CRITICAL the planners missed and four WARNINGs; every one is fixed, and the
+      three new guards were each mutation-tested. Dispositions in planning-review.md
+- [x] 14.2a VERIFY: The reviewer's CRITICAL was reproduced by hand before being fixed —
+      `GIT_INDEX_FILE` inherited into the internal checkout rewrote a consumer repository's
+      index from 137 to 198 bytes and left `git status` reporting a phantom
+      `AD catalog.yaml` — and each of the nine stripped variables now has its own subtest
+      asserting the consumer repository is byte-identical, `.git` included
+- [x] 14.3 VERIFY: Confirm no blocking or unowned finding remains, and that any contract
       changed while fixing findings was written back into the owning artifact and
       planning-review.md
 
 ## 15. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 15.1 CHECK: Inspect the intended verification commands and affected tiers — two tiers
+- [x] 15.1 CHECK: Inspect the intended verification commands and affected tiers — two tiers
       here (unit and integration, both `./internal/source/`), both plain `go test` with no
       build tag and no network, and confirm the integration tier is visible to the coverage
       gate rather than hidden behind a tag
-- [ ] 15.2 VERIFY: Run `task lint` — golangci-lint clean and `gofumpt -l` silent, 0 errors
-- [ ] 15.3 VERIFY: Run `task test` — `go test -race ./...` green
-- [ ] 15.4 VERIFY: Run `task cover` — at or above the 80% floor measured over `./internal/...`,
+- [x] 15.2 VERIFY: Run `task lint` — golangci-lint clean and `gofumpt -l` silent, 0 errors
+- [x] 15.3 VERIFY: Run `task test` — `go test -race ./...` green
+- [x] 15.4 VERIFY: Run `task cover` — at or above the 80% floor measured over `./internal/...`,
       and report `internal/source`'s own figure alongside the total
-- [ ] 15.5 VERIFY: Run `task build` — the binary builds, which is Go's type check
-- [ ] 15.6 VERIFY: Run `openspec validate git-fetch --strict` — clean
+- [x] 15.5 VERIFY: Run `task build` — the binary builds, which is Go's type check
+- [x] 15.6 VERIFY: Run `openspec validate git-fetch --strict` — clean

@@ -112,6 +112,22 @@ A fetch SHALL write only under the cache root. It SHALL create, modify, and dele
 in the repository graft is running in — `internal/apply` remains the only package that
 writes there.
 
+**Holding that takes more than not naming the consumer's paths.** graft may be running
+*inside* a git operation — a `post-merge` hook, `git rebase --exec`, `git bisect run` — and
+git sets `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`,
+`GIT_COMMON_DIR` and their relatives when it does. Inherited by the internal checkout,
+`GIT_INDEX_FILE` makes it rewrite the consumer's index and `GIT_OBJECT_DIRECTORY` deposits
+the source's objects in the consumer's `.git/objects`. Every such variable SHALL be removed
+from the environment of every git command graft runs. Nothing else SHALL be removed:
+`GIT_ASKPASS`, `SSH_AUTH_SOCK`, and the user's `credential.helper` are how a private source
+works at all.
+
+A fetch SHALL likewise not run the consumer's git **hooks**. A globally configured
+`core.hooksPath` applies to every repository, including the one graft creates for its own
+use, and a `post-checkout` hook firing there can write anywhere. Hooks are not
+source-controlled, so this is not an execution route a source opens — it is the same
+containment claim, which a hook would make untrue in an ordinary setup.
+
 **An entry SHALL hold the bytes the commit recorded.** `git checkout` normally honours the
 source's own committed `.gitattributes`, which is a file the source controls: `* text
 eol=crlf` rewrites every line ending, `ident` expands `$Id$`, and `filter=lfs` selects a
@@ -120,6 +136,13 @@ serious one — it is a source-controlled file causing a program to run, which i
 ENGINEERING.md says a source cannot do. The checkout SHALL therefore run with in-tree
 attributes disabled, so no `.gitattributes` in the fetched commit can alter a byte or select
 a filter.
+
+Because git **ignores an unknown configuration key in silence**, a graft running against a
+git too old to know that setting would drop the defence with nothing said. graft SHALL
+therefore refuse to fetch with a git older than the version that honours it, failing with
+`git <version> is too old: graft needs git <min> or newer` — an environmental failure like
+`git not found on PATH`, and carrying no source prefix for the same reason: no other source
+would fare better.
 
 #### Scenario: A first fetch writes the tree
 
@@ -145,6 +168,31 @@ a filter.
 - **AND** the assertion is made against `git cat-file blob`'s output for those paths, so it
   compares the entry to what the commit actually recorded rather than to a literal a test
   author guessed
+
+#### Scenario: An inherited git environment does not reach the consumer's repository
+
+- **WHEN** a fetch runs with `GIT_INDEX_FILE`, `GIT_DIR`, `GIT_WORK_TREE`,
+  `GIT_OBJECT_DIRECTORY`, or `GIT_COMMON_DIR` pointing at a consumer repository, as git
+  itself sets them when it runs a hook
+- **THEN** the fetch succeeds and the consumer repository is byte-identical afterwards,
+  `.git` included — its index unchanged and no new object written
+- **AND** each variable is asserted on its own, because they fail differently and the quiet
+  ones are the dangerous ones: `GIT_WORK_TREE` makes the fetch fail loudly, while
+  `GIT_INDEX_FILE` rewrites the consumer's index and reports success
+
+#### Scenario: A consumer's git hooks do not run during a fetch
+
+- **WHEN** the consumer's git configuration sets `core.hooksPath` to a directory holding an
+  executable `post-checkout` hook, and a fetch runs
+- **THEN** the hook does not run
+
+#### Scenario: A git too old to disable in-tree attributes is refused
+
+- **WHEN** the available git is older than the version that honours the setting
+- **THEN** the fetch fails with `git <version> is too old: graft needs git <min> or newer`
+- **AND** the failure is loud rather than silent, which is the point: git ignores an unknown
+  configuration key without complaint, so an unchecked old git would quietly restore a
+  source's power to rewrite the bytes it is cached as
 
 #### Scenario: A fetch writes nothing outside the cache root
 

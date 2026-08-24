@@ -77,9 +77,13 @@ func TestReadCatalogMissing(t *testing.T) {
 
 // TestReadCatalogSymlinkEscape: a source commits its own catalog.yaml, so it may commit
 // a symlink under that name, and an ordinary os.ReadFile follows one.
+//
+// The outside file is a *valid* catalog on purpose. With invalid YAML the test passes
+// against an implementation that follows the link, because the parse fails either way —
+// which is exactly what an earlier version of this test did.
 func TestReadCatalogSymlinkEscape(t *testing.T) {
 	base := t.TempDir()
-	const secret = "SECRET-CATALOG-CONTENT\n"
+	const secret = "version: 1\nkinds:\n  secret:\n    to: \"outside/{name}\"\n"
 	outside := filepath.Join(base, "outside.yaml")
 	if err := os.WriteFile(outside, []byte(secret), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
@@ -94,12 +98,17 @@ func TestReadCatalogSymlinkEscape(t *testing.T) {
 
 	c, err := ReadCatalog(entry)
 	if err == nil {
-		t.Fatalf("ReadCatalog: want an error, got %+v", c)
+		t.Fatalf("ReadCatalog parsed a catalog from outside the entry: %+v", c)
 	}
 	if c != nil {
 		t.Errorf("ReadCatalog: want a nil catalog, got %+v", c)
 	}
-	if strings.Contains(err.Error(), strings.TrimSpace(secret)) {
+	// catalog.Load's own format for a read that fails for a reason other than absence,
+	// not a second wording of it.
+	if !strings.HasPrefix(err.Error(), "catalog.yaml: ") {
+		t.Errorf("ReadCatalog:\n got %q\nwant a message beginning %q", err.Error(), "catalog.yaml: ")
+	}
+	if strings.Contains(err.Error(), "secret") {
 		t.Errorf("ReadCatalog: the outside file's contents leaked into the error: %q", err)
 	}
 }

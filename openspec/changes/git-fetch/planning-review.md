@@ -111,6 +111,45 @@ mechanically rather than by eye.
   constant.
 - `openspec validate git-fetch --strict` → valid.
 
+## Change Review — Findings and Dispositions
+
+The finding pass was delegated to a separate reviewer subagent, given the five artifacts,
+`git diff 180319d..HEAD`, and the eight concentration points tasks.md group 14 names, and
+asked explicitly to look for a **fourth** execution route beyond the three the planning
+review had closed. It found one, and it is the most serious finding of the change.
+
+| Severity | Finding | Disposition |
+|---|---|---|
+| CRITICAL | **The child git process inherited the consumer repository's state.** `cmd.Env = append(os.Environ(), …)` passes through `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`, and `GIT_COMMON_DIR`, which git itself exports whenever it runs something — a `post-merge` hook, `git rebase --exec`, `git bisect run`. With `GIT_INDEX_FILE` inherited, graft's internal checkout **rewrites the consumer's index**. Reproduced by hand before fixing: the index grew from 137 to 198 bytes and `git status` afterwards reported a phantom `AD catalog.yaml`. `GIT_OBJECT_DIRECTORY` deposits the source's objects in the consumer's `.git/objects`. This breaks the change's headline invariant verbatim, and design.md → D3 had decided "nothing else is scrubbed" while reasoning only about credentials. | **Fixed.** `gitEnv` strips nine repo-state variables from every git invocation and nothing else — `GIT_ASKPASS`, `SSH_AUTH_SOCK`, and `credential.helper` still reach git, which is D3's actual promise. `TestFetchIgnoresInheritedGitState` runs one subtest per variable, snapshotting the consumer repository including `.git`, because they fail differently and the quiet ones are the dangerous ones: `GIT_WORK_TREE` fails the fetch loudly while `GIT_INDEX_FILE` corrupts and reports success. Mutation-tested: with the scrub removed, four of the nine subtests go red. D3 rewritten to say it was wrong and why; new spec clause and scenario. |
+| WARNING | **`TestReadCatalogSymlinkEscape` passed against an implementation that follows the symlink.** Its outside fixture was invalid YAML, so the parse failed either way — and AGENTS.md had just been given a line claiming each of the three guards "has a test that goes red". For that guard it was false. | **Fixed.** The outside file is now a *valid* catalog, and the test asserts the read is refused and pins the `catalog.yaml: ` prefix. Mutation-tested: replacing `ReadCatalog`'s body with a plain `catalog.Load` now fails with `ReadCatalog parsed a catalog from outside the entry`. This also discharges the reviewer's separate note that the `catalog.yaml: <err>` row was asserted by nothing. |
+| WARNING | **The lost-rename-race branch — a spec requirement and a GREEN task — was executed by no test.** Coverage confirmed three uncovered blocks. The behavior was correct; nothing guarded it. | **Fixed.** `TestFetchConcurrentOnOneSHA` runs twelve goroutines against one sha under `-race` and asserts one entry, correct content, and no scaffold left behind. `TestFetchEntryPathSquattedByAFile` covers the other half, where the destination exists but is not a directory. |
+| WARNING | **`attr.tree` needs git ≥ 2.40, and git ignores an unknown `-c` key in silence.** On an older git the `.gitattributes` defence would fail open with nothing said — the worst way for a security control to break — and no document declared a minimum git version. | **Fixed.** `requireVersion` runs one `git --version` on a cache miss and refuses below 2.40, unframed like `git not found on PATH`. Unparseable output is accepted deliberately: a git that reports its version unusually is more likely a wrapper than an ancient binary. ENGINEERING.md now declares the runtime floor and why it is not arbitrary. New spec clause and scenario; `TestCheckVersion` tables the parse. |
+| WARNING | **The internal checkout ran the consumer's git hooks.** A globally configured `core.hooksPath` applies to every repository, including the one graft creates in its scaffold; a `post-checkout` hook fired during graft's own fetch and can write anywhere. Not source-controlled, so not an "executes nothing from a source" breach — but the same containment claim, made untrue by an ordinary user setup. | **Fixed.** `-c core.hooksPath=` at a path inside the scaffold that does not exist, plus `git init --template=` so the user's init templates cannot install one either. Mutation-tested: without the flag, `TestFetchSuppressesConsumerHooks` reports the hook ran. Recorded as design.md → D14 with the version check. |
+| SUGGESTION | **`ReadCatalog` returned a bare `open /abs/path: …` when it could not open the entry at all** — no `source` framing, and not a row in design.md's error table. Unreachable today, since `Fetch` guarantees the entry. | **Fixed** by giving it the same `catalog.yaml: <err>` shape as every other non-absence read failure, rather than leaving a latent inconsistency for the next caller to meet. |
+| SUGGESTION | **No context or timeout on any git invocation.** `GIT_TERMINAL_PROMPT=0` prevents the password-prompt hang, but D3 deliberately keeps ssh's host-key prompt, and a stalled transport blocks forever inside a function call. | **Deferred, recorded below.** A timeout is a policy — how long is too long — and the value belongs with the layer that has a user to tell, which is `command-surface`. Nothing here would have to change: `exec.CommandContext` is a one-line substitution at the single site that starts a subprocess. |
+
+Checks the reviewer ran that found nothing, named because they are the ones that would have
+mattered:
+
+- **A cache hit runs no git command**, proved by two mutations rather than by reading:
+  deleting the early return, and inserting a verification before honouring the hit. Both
+  turn `TestFetchCacheHitNeedsNoGit` red.
+- **Containment of cache writes**, over a 40-entry hostile table *and* `testing/quick` at
+  200,000 random strings, asserting `filepath.Rel(root, entry)` carries no `..`. No escape.
+  A second 200,000-case property checked that every emitted segment is non-empty, is not
+  `.` or `..`, holds no separator, and equals its own `filepath.Clean`.
+- **The three planned guards are each load-bearing**, each demonstrated by removing it: the
+  `.gitattributes` guard was verified against a *real* smudge filter that ran without it and
+  did not run with it, which is stronger evidence than the byte comparison alone.
+- **Other execution routes are closed by git's own defaults**: `ext::` and `fd::` transports
+  are refused (`fatal: transport 'ext' not allowed`), submodules are not populated, and the
+  git directory is created fresh by graft, so no source-supplied repo config, `.lfsconfig`,
+  alias, `core.fsmonitor`, or `credential.helper` can reach it.
+- **All thirteen error-surface rows matched** the specs and the code character for character.
+- `cmd/graft` is untouched; `internal/plan` is unchanged and still passes its purity guard;
+  `go test -race ./...` and `golangci-lint run` are clean; no `defer` in a loop, no leaked
+  handles, no data race.
+
 ## No Remaining Implementation-Blocking Gaps
 
 None remain. Every gap above is repaired in the artifact that owns it, and each of the three
@@ -145,6 +184,10 @@ item's own subtree. It does not block implementation.
 - **`rev` does not accept an abbreviated sha**, and the error a user sees describes the
   outcome without explaining the rule. Improving that wording belongs to `command-surface`,
   which owns the error format. Recorded in design.md → Q3.
+- **No timeout on a git invocation.** A stalled transport blocks inside a function call.
+  The value is a policy that belongs with the layer that has a user to tell; `command-surface`
+  owns it, and the change is a one-line `exec.CommandContext` at the single site that starts
+  a subprocess.
 - **The latest-semver-tag default for an omitted `rev`** is `add-command`'s, together with
   the tag enumeration it needs. Recorded in proposal.md → Non-Goals.
 - **The `catalog.Parse` raw-string duplicate-destination guard**, inherited from

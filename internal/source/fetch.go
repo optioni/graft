@@ -38,6 +38,11 @@ func (c Cache) Fetch(name, git, sha string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Unframed, like the missing-git error: neither is this source's fault, and a
+	// per-source prefix would suggest another source might fare better.
+	if err := requireVersion(); err != nil {
+		return "", err
+	}
 
 	parent := filepath.Dir(entry)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
@@ -84,7 +89,9 @@ func (c Cache) Fetch(name, git, sha string) (string, error) {
 // exists within the tree that gets published — a stronger guarantee than deleting one
 // afterwards, where an interrupted run could leave the repository behind.
 func fetchTree(gitDir, work, url, sha string) error {
-	if detail, err := git("init", "-q", "--bare", gitDir); err != nil {
+	// An empty --template so the user's init templates cannot install a hook into a
+	// repository graft made for its own use.
+	if detail, err := git("init", "-q", "--bare", "--template=", gitDir); err != nil {
 		return gitErr(detail, err)
 	}
 	// "--" separates options from operands: a URL is not trusted to be a URL, because
@@ -103,9 +110,15 @@ func fetchTree(gitDir, work, url, sha string) error {
 	// That would be a source-controlled file causing a program to run, which is exactly
 	// what graft does not do. core.autocrlf and core.eol do not close it: the in-tree
 	// attributes, not the config, are what select the filter.
+	// core.hooksPath at a directory that does not exist suppresses the consumer's own
+	// hooks. They are not source-controlled, so this is not an execution route a source
+	// opens — but a globally configured post-checkout hook fires during graft's internal
+	// checkout and can write anywhere, which would make "writes only under the cache
+	// root" untrue in an ordinary setup.
 	detail, err := git(
 		"--git-dir="+gitDir,
 		"-c", "attr.tree="+emptyTree,
+		"-c", "core.hooksPath="+filepath.Join(gitDir, "graft-no-hooks"),
 		"-c", "core.bare=false",
 		"--work-tree="+work,
 		"checkout", "-q", "--detach", "FETCH_HEAD",

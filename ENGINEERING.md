@@ -8,6 +8,12 @@ motivation in [PRD.md](PRD.md).
 Go **1.27.0**, pinned by the `toolchain` directive in `go.mod`. Nothing else is required to
 build.
 
+At **runtime**, `git` **2.40 or newer**. The floor is not arbitrary: `attr.tree` arrived in
+2.40, and it is what stops a source's committed `.gitattributes` from rewriting the bytes
+graft caches or selecting a filter driver. git ignores an unknown configuration key in
+silence, so an older git would drop that defence without saying anything — `internal/source`
+checks the version and refuses rather than running with it quietly disabled.
+
 Local development also wants `task`, `golangci-lint`, `gofumpt`, and `goreleaser`. None are
 installed on a fresh machine:
 

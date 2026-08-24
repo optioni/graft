@@ -170,6 +170,7 @@ in a second package. The defence this package *does* own is the one `catalog` ca
 | `from` names nothing | `source "shared": item "schema:tdd": from "extras/gone" not found in the source tree` |
 | `from` is a symlink, socket, or device, or leaves the entry | `source "shared": item "schema:tdd": from "extras/tdd" is not a regular file or directory` |
 | Home directory undeterminable | `cannot determine the cache root: <reason>` |
+| `git` too old for `attr.tree` | `git 2.39.5 is too old: graft needs git 2.40 or newer` |
 
 **Only the graft-owned prefix of a git-derived message is asserted.** The two rows above
 that embed git's output carry **git's first stderr line only**, trimmed — everything after
@@ -275,7 +276,10 @@ last, because it is the only test that can fail for a reason none of the others 
 | A first fetch writes the tree | `TestFetchWritesTree`, comparing contents and asserting no `.git` | integration | real `git`, fixture repo, real cache root | `go test ./internal/source/ -run Fetch` |
 | A fetch of an older commit gets that commit's tree | `TestFetchOlderCommit` | integration | real `git`, fixture repo | `go test ./internal/source/ -run Fetch` |
 | A source's `.gitattributes` does not alter the cached bytes | `TestFetchIgnoresGitattributes`, comparing the entry against `git cat-file blob` | integration | real `git`, fixture repo | `go test ./internal/source/ -run Fetch` |
-| A fetch writes nothing outside the cache root | `TestFetchWritesOnlyUnderRoot`, snapshotting a fixture consumer tree before and after | integration | real `git`, fixture repo, two temp dirs | `go test ./internal/source/ -run Fetch` |
+| A fetch writes nothing outside the cache root | `TestFetchWritesNothingOutsideTheCacheRoot`, snapshotting a fixture consumer tree before and after | integration | real `git`, fixture repo, two temp dirs | `go test ./internal/source/ -run Fetch` |
+| An inherited git environment does not reach the consumer's repository | `TestFetchIgnoresInheritedGitState`, one subtest per variable, snapshotting the consumer repository including `.git`; plus `TestGitEnvStripsRepoState` on the pure filter | integration + unit | real `git`, two fixture repos, environment real via `t.Setenv` | `go test ./internal/source/ -run 'InheritedGitState\|GitEnv'` |
+| A consumer's git hooks do not run during a fetch | `TestFetchSuppressesConsumerHooks`, a real `post-checkout` hook reached through `GIT_CONFIG_GLOBAL` | integration | real `git`, fixture repo | `go test ./internal/source/ -run Hooks` |
+| A git too old to disable in-tree attributes is refused | `TestCheckVersion` table over real `git --version` output | unit | none | `go test ./internal/source/ -run CheckVersion` |
 | A second fetch of the same sha works with the remote gone | `TestFetchCacheHitOffline`: fetch, `os.RemoveAll` the source repo **and** empty `PATH`, fetch again | integration | real `git` (unavailable on the second call) | `go test ./internal/source/ -run Fetch` |
 | A cache miss with no reachable remote is an error naming both | `TestFetchErrors` case, asserting the prefix and a single-line message | integration | real `git`, no repo | `go test ./internal/source/ -run Fetch` |
 | A sha that the remote does not have is the same error | `TestFetchErrors` case, plus an assertion that the entry path does not exist | integration | real `git`, fixture repo | `go test ./internal/source/ -run Fetch` |
@@ -327,15 +331,51 @@ Two independent guards, because either alone is one behavior change away from fa
 `git remote add` already rejects an option-shaped URL on its own, so the fetch path was
 never exposed; it takes the same refusal anyway rather than relying on that.
 
-**D3 — Terminal prompting is disabled by setting `GIT_TERMINAL_PROMPT=0` in the child's
-environment, and nothing else is scrubbed.** The failure this prevents is a hang: a private
-source with no usable credentials would otherwise block on a password prompt forever inside
-what a caller believes is a function call. Everything else in the environment is left
-alone deliberately — `GIT_ASKPASS`, `SSH_AUTH_SOCK`, and the user's `credential.helper` are
-how a private source works at all, and SPEC.md's "private repos work exactly as far as the
-user's existing git credentials reach" is a promise not to interfere. Rejected: `ssh
--o BatchMode=yes`, which would also suppress the host-key confirmation on a first
-connection and turn a one-time prompt into a permanent failure.
+**D3 — The child's environment gets `GIT_TERMINAL_PROMPT=0`, and loses every variable that
+points git at a repository.** Prompting is disabled because the failure it prevents is a
+hang: a private source with no usable credentials would otherwise block on a password
+prompt forever inside what a caller believes is a function call. Rejected: `ssh -o
+BatchMode=yes`, which would also suppress the host-key confirmation on a first connection
+and turn a one-time prompt into a permanent failure.
+
+**This decision originally read "and nothing else is scrubbed", and that was wrong.** It
+reasoned only about credentials and forgot that graft may be running *inside* a git
+operation. A `post-merge` hook, `git rebase --exec`, and `git bisect run` all export
+`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`, and `GIT_COMMON_DIR`.
+Inherited by the internal checkout, `GIT_INDEX_FILE` makes it rewrite the **consumer's**
+index — reproduced by hand: 137 bytes to 198, with `git status` then reporting a phantom
+`AD catalog.yaml` — and `GIT_OBJECT_DIRECTORY` deposits the source's objects in the
+consumer's `.git/objects`. That is this package's central claim broken by an environment
+variable, in a situation nobody would call exotic.
+
+`gitEnv` therefore removes nine such variables and nothing else. Four of the nine
+demonstrably corrupt the consumer's repository when inherited (`GIT_WORK_TREE`,
+`GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`, `GIT_COMMON_DIR`) and the rest are removed
+because they belong to the same family and the cost is one line each. Everything else is
+left alone deliberately: `GIT_ASKPASS`, `SSH_AUTH_SOCK`, and the user's `credential.helper`
+are how a private source works at all, and SPEC.md's "private repos work exactly as far as
+the user's existing git credentials reach" is a promise not to interfere.
+
+**D14 — The internal checkout suppresses the consumer's hooks, and graft refuses a git too
+old to disable in-tree attributes.** Two loose ends of D8, both found by the change review.
+
+A globally configured `core.hooksPath` applies to *every* repository, including the one
+graft creates in its scaffold, so a `post-checkout` hook fires during graft's internal
+checkout — verified. Hooks are not source-controlled, so this is not an execution route a
+source opens; it is the same containment claim, made untrue by an ordinary user setup.
+`-c core.hooksPath=<a path inside the scaffold that does not exist>` closes it, and
+`git init --template=` keeps the user's init templates from installing one in the first
+place.
+
+`attr.tree` arrived in git 2.40, and **git ignores an unknown `-c` key in silence** — so on
+an older git the `.gitattributes` defence would fail open with nothing said, which is the
+worst way for a security control to break. `requireVersion` runs one `git --version` on a
+cache miss and refuses below 2.40 with `git <version> is too old: graft needs git 2.40 or
+newer`. It is unframed, like `git not found on PATH`: neither is a particular source's
+fault, and a per-source prefix would suggest another source might fare better.
+Unparseable version output is accepted rather than refused — a git that does not report its
+version the usual way is more likely a wrapper than an ancient binary, and refusing to run
+at all on a guess would be worse than the risk it hedges.
 
 **D4 — Rev resolution queries three explicit refs in one `ls-remote` and matches ref names
 exactly in the parse.** The invocation is

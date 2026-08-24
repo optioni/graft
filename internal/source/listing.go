@@ -27,7 +27,7 @@ const catalogFile = "catalog.yaml"
 func ReadCatalog(entry string) (*catalog.Catalog, error) {
 	root, err := os.OpenRoot(entry)
 	if err != nil {
-		return nil, err
+		return nil, errf(catalogFile, err)
 	}
 	defer func() { _ = root.Close() }()
 
