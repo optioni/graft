@@ -394,11 +394,11 @@ because it is the only test that can fail for a reason none of the others can.
 ## 13. Documentation
 <!-- kind: operational -->
 
-- [ ] 13.1 CHECK: Re-read SPEC.md's Resolution section and its failure-mode table and confirm
+- [x] 13.1 CHECK: Re-read SPEC.md's Resolution section and its failure-mode table and confirm
       what this change implemented still matches: step 2's `git ls-remote`, step 3's
       content-addressed cache path, step 4's catalog read, and the two network rows ("cache
       hit: proceeds", "cache miss: error naming what it needed to fetch")
-- [ ] 13.2 CHANGE: Add to AGENTS.md's "Rules that are easy to get wrong" **only** durable
+- [x] 13.2 CHANGE: Add to AGENTS.md's "Rules that are easy to get wrong" **only** durable
       pitfalls this change actually discovered and that the existing rules do not already
       cover. Two candidates: a cache entry must never be written in place, because an entry
       keyed by an immutable sha is never re-fetched, so a partial one is wrong forever; and
@@ -407,7 +407,7 @@ because it is the only test that can fail for a reason none of the others can.
       a filter driver, and a symlink followed out of an entry. Net addition: ~6 lines. Weigh
       each against the existing rules and add only what survives; if neither does, add nothing
       and say so
-- [ ] 13.3 VERIFY: Confirm no section of SPEC.md, PRD.md, ENGINEERING.md, or AGENTS.md now
+- [x] 13.3 VERIFY: Confirm no section of SPEC.md, PRD.md, ENGINEERING.md, or AGENTS.md now
       contradicts what was built, and that `openspec/IMPLEMENTATION-ORDER.md`'s Phase 3 row
       still describes this change accurately
 

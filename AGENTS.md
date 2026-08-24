@@ -70,6 +70,19 @@ internal/apply/     the only package that writes to the working tree
   instructions an agent follows). That is why `add` shows every item's destination before
   writing and why a consumer override beats the catalog. Any feature that would run
   source-provided content changes the threat model and needs arguing for explicitly.
+- **"Executes nothing" is not self-enforcing, and `internal/source` holds three guards
+  that look like details.** A `git` value beginning with `-` becomes a git *option*, and
+  `--upload-pack=` runs a program — hence the refusal in `CloneURL` and the `--` before
+  every URL. A committed `.gitattributes` rewrites checked-out bytes and can select a
+  `filter=` driver whose command comes from the *consumer's* config — hence
+  `attr.tree=<empty tree>` on the checkout. And every read below a cache entry goes
+  through `os.Root`, because `os.Lstat` resolves every component of a path but the last,
+  so a symlinked parent reads straight out of the entry. Removing any of the three
+  reopens execution or an out-of-tree read; each has a test that goes red.
+- **A cache entry is never written in place.** It is keyed by an immutable commit sha, so
+  nothing ever re-fetches one that exists — which means a partial entry is wrong forever.
+  Fetch into a sibling temporary directory and publish by rename, and treat a lost race
+  on that rename as a hit rather than an error.
 - **Coverage is measured over `./internal/...` only.** Logic in `cmd/graft` is invisible
   to the gate — which is the reason to keep it out of there.
 - **Fixture git repos need `user.name` and `user.email` set on the repo**, not the
