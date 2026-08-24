@@ -366,7 +366,7 @@ This group discharges `destination-and-plan`'s deferred note that whether a `Lis
 faithfully describes a real fetched tree is `git-fetch`'s contract. It is scheduled last
 because it is the only test that can fail for a reason none of the others can.
 
-- [ ] 12.1 RED: Write a failing test for *A fetched fixture plans the writes its tree
+- [x] 12.1 RED: Write a failing test for *A fetched fixture plans the writes its tree
       implies*: build a fixture repository holding `catalog.yaml`, `extras/tdd/schema.yaml`,
       `extras/tdd/templates/proposal.md`, and `extras/agents/apply-orchestrator.md`; tag it
       `v1.0.0`; then run the real chain — `Resolve`, `Fetch`, `ReadCatalog`, `catalog.Expand`
@@ -374,22 +374,22 @@ because it is the only test that can fail for a reason none of the others can.
       an empty lock. Assert the writes land at `openspec/schemas/tdd/schema.yaml`,
       `openspec/schemas/tdd/templates/proposal.md`, and
       `.claude/agents/apply-orchestrator.md`
-- [ ] 12.2 RED: Assert additionally that **every** `Write.From`, joined under the fetched
+- [x] 12.2 RED: Assert additionally that **every** `Write.From`, joined under the fetched
       entry, names a file that actually exists — the property a hand-written `Listing` in a
       `plan` unit test cannot check, and the one that would catch the file-item asymmetry
       where `Write.From` is `item.From` itself rather than a path below it
-- [ ] 12.3 RED: Run the whole chain twice against the same fixture and assert
+- [x] 12.3 RED: Run the whole chain twice against the same fixture and assert
       `bytes.Equal(lock.Marshal(a.Lock), lock.Marshal(b.Lock))`. Byte equality, not
       `reflect.DeepEqual` — the determinism concentration point, asserted here over values a
       real directory walk produced rather than over literals
-- [ ] 12.4 GREEN: Make it pass with no new production code if the earlier groups are correct;
+- [x] 12.4 GREEN: Make it pass with no new production code if the earlier groups are correct;
       if it needs any, that is a defect in a group above and is fixed there rather than
       patched here
-- [ ] 12.5 CHECK: Confirm `internal/plan` is still pure — `go test ./internal/plan/ -run
+- [x] 12.5 CHECK: Confirm `internal/plan` is still pure — `go test ./internal/plan/ -run
       Impure` green — and that nothing in this group added a filesystem call to `plan`. A test
       that needs a real directory to exercise plan logic is a signal the boundary moved; this
       test needs one to exercise **source** logic, and it lives in `./internal/source/`
-- [ ] 12.6 Run `go test ./internal/source/ ./internal/plan/` — no regressions
+- [x] 12.6 Run `go test ./internal/source/ ./internal/plan/` — no regressions
 
 ## 13. Documentation
 <!-- kind: operational -->
