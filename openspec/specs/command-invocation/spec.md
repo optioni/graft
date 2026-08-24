@@ -96,8 +96,10 @@ commands it has, and its flags — to the **standard output** stream and exit `0
 --help` SHALL print byte-identical text to the same stream with the same exit code. Help is
 a thing the user asked for, not a diagnostic, so it never goes to the error stream.
 
-Now that `graft` has a subcommand, its help SHALL list that subcommand, so the commands
-section is no longer empty.
+The commands section SHALL list **every** subcommand `graft` has. It listed one when `sync`
+was the only one; it lists `sync` and `update` now, and a command added later is listed by the
+same rule rather than by an amendment here. What it SHALL NOT list is a command SPEC.md's
+command table does not name.
 
 `--help` SHALL be the only spelling. A bare `help` **argument** SHALL NOT be accepted, and
 SHALL be refused as `unknown command "help"` like any other unrecognised argument. This
@@ -123,7 +125,8 @@ subcommand name.
 #### Scenario: Help lists the commands graft has
 
 - **WHEN** `graft --help` is invoked
-- **THEN** the standard output stream names `sync` and describes it
+- **THEN** the standard output stream names `sync` and describes it, and names `update` and
+  describes it
 - **AND** it names no `help` command and no `completion` command
 
 #### Scenario: `--help` prints the same text as no arguments at all
@@ -146,6 +149,13 @@ subcommand name.
 - **THEN** the error stream holds `graft: unknown command "help"`, naming the first
   unrecognised argument only
 - **AND** the standard output stream is empty and the exit code is `1`
+
+#### Scenario: A subcommand's own help goes to standard output
+
+- **WHEN** `graft update --help` is invoked
+- **THEN** the standard output stream holds text naming `update`, its `--to` flag, and its
+  `--dry-run` flag
+- **AND** the error stream is empty and the exit code is `0`
 
 ### Requirement: An unknown command or flag is refused as a usage error
 
