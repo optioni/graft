@@ -1,7 +1,6 @@
 package source
 
 import (
-	"math/rand/v2"
 	"slices"
 	"testing"
 )
@@ -115,11 +114,13 @@ func TestMatchRangeUnsatisfiable(t *testing.T) {
 		want string
 	}{
 		"no tag satisfies the range": {
-			"^2.0.0", []string{"v1.0.0", "v1.1.0"},
+			"^2.0.0",
+			[]string{"v1.0.0", "v1.1.0"},
 			`source "shared": rev "^2.0.0" matches none of the source's semver tags`,
 		},
 		"the source publishes no semver tags": {
-			"^1.0.0", []string{"latest", "release-2024-01"},
+			"^1.0.0",
+			[]string{"latest", "release-2024-01"},
 			`source "shared": rev "^1.0.0" is a range, and the source publishes no semver tags`,
 		},
 		"the source publishes no tags at all": {
@@ -151,9 +152,12 @@ func TestMatchRangeDeterminism(t *testing.T) {
 			t.Fatalf("MatchRange: unexpected error: %v", err)
 		}
 
-		shuffled := slices.Clone(tags)
-		rand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
-		second, err := MatchRange("shared", "^1.2.0", shuffled)
+		// A fixed reversed ordering rather than a random shuffle: an unseeded shuffle of
+		// a four-element slice lands on the original ordering about once in 24 runs,
+		// which would silently assert nothing that time.
+		reversed := slices.Clone(tags)
+		slices.Reverse(reversed)
+		second, err := MatchRange("shared", "^1.2.0", reversed)
 		if err != nil {
 			t.Fatalf("MatchRange: unexpected error: %v", err)
 		}

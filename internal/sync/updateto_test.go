@@ -261,3 +261,70 @@ func TestUpdateReportShowsOneRevAndTwoShasForABranch(t *testing.T) {
 
 // quoted renders a string as a TOML basic string, matching what the fixture helpers write.
 func quoted(s string) string { return `"` + s + `"` }
+
+// TestUpdateToCanWriteARangeIntoTheManifest: `--to` is not limited to a ref — a range is
+// just another value the in-place editor writes literally, and the run that follows
+// resolves it exactly as `update` resolves any range.
+func TestUpdateToCanWriteARangeIntoTheManifest(t *testing.T) {
+	t.Parallel()
+
+	r := newRepo(t)
+	r.seed()
+	r.commit("v1")
+	r.tag("v1.0.0")
+	r.write("extras/schemas/tdd/templates/spec.md", "# spec\n")
+	tip := r.commit("v2")
+	r.tag("v1.3.0")
+
+	before := sourceBlock("shared", r, "v1.0.0")
+	c := newConsumer(t)
+	c.file("graft.toml", before)
+	if _, err := c.run(); err != nil {
+		t.Fatalf("first sync: %v", err)
+	}
+
+	if _, err := c.updateTo("shared", "^1.2.0"); err != nil {
+		t.Fatalf("update --to: %v", err)
+	}
+
+	after := c.read("graft.toml")
+	if diff := changedLines(before, after); len(diff) != 1 || diff[0] != `rev     = "^1.2.0"` {
+		t.Errorf("graft.toml changed in %d lines %q, want exactly one reading %q",
+			len(diff), diff, `rev     = "^1.2.0"`)
+	}
+
+	lockText := c.read("graft.lock")
+	for _, want := range []string{`rev      = "^1.2.0"`, `matched  = "v1.3.0"`, `resolved = "` + tip + `"`} {
+		if !strings.Contains(lockText, want) {
+			t.Errorf("graft.lock does not contain %s:\n%s", want, lockText)
+		}
+	}
+}
+
+// TestUpdateToCanWriteARangeContainingASpace: the space is inside a TOML string and
+// needs no escaping, so the in-place editor writes it literally — exactly as it would
+// any other rev containing no quote, backslash, or control character.
+func TestUpdateToCanWriteARangeContainingASpace(t *testing.T) {
+	t.Parallel()
+
+	r := newRepo(t)
+	r.seed()
+	r.commit("v1")
+	r.tag("v1.0.0")
+
+	before := sourceBlock("shared", r, "v1.0.0")
+	c := newConsumer(t)
+	c.file("graft.toml", before)
+	if _, err := c.run(); err != nil {
+		t.Fatalf("first sync: %v", err)
+	}
+
+	if _, err := c.updateTo("shared", ">=1.0.0 <2.0.0"); err != nil {
+		t.Fatalf("update --to: %v", err)
+	}
+
+	after := c.read("graft.toml")
+	if !strings.Contains(after, `rev     = ">=1.0.0 <2.0.0"`) {
+		t.Errorf("graft.toml does not hold the range with its space intact:\n%s", after)
+	}
+}

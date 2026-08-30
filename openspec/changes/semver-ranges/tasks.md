@@ -319,7 +319,7 @@ each false. CLAUDE.md carries the rules a future change would get wrong.
 ## 11. Change Review
 <!-- kind: operational -->
 
-- [ ] 11.1 CHECK: Dispatch an independent reviewer — not a fork of the implementing session —
+- [x] 11.1 CHECK: Dispatch an independent reviewer — not a fork of the implementing session —
       given only `proposal.md`, the six spec files, `design.md`, `tasks.md`, and the diff.
       Concentration points: that `internal/lock` and `internal/source` ask **one** function
       whether a rev is a range; that a lock with no range re-serializes byte-identically; that
@@ -328,9 +328,9 @@ each false. CLAUDE.md carries the rules a future change would get wrong.
       across input orderings; that the leading-dash and `--` guards hold on the new git call
       site; that every asserted error string is exactly as specified; and that no test asserts a
       value the implementation also declares — the `go.mod` version in particular
-- [ ] 11.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
+- [x] 11.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
       one-line reason, note the SUGGESTIONs, and re-run the affected tests
-- [ ] 11.3 VERIFY: Confirm no blocking or unowned finding remains, and that the artifacts still
+- [x] 11.3 VERIFY: Confirm no blocking or unowned finding remains, and that the artifacts still
       describe what shipped
 
 ## 12. Lint & Verify

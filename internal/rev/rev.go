@@ -42,5 +42,5 @@ func IsRange(rev string) bool {
 	case '^', '~', '>', '<', '=':
 		return true
 	}
-	return rev == "*" || strings.ContainsAny(rev, " ") || strings.Contains(rev, "||")
+	return rev == "*" || strings.Contains(rev, " ") || strings.Contains(rev, "||")
 }

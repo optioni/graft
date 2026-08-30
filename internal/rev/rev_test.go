@@ -17,13 +17,14 @@ func TestIsRange(t *testing.T) {
 		in   string
 		want bool
 	}{
-		"a caret rev is a range":                  {"^1.2.0", true},
+		"a caret rev is a range":                   {"^1.2.0", true},
 		"a plain tag is a ref":                     {"v1.2.0", false},
 		"a branch name containing a dash is a ref": {"release-2024-01", false},
 		"a compound range with a space is a range": {">=1.2.0 <2.0.0", true},
 		"an alternation is a range":                {"1.2.x||1.3.x", true},
 		"a bare x-range is a ref, not a range":     {"1.x", false},
 		"a full sha is a ref and never a range":    {testSHA, false},
+		"a bare star is a range":                   {"*", true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

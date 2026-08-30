@@ -27,4 +27,11 @@ func TestReportMatchedTagMovedOntoSameCommitStillGetsHeader(t *testing.T) {
 	if len(r.Sources) != 1 {
 		t.Fatalf("sources = %+v, want exactly one: a matched-tag move must not be skipped as nothing to report", r.Sources)
 	}
+
+	// The sha half renders once, because it did not move; the matched half renders
+	// twice, because it did — the one shape no other test reaches.
+	want := "shared  ^1.2.0  v1.2.0 -> v1.3.0  (" + shaA[:7] + ")"
+	if got := r.Lines(plainUI())[0]; got != want {
+		t.Errorf("header = %q, want %q", got, want)
+	}
 }

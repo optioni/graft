@@ -66,7 +66,7 @@ func TestJSONRangeSourceCarriesTheTagItMatched(t *testing.T) {
 	i := strings.Index(got, `"rev": "^1.2.0"`)
 	j := strings.Index(got, `"matched": "v1.2.0"`)
 	k := strings.Index(got, `"resolved"`)
-	if i < 0 || j < 0 || k < 0 || !(i < j && j < k) {
+	if i < 0 || j < 0 || k < 0 || i >= j || j >= k {
 		t.Errorf("document does not order rev, matched, resolved in that position:\n%s", got)
 	}
 }
