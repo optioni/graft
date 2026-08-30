@@ -49,23 +49,23 @@ home does not compile: `internal/source/listing.go` imports `internal/plan`, whi
 `internal/lock`, so `lock -> source` closes a cycle. It is pure and decidable offline, which is
 the whole reason it is syntactic — so every test here runs without git.
 
-- [ ] 2.1 RED: Write failing unit tests for `rev.IsRange` from the `rev-ranges` scenarios:
+- [x] 2.1 RED: Write failing unit tests for `rev.IsRange` from the `rev-ranges` scenarios:
       *A caret rev is a range*, *A plain tag is a ref*, *A branch name containing a dash is a
       ref*, *A compound range with a space is a range*, *An alternation is a range*, *A bare
       x-range is a ref, not a range*, and *A full sha is a ref and never a range*
-- [ ] 2.2 RED: Write a failing test for the observable claim rather than the predicate's own
+- [x] 2.2 RED: Write a failing test for the observable claim rather than the predicate's own
       return: `Resolve` on an empty rev fails with `source "shared": rev is empty` and starts no
       git process. Asserting `IsRange("") == false` would pass under nearly any implementation,
       and the existing *An empty rev* test already covers the message
-- [ ] 2.3 GREEN: Create `internal/rev` and implement `IsRange(rev string) bool` — leading `^`,
+- [x] 2.3 GREEN: Create `internal/rev` and implement `IsRange(rev string) bool` — leading `^`,
       `~`, `>`, `<`, or `=`, or containing a space, or containing `||`, or exactly `*`. Document
       why each character is claimed and what claiming `>`/`<`/`=` costs
-- [ ] 2.4 REFACTOR: Add an import-set test in the style of `internal/list/imports_test.go`
+- [x] 2.4 REFACTOR: Add an import-set test in the style of `internal/list/imports_test.go`
       asserting `internal/rev` imports no package of graft's own — the observable form of "this
       is a leaf, and the cycle stays closed"
-- [ ] 2.5 CHECK: Confirm `go build ./...` succeeds with `internal/lock` importing
+- [x] 2.5 CHECK: Confirm `go build ./...` succeeds with `internal/lock` importing
       `internal/rev`, which is the compile the original single-package design would have failed
-- [ ] 2.6 Run `go test ./internal/rev/` — green, and no test starts a git process
+- [x] 2.6 Run `go test ./internal/rev/` — green, and no test starts a git process
 
 ## 3. source: parsing a range and selecting a tag
 <!-- kind: behavior -->
