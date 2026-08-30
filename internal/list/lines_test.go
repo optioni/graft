@@ -41,12 +41,12 @@ func TestLinesSeparatesBlocksWithOneBlankLine(t *testing.T) {
 	l := &lock.Lock{Version: lock.Version, Sources: []lock.Source{
 		{
 			Name: "a", Git: "example.test/a", Rev: "v1.0.0",
-			Resolved: "aaaaaaa1111111111111111111111111111111111",
+			Resolved: "aaaaaaa111111111111111111111111111111111",
 			Items:    []lock.Item{{ID: "agent:a", Files: []string{"a.md"}}},
 		},
 		{
 			Name: "b", Git: "example.test/b", Rev: "v2.0.0",
-			Resolved: "bbbbbbb2222222222222222222222222222222222",
+			Resolved: "bbbbbbb222222222222222222222222222222222",
 			Items:    []lock.Item{{ID: "agent:b", Files: []string{"b.md"}}},
 		},
 	}}
@@ -69,7 +69,7 @@ func TestLinesSourceWithNoItemsIsItsHeaderAlone(t *testing.T) {
 
 	l := &lock.Lock{Version: lock.Version, Sources: []lock.Source{{
 		Name: "empty", Git: "example.test/r", Rev: "main",
-		Resolved: "aaaaaaa1111111111111111111111111111111111",
+		Resolved: "aaaaaaa111111111111111111111111111111111",
 	}}}
 
 	// No blank line inside the block: the blank line introduces item lines, and emitting it

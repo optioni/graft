@@ -111,23 +111,23 @@ content in different orders — the same rule `graft.lock`'s own serialization i
 — every failure here is a message `internal/lock` already words — so these tests assert that the
 message arrives **unaltered**, with no second layer of context wrapped around it.
 
-- [ ] 5.1 RED: Write failing integration tests over a real `t.TempDir()` holding a hand-written
+- [x] 5.1 RED: Write failing integration tests over a real `t.TempDir()` holding a hand-written
       `graft.lock`: *A lock declaring no source is the same as no lock*, *A scrambled lock lists
       in the same order as a canonical one*, and *A scrambled lock produces the same document as
       a canonical one* (byte equality across the two locks and across two runs of one)
-- [ ] 5.2 RED: Write a failing integration test for *A manifest whose rev moved ahead of the
+- [x] 5.2 RED: Write a failing integration test for *A manifest whose rev moved ahead of the
       lock is not reported* — both files present and disagreeing; the listing names the lock's
       rev, does not name the manifest's, and `Run` returns no error
-- [ ] 5.3 RED: Write a failing integration test for *A lock that is a directory is refused* —
+- [x] 5.3 RED: Write a failing integration test for *A lock that is a directory is refused* —
       the error carries the `graft.lock: ` prefix and no listing is returned
-- [ ] 5.4 GREEN: Implement `list.Options{Root string}` and `list.Run(Options) (*Listing, error)`
+- [x] 5.4 GREEN: Implement `list.Options{Root string}` and `list.Run(Options) (*Listing, error)`
       — `lock.Load(filepath.Join(root, lock.Filename))` and `FromLock`, returning every error
       exactly as `internal/lock` worded it. An absent lock is not an error: `lock.Load` already
       returns the empty lock, which is the "nothing installed" case
-- [ ] 5.5 REFACTOR: Confirm `internal/list` imports neither `internal/apply`, `internal/plan`,
+- [x] 5.5 REFACTOR: Confirm `internal/list` imports neither `internal/apply`, `internal/plan`,
       `internal/source`, nor `internal/manifest`, and add a test asserting that import set — the
       observable form of "this command cannot write and cannot reach the network"
-- [ ] 5.6 Run `go test ./internal/list/` — green, no regressions
+- [x] 5.6 Run `go test ./internal/list/` — green, no regressions
 
 ## 6. cli: the `list` command
 <!-- kind: behavior -->

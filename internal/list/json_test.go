@@ -40,7 +40,7 @@ func TestJSONEmptyCollectionsAreArraysNotNull(t *testing.T) {
 
 		l := &lock.Lock{Version: lock.Version, Sources: []lock.Source{{
 			Name: "empty", Git: "example.test/r", Rev: "main",
-			Resolved: "aaaaaaa1111111111111111111111111111111111",
+			Resolved: "aaaaaaa111111111111111111111111111111111",
 		}}}
 
 		want := `{
@@ -50,7 +50,7 @@ func TestJSONEmptyCollectionsAreArraysNotNull(t *testing.T) {
       "name": "empty",
       "git": "example.test/r",
       "rev": "main",
-      "resolved": "aaaaaaa1111111111111111111111111111111111",
+      "resolved": "aaaaaaa111111111111111111111111111111111",
       "items": []
     }
   ]
@@ -70,7 +70,7 @@ func TestJSONEmptyCollectionsAreArraysNotNull(t *testing.T) {
 
 		l := &lock.Lock{Version: lock.Version, Sources: []lock.Source{{
 			Name: "shared", Git: "example.test/r", Rev: "main",
-			Resolved: "aaaaaaa1111111111111111111111111111111111",
+			Resolved: "aaaaaaa111111111111111111111111111111111",
 			Items:    []lock.Item{{ID: "agent:none"}},
 		}}}
 
@@ -81,7 +81,7 @@ func TestJSONEmptyCollectionsAreArraysNotNull(t *testing.T) {
       "name": "shared",
       "git": "example.test/r",
       "rev": "main",
-      "resolved": "aaaaaaa1111111111111111111111111111111111",
+      "resolved": "aaaaaaa111111111111111111111111111111111",
       "items": [
         {
           "id": "agent:none",
@@ -153,7 +153,7 @@ func TestJSONDoesNotEscapeHTML(t *testing.T) {
 	const url = "https://example.test/r?a=1&b=2"
 	l := &lock.Lock{Version: lock.Version, Sources: []lock.Source{{
 		Name: "shared", Git: url, Rev: "main",
-		Resolved: "aaaaaaa1111111111111111111111111111111111",
+		Resolved: "aaaaaaa111111111111111111111111111111111",
 	}}}
 
 	got := string(list.FromLock(l).JSON())
@@ -195,12 +195,12 @@ func TestFromLockOrdersEveryCollection(t *testing.T) {
 	scrambled := &lock.Lock{Version: lock.Version, Sources: []lock.Source{
 		{
 			Name: "zeta", Git: "example.test/z", Rev: "main",
-			Resolved: "bbbbbbb2222222222222222222222222222222222",
+			Resolved: "bbbbbbb222222222222222222222222222222222",
 			Items:    []lock.Item{{ID: "agent:z", Files: []string{"z.md"}}},
 		},
 		{
 			Name: "alpha", Git: "example.test/a", Rev: "main",
-			Resolved: "aaaaaaa1111111111111111111111111111111111",
+			Resolved: "aaaaaaa111111111111111111111111111111111",
 			Items: []lock.Item{
 				{ID: "schema:s", Files: []string{"s/b.md", "s/a.md"}},
 				{ID: "agent:a", Files: []string{"a.md"}},
