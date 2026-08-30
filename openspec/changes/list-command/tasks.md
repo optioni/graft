@@ -6,15 +6,15 @@ document on the wrong stream, a trailing newline written twice, a listing built 
 wrong root, a success exit code while the document went nowhere. design.md → Test Strategy
 records why this group is kept.
 
-- [ ] 0.1 Reuse `internal/cli/sync_acceptance_test.go`'s harness — `buildGraft`, `runGraftIn`
+- [x] 0.1 Reuse `internal/cli/sync_acceptance_test.go`'s harness — `buildGraft`, `runGraftIn`
       with an absolute `XDG_CACHE_HOME`, `newSourceRepo` with `user.name` / `user.email` set
       **on the repository**, and `newConsumer`. No `t.Chdir` and no `t.Setenv`: the working
       directory and the environment belong to the child process
-- [ ] 0.2 RED: Write the failing end-to-end test for the headline scenario — sync a fixture
+- [x] 0.2 RED: Write the failing end-to-end test for the headline scenario — sync a fixture
       source, then `graft list --json` exits `0`, writes the exact expected document to the
       standard output stream with exactly one trailing newline, writes nothing to the error
       stream, and leaves every path and every byte in the working tree unchanged
-- [ ] 0.3 Confirm it fails because `list` is not a command — expect
+- [x] 0.3 Confirm it fails because `list` is not a command — expect
       `graft: unknown command "list"` — and not because the fixture repository, the temp cache,
       or the tree snapshot helper is misconfigured
 
