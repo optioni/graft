@@ -90,6 +90,15 @@ func (r *sourceRepo) commit(message string) string {
 
 func (r *sourceRepo) tag(name string) { r.git("-C", r.dir, "tag", name) }
 
+// removeDir deletes the whole source repository, so a later command that still tries to
+// reach it fails rather than silently succeeding — the only proof that it never tried.
+func (r *sourceRepo) removeDir() {
+	r.t.Helper()
+	if err := os.RemoveAll(r.dir); err != nil {
+		r.t.Fatalf("removing the source repository: %v", err)
+	}
+}
+
 // seedCatalog writes the fixture's offer: one directory item and one file item, under
 // the two kinds SPEC.md's own examples use.
 func (r *sourceRepo) seedCatalog() {

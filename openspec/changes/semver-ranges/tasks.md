@@ -8,21 +8,21 @@ The two promises no single-package test can hold — that a lock with no range i
 and that `sync` never re-evaluates — are both end-to-end. design.md → Test Strategy records why
 this group is taken.
 
-- [ ] 0.1 Reuse `internal/cli/sync_acceptance_test.go`'s harness — `buildGraft`, `runGraftIn`
+- [x] 0.1 Reuse `internal/cli/sync_acceptance_test.go`'s harness — `buildGraft`, `runGraftIn`
       with an absolute `XDG_CACHE_HOME`, `newSourceRepo` with `user.name` / `user.email` set
       **on the repository**, and `newConsumer`. Tags come from the existing
       `(*sourceRepo).tag` helper, which already exists and can be called repeatedly — nothing
       needs extending
-- [ ] 0.2 RED: Write the failing end-to-end test for the headline scenario — a consumer pinning
+- [x] 0.2 RED: Write the failing end-to-end test for the headline scenario — a consumer pinning
       `rev = "^1.2.0"` against a source publishing `v1.2.0` and `v1.3.0`: `graft update` exits
       `0`, `graft.lock` records `rev = "^1.2.0"`, `matched = "v1.3.0"`, and `v1.3.0`'s sha, the
       report header names `^1.2.0  v1.2.0 -> v1.3.0`, and `graft list --json` returns the
       version-`2` document with `"matched": "v1.3.0"`
-- [ ] 0.3 RED: Write the failing end-to-end test for the other half — `graft sync` against that
+- [x] 0.3 RED: Write the failing end-to-end test for the other half — `graft sync` against that
       same repository after `v1.4.0` is published keeps `matched = "v1.3.0"`, writes a
       byte-identical `graft.lock`, and runs with the source repository **deleted**, proving no
       tag listing happened
-- [ ] 0.4 Confirm both fail because a range does not resolve — expect
+- [x] 0.4 Confirm both fail because a range does not resolve — expect
       `source "shared": rev "^1.2.0" not found` — and not because the fixture repository, its
       tags, the temp cache, or the tree snapshot helper is misconfigured
 
