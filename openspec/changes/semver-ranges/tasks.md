@@ -278,10 +278,10 @@ document changes together — a stale one is a test that passes against the old 
 ## 9. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 9.1 VERIFY: Confirm both group 0 acceptance tests now pass end to end
-- [ ] 9.2 VERIFY: Confirm *`graft sync` does not re-evaluate a range* passes with the source
+- [x] 9.1 VERIFY: Confirm both group 0 acceptance tests now pass end to end
+- [x] 9.2 VERIFY: Confirm *`graft sync` does not re-evaluate a range* passes with the source
       repository deleted, which is the only proof that no tag listing happened
-- [ ] 9.3 REFACTOR: Confirm no acceptance case grew its own tag-creating helper beside the
+- [x] 9.3 REFACTOR: Confirm no acceptance case grew its own tag-creating helper beside the
       existing `(*sourceRepo).tag`; fold one back if it did
 
 ## 10. Documentation
