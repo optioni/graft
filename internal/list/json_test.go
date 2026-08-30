@@ -44,12 +44,13 @@ func TestJSONEmptyCollectionsAreArraysNotNull(t *testing.T) {
 		}}}
 
 		want := `{
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "name": "empty",
       "git": "example.test/r",
       "rev": "main",
+      "matched": "",
       "resolved": "aaaaaaa111111111111111111111111111111111",
       "items": []
     }
@@ -75,12 +76,13 @@ func TestJSONEmptyCollectionsAreArraysNotNull(t *testing.T) {
 		}}}
 
 		want := `{
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "name": "shared",
       "git": "example.test/r",
       "rev": "main",
+      "matched": "",
       "resolved": "aaaaaaa111111111111111111111111111111111",
       "items": [
         {
@@ -118,8 +120,8 @@ func TestJSONRoundTrips(t *testing.T) {
 
 	// The literal the golden pins, not list.Version: comparing a decoded value against the
 	// constant that produced it cannot tell a right answer from a wrong one.
-	if got.Version != 1 {
-		t.Errorf("version = %d, want 1", got.Version)
+	if got.Version != 2 {
+		t.Errorf("version = %d, want 2", got.Version)
 	}
 	if len(got.Sources) != len(l.Sources) {
 		t.Fatalf("sources = %d, want %d", len(got.Sources), len(l.Sources))

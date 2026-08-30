@@ -136,7 +136,7 @@ func TestListInAnUnsyncedDirectory(t *testing.T) {
 
 		stdout, stderr, code := run(t, cli.Options{Args: []string{"list", "--json"}})
 
-		if want := "{\n  \"version\": 1,\n  \"sources\": []\n}\n"; stdout != want {
+		if want := "{\n  \"version\": 2,\n  \"sources\": []\n}\n"; stdout != want {
 			t.Errorf("stdout = %q, want %q", stdout, want)
 		}
 		if stderr != "" || code != 0 {

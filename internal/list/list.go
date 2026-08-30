@@ -18,10 +18,13 @@ import (
 )
 
 // Version is the version of the --json document's format, and not graft.lock's. The two
-// are both 1 today and are free to move apart: the lock is graft's working file and the
-// document is a projection published for consumers, which is the whole reason the
-// projection exists. One number meaning two things would tie them back together.
-const Version = 1
+// are free to move apart: the lock is graft's working file and the document is a
+// projection published for consumers, which is the whole reason the projection exists.
+// One number meaning two things would tie them back together.
+//
+// Version moved from 1 to 2 when every source object gained a matched member: a
+// consumer pinned to 1 learns that from the number rather than from a decode failure.
+const Version = 2
 
 // Listing is what a lock records, ordered and ready to render. Its JSON tags and its field
 // order are the published contract: encoding/json emits members in struct field order, so
@@ -33,10 +36,14 @@ type Listing struct {
 
 // Source is one source's block. Resolved is the full forty-character sha — the shortened
 // form exists to be read by a person, and a program comparing shas needs all of it.
+// Matched is the tag a range resolved to, present unconditionally and empty for a ref —
+// an omitted member would make every consumer branch on presence, the same reason an
+// empty collection here is [] and never null.
 type Source struct {
 	Name     string `json:"name"`
 	Git      string `json:"git"`
 	Rev      string `json:"rev"`
+	Matched  string `json:"matched"`
 	Resolved string `json:"resolved"`
 	Items    []Item `json:"items"`
 }
@@ -66,6 +73,7 @@ func FromLock(l *lock.Lock) *Listing {
 			Name:     s.Name,
 			Git:      s.Git,
 			Rev:      s.Rev,
+			Matched:  s.Matched,
 			Resolved: s.Resolved,
 			// Allocated with a length of zero rather than left nil, so a source with no
 			// items marshals as [] and not as null — the single most common way a JSON

@@ -67,12 +67,13 @@ func tempCache(t *testing.T) []string {
 // full rather than assembled from the same code the implementation uses.
 func fixtureDocument(repoDir, sha string) string {
 	return fmt.Sprintf(`{
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "name": "shared",
       "git": %q,
       "rev": "v1.0.0",
+      "matched": "",
       "resolved": %q,
       "items": [
         {
@@ -261,7 +262,7 @@ func TestGraftListWithNothingInstalled(t *testing.T) {
 			// a form that printed nothing would make it indistinguishable from a command
 			// that did not run.
 			doc := runGraftIn(t, bin, dir, tempCache(t), "list", "--json")
-			if want := "{\n  \"version\": 1,\n  \"sources\": []\n}\n"; doc.stdout != want {
+			if want := "{\n  \"version\": 2,\n  \"sources\": []\n}\n"; doc.stdout != want {
 				t.Errorf("stdout = %q, want %q", doc.stdout, want)
 			}
 			if doc.stderr != "" || doc.code != 0 {

@@ -244,36 +244,36 @@ range write a lock its own validation refuses.
 Its version moves, which means every golden string in `internal/list` and every acceptance
 document changes together — a stale one is a test that passes against the old contract.
 
-- [ ] 8.1 RED: Write failing unit tests for the plain form: *A range source names the tag it
+- [x] 8.1 RED: Write failing unit tests for the plain form: *A range source names the tag it
       matched* and *A ref source's header gains no column*, asserting the header lines exactly
       and that no line carries trailing whitespace
-- [ ] 8.2 RED: Write failing unit tests for the document over a built `*list.Listing`:
+- [x] 8.2 RED: Write failing unit tests for the document over a built `*list.Listing`:
       *SPEC.md's own lock renders as this exact document* with `"version": 2` and
       `"matched": ""`, and *A range source carries the tag it matched*. **Not** *A repository
       with no lock still prints a JSON document* — a repository with no lock cannot be expressed
       as a built value, so it belongs at the acceptance tier in 8.6
-- [ ] 8.3 RED: Write failing unit tests confirming the existing contract rules still hold at
+- [x] 8.3 RED: Write failing unit tests confirming the existing contract rules still hold at
       version 2: *A source with no items renders `[]` rather than null*, *An item with no files
       renders `[]` rather than null*, *A git URL containing an ampersand is not escaped*, *A
       scrambled lock produces the same document as a canonical one*, and *The document is valid
       JSON that round-trips*
-- [ ] 8.4 GREEN: Add `Matched` to `list.Source` between `Rev` and `Resolved`, always marshalled;
+- [x] 8.4 GREEN: Add `Matched` to `list.Source` between `Rev` and `Resolved`, always marshalled;
       move `Version` to `2`; add the optional column to `Lines()`
-- [ ] 8.5 GREEN: Update the two `--json` goldens in `internal/cli/list_acceptance_test.go` —
+- [x] 8.5 GREEN: Update the two `--json` goldens in `internal/cli/list_acceptance_test.go` —
       `fixtureDocument` and the empty-document literal — to `"version": 2` with `"matched"`
       between `rev` and `resolved`. They are the acceptance tier design.md assigns these
       scenarios to, and a stale golden asserts the contract this change replaced
-- [ ] 8.6 GREEN: Add the acceptance cases design.md's matrix names at that tier: *SPEC.md's own
+- [x] 8.6 GREEN: Add the acceptance cases design.md's matrix names at that tier: *SPEC.md's own
       lock renders as this exact document*, *A range source carries the tag it matched*, *A
       repository with no lock still prints a JSON document* at version 2, *SPEC.md's own lock
       renders as one block*, and *A range source names the tag it matched*
-- [ ] 8.7 CHECK: Re-read `specs/list-execution/spec.md`'s JSON requirement against the golden
+- [x] 8.7 CHECK: Re-read `specs/list-execution/spec.md`'s JSON requirement against the golden
       string field name by field name and field order included, and confirm the published
       document and the spec say the same thing. This is the change's one interface a separate
       consumer depends on
-- [ ] 8.8 CHECK: Grep the repository for every remaining `"version": 1` and every JSON golden,
+- [x] 8.8 CHECK: Grep the repository for every remaining `"version": 1` and every JSON golden,
       and confirm none still asserts the version-1 document — the bump changes every one at once
-- [ ] 8.9 Run `go test ./internal/list/ ./internal/cli/` — green, no regressions
+- [x] 8.9 Run `go test ./internal/list/ ./internal/cli/` — green, no regressions
 
 ## 9. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->

@@ -69,6 +69,33 @@ func TestGraftUpdateResolvesARangeAndRecordsTheMatchedTag(t *testing.T) {
 	}
 }
 
+// TestGraftListRangeSourceNamesTheTagItMatched closes the acceptance tier design.md
+// assigns the plain form of this scenario to: the real binary, synced against a real
+// range, lists the matched tag in its header.
+func TestGraftListRangeSourceNamesTheTagItMatched(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	repo := newSourceRepo(t)
+	repo.seedCatalog()
+	sha := repo.commit("v1")
+	repo.tag("v1.2.0")
+
+	c := newConsumer(t, manifestFor(repo, "^1.2.0", "schema:tdd", "agent:*"))
+	if first := runGraftIn(t, bin, c.dir, c.env, "update"); first.code != 0 {
+		t.Fatalf("seeding update: exit %d\nstderr:\n%s", first.code, first.stderr)
+	}
+
+	got := runGraftIn(t, bin, c.dir, c.env, "list")
+	if got.code != 0 {
+		t.Fatalf("list: exit %d\nstderr:\n%s", got.code, got.stderr)
+	}
+	wantHeader := "shared  ^1.2.0  v1.2.0  (" + sha[:7] + ")"
+	if !strings.HasPrefix(got.stdout, wantHeader+"\n") {
+		t.Errorf("stdout does not start with %q:\n%s", wantHeader, got.stdout)
+	}
+}
+
 // TestGraftSyncDoesNotReEvaluateARange is the other half: once a range's matched tag is
 // recorded, `graft sync` installs it exactly, never listing tags again — proven by
 // deleting the source repository before the sync runs.

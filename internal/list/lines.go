@@ -33,9 +33,17 @@ func (l *Listing) Lines() []string {
 	return out
 }
 
-// header names the source, the rev the lock records, and the short form of its sha.
+// header names the source, the rev the lock records, and the short form of its sha. When
+// the source's rev is a range, the matched tag appears between the rev and the sha — the
+// column is absent, not empty and not padded, for every ref, so a listing containing no
+// range is byte-identical to what graft printed before ranges existed. Two headers in one
+// listing are never padded into a shared layout: each block is independent.
 func (s Source) header() string {
-	return s.Name + "  " + s.Rev + "  (" + ui.ShortSHA(s.Resolved) + ")"
+	h := s.Name + "  " + s.Rev
+	if s.Matched != "" {
+		h += "  " + s.Matched
+	}
+	return h + "  (" + ui.ShortSHA(s.Resolved) + ")"
 }
 
 // itemLines renders one source's block, aligned within that block: the id padded to the

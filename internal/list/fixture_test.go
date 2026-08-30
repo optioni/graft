@@ -40,12 +40,13 @@ func specLock() *lock.Lock {
 // written out rather than assembled, so a change to the encoder cannot quietly change the
 // contract and the expectation together.
 const specDocument = `{
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "name": "openspec-schemas",
       "git": "github.com/optioni/openspec-schemas",
       "rev": "v1.2.0",
+      "matched": "",
       "resolved": "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5",
       "items": [
         {
@@ -79,7 +80,7 @@ const specDocument = `{
 // form that printed nothing would make "nothing is installed" indistinguishable from "the
 // command did not run".
 const emptyDocument = `{
-  "version": 1,
+  "version": 2,
   "sources": []
 }
 `
