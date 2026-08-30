@@ -1,10 +1,10 @@
 # Handoff — graft implementation
 
-Updated 2026-08-24, after `update-command` was finished and archived.
+Updated 2026-08-30, after `list-command` was finished and archived.
 
 ## Where things stand
 
-**8 of 12 changes archived.** `list-command` is next and has not been started.
+**9 of 12 changes archived.** `add-command` is next and has not been started.
 
 | # | Change | State |
 |---|--------|-------|
@@ -16,8 +16,8 @@ Updated 2026-08-24, after `update-command` was finished and archived.
 | 6 | `catalog-hardening` | archived (not in IMPLEMENTATION-ORDER.md — added to close four findings `catalog-and-selectors` deferred) |
 | 7 | `sync-command` | archived — `graft sync` builds and runs |
 | 8 | `update-command` | archived — `graft update`, `graft update <source>` and `graft update --to` all build and run |
-| 9 | `list-command` | **next, not started** |
-| 10 | `add-command` | not started |
+| 9 | `list-command` | archived — `graft list` and `graft list --json` build and run |
+| 10 | `add-command` | **next, not started** |
 | 11 | `add-picker` | not started |
 | 12 | `self-hosting` | not started |
 
@@ -28,7 +28,8 @@ to the tree while an agent holds it** — two writers is what caused commits `29
 `9e00a34` and part of `54228be` to be reverted by `69783de` on 08-24.
 
 Every agent prompt must carry: `export PATH="/opt/homebrew/bin:$PATH"` before `task`/`go`/
-`openspec`/`golangci-lint`; you are the only writer, stop rather than revert; never push;
+`golangci-lint` — and note that `openspec` is **not** on that path: it lives at
+`~/.nvm/versions/node/v24.18.0/bin/openspec`, installed as a global npm package; you are the only writer, stop rather than revert; never push;
 coverage is 80% over `./internal/...`; `internal/plan` stays pure and `internal/apply` is
 the sole writer; fixture git repos need repo-level `user.name`/`user.email`; error strings
 are asserted contract; retry API server errors rather than abandoning the step.

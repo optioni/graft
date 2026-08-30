@@ -1,5 +1,15 @@
 # Command Output Specification
 
+## RENAMED Requirements
+
+- FROM: `### Requirement: Machine-readable output goes to stdout and everything else to stderr`
+- TO: `### Requirement: The standard output stream carries the content a caller asked for`
+
+The rule was named for one half of what it decides. The split has always been by audience
+rather than by severity, and `graft list` is the case that makes the old title wrong: a
+listing is not machine-readable output and it belongs on stdout anyway, because it is what
+the caller asked for.
+
 ## MODIFIED Requirements
 
 ### Requirement: The standard output stream carries the content a caller asked for
