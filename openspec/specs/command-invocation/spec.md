@@ -97,9 +97,9 @@ commands it has, and its flags — to the **standard output** stream and exit `0
 a thing the user asked for, not a diagnostic, so it never goes to the error stream.
 
 The commands section SHALL list **every** subcommand `graft` has. It listed one when `sync`
-was the only one; it lists `sync` and `update` now, and a command added later is listed by the
-same rule rather than by an amendment here. What it SHALL NOT list is a command SPEC.md's
-command table does not name.
+was the only one; it lists `sync`, `update`, and `list` now, and a command added later is
+listed by the same rule rather than by an amendment here. What it SHALL NOT list is a command
+SPEC.md's command table does not name.
 
 `--help` SHALL be the only spelling. A bare `help` **argument** SHALL NOT be accepted, and
 SHALL be refused as `unknown command "help"` like any other unrecognised argument. This
@@ -125,8 +125,8 @@ subcommand name.
 #### Scenario: Help lists the commands graft has
 
 - **WHEN** `graft --help` is invoked
-- **THEN** the standard output stream names `sync` and describes it, and names `update` and
-  describes it
+- **THEN** the standard output stream names `sync` and describes it, names `update` and
+  describes it, and names `list` and describes it
 - **AND** it names no `help` command and no `completion` command
 
 #### Scenario: `--help` prints the same text as no arguments at all
@@ -155,6 +155,14 @@ subcommand name.
 - **WHEN** `graft update --help` is invoked
 - **THEN** the standard output stream holds text naming `update`, its `--to` flag, and its
   `--dry-run` flag
+- **AND** the error stream is empty and the exit code is `0`
+
+#### Scenario: A read-only subcommand's help names only the flag it has
+
+- **WHEN** `graft list --help` is invoked
+- **THEN** the standard output stream holds text naming `list` and its `--json` flag
+- **AND** it names no `--dry-run` flag, because a command that writes nothing has nothing to
+  offer a dry run
 - **AND** the error stream is empty and the exit code is `0`
 
 ### Requirement: An unknown command or flag is refused as a usage error
