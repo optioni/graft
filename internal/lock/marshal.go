@@ -32,6 +32,9 @@ func Marshal(l *Lock) []byte {
 		writeKey(&b, "", sourceKeyWidth, "name", quote(s.Name))
 		writeKey(&b, "", sourceKeyWidth, "git", quote(s.Git))
 		writeKey(&b, "", sourceKeyWidth, "rev", quote(s.Rev))
+		if s.Matched != "" {
+			writeKey(&b, "", sourceKeyWidth, "matched", quote(s.Matched))
+		}
 		writeKey(&b, "", sourceKeyWidth, "resolved", quote(s.Resolved))
 
 		for _, it := range s.Items {

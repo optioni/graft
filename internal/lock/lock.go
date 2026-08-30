@@ -16,6 +16,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/optioni/graft/internal/itemid"
+	"github.com/optioni/graft/internal/rev"
 )
 
 // Version is the graft.lock format version this binary understands. A lock carrying
@@ -34,11 +35,13 @@ type Lock struct {
 }
 
 // Source is one [[source]] block. Rev records what graft.toml asked for, Resolved the
-// sha it became.
+// sha it became. Matched is the tag a range resolved to, exactly as the remote spelled
+// it — empty for a ref, which names itself and needs no further record.
 type Source struct {
 	Name     string
 	Git      string
 	Rev      string
+	Matched  string
 	Resolved string
 	Items    []Item
 }
@@ -61,6 +64,7 @@ type source struct {
 	Name     string `toml:"name"`
 	Git      string `toml:"git"`
 	Rev      string `toml:"rev"`
+	Matched  string `toml:"matched"`
 	Resolved string `toml:"resolved"`
 	Items    []item `toml:"item"`
 }
@@ -112,13 +116,22 @@ func Parse(data []byte, filename string) (*Lock, error) {
 		return nil, err
 	}
 
+	// rawSources is walked alongside f.Sources by index so validate can tell an absent
+	// matched key from one declared empty — a distinction the typed decode alone
+	// collapses, since both leave Matched as "".
+	rawSources := tables(raw["source"])
+
 	l := &Lock{Version: Version}
 	seen := make(map[string]struct{}, len(f.Sources))
 	// claimed spans the whole lock, not one item or one source: SPEC.md's invariants
 	// say no two items share a destination path, within a source or across sources.
 	claimed := map[string]struct{}{}
-	for _, s := range f.Sources {
-		src, err := validate(filename, s, claimed)
+	for i, s := range f.Sources {
+		var rawSrc map[string]any
+		if i < len(rawSources) {
+			rawSrc = rawSources[i]
+		}
+		src, err := validate(filename, s, claimed, rawSrc)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +172,7 @@ func rejectUnknown(raw map[string]any, filename string) error {
 	}
 	for _, s := range tables(raw["source"]) {
 		name, _ := s["name"].(string)
-		if k, ok := unknownKey(s, "name", "git", "rev", "resolved", "item"); ok {
+		if k, ok := unknownKey(s, "name", "git", "rev", "matched", "resolved", "item"); ok {
 			return fmt.Errorf("%s: source %q: unknown key %q", filename, name, k)
 		}
 		for _, it := range tables(s["item"]) {
@@ -210,8 +223,10 @@ func tables(v any) []map[string]any {
 }
 
 // validate checks one [[source]] block. claimed carries every file path already taken
-// by an earlier item anywhere in the lock, and validate adds this source's to it.
-func validate(filename string, s source, claimed map[string]struct{}) (Source, error) {
+// by an earlier item anywhere in the lock, and validate adds this source's to it. raw is
+// this source's generically decoded table, needed only to tell an absent matched key
+// from one declared empty — the typed decode above leaves Matched as "" for both.
+func validate(filename string, s source, claimed map[string]struct{}, raw map[string]any) (Source, error) {
 	if s.Name == "" {
 		return Source{}, fmt.Errorf("%s: source name is empty", filename)
 	}
@@ -230,7 +245,19 @@ func validate(filename string, s source, claimed map[string]struct{}) (Source, e
 		return Source{}, fail(fmt.Sprintf("resolved %q is not a 40-character hex sha", s.Resolved))
 	}
 
-	out := Source{Name: s.Name, Git: s.Git, Rev: s.Rev, Resolved: s.Resolved}
+	// The range test is the same one internal/source asks before resolving: a second
+	// definition would let a lock demand a matched for a pin resolution says has none.
+	_, hasMatched := raw["matched"]
+	switch {
+	case !rev.IsRange(s.Rev) && hasMatched:
+		return Source{}, fail("matched is only valid when rev is a range")
+	case rev.IsRange(s.Rev) && !hasMatched:
+		return Source{}, fail("matched is required when rev is a range")
+	case rev.IsRange(s.Rev) && s.Matched == "":
+		return Source{}, fail("matched is empty")
+	}
+
+	out := Source{Name: s.Name, Git: s.Git, Rev: s.Rev, Matched: s.Matched, Resolved: s.Resolved}
 	seen := make(map[string]struct{}, len(s.Items))
 	for _, it := range s.Items {
 		if !itemid.Valid(it.ID) {

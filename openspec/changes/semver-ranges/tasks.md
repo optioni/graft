@@ -144,30 +144,30 @@ guard wrong.
 re-serialize to bytes identical to the file on disk, or every consumer's next sync churns the
 diff for a feature they do not use.
 
-- [ ] 5.1 CHARACTERIZE: Write the guard for *A lock with no ranges is byte-identical after this
+- [x] 5.1 CHARACTERIZE: Write the guard for *A lock with no ranges is byte-identical after this
       change* — green before and after, which is the point: it is the compatibility promise, not
       a behavior being added, so it is scheduled first but never goes red — parse a fixture lock written before this change and assert the re-serialized
       bytes equal the input exactly
-- [ ] 5.2 RED: Write failing unit tests for serialization: *A range's lock carries the matched
+- [x] 5.2 RED: Write failing unit tests for serialization: *A range's lock carries the matched
       tag*, *A ref's lock carries no matched key*, and *A range source serializes matched
       between rev and resolved*, asserting the four header lines exactly and that the alignment
       column is unchanged
-- [ ] 5.3 RED: Write failing unit tests for validation, asserting each message exactly: *A
+- [x] 5.3 RED: Write failing unit tests for validation, asserting each message exactly: *A
       matched key on a ref pin is refused*, *A range pin without a matched key is refused*, *An
       empty matched value is refused*, and *The range test is the same one resolution uses*
       (`rev = "1.x"` with no `matched` parses)
-- [ ] 5.4 GREEN: Add `matched` in all **five** places it must appear: the `lock.Source` struct,
+- [x] 5.4 GREEN: Add `matched` in all **five** places it must appear: the `lock.Source` struct,
       the `source` TOML struct, `rejectUnknown`'s allow-list in `internal/lock/lock.go`, the
       `validate` rules against `rev.IsRange`, and `Marshal`'s slot between `rev` and `resolved`,
       written only when non-empty. The allow-list is the one that fails silently if missed:
       `rejectUnknown` runs **before** `validate`, so without it every range lock fails as
       `unknown key "matched"` and all three new validation messages are unreachable
-- [ ] 5.5 CHECK: Confirm the migration, backfill, and cache-invalidation steps this change
+- [x] 5.5 CHECK: Confirm the migration, backfill, and cache-invalidation steps this change
       requires — expected outcome is **none apply**: `matched` is absent from every lock that
       exists, no file moves, and the fetch cache is keyed by sha
-- [ ] 5.6 CHECK: Re-read SPEC.md's `graft.lock` section against the serializer and confirm the
+- [x] 5.6 CHECK: Re-read SPEC.md's `graft.lock` section against the serializer and confirm the
       documented format matches, including that `version` stays `1` and why
-- [ ] 5.7 Run `go test ./internal/lock/` — green, and the existing byte-equality and ordering
+- [x] 5.7 Run `go test ./internal/lock/` — green, and the existing byte-equality and ordering
       tests unedited
 
 ## 6. plan: carrying the tag into the next lock
