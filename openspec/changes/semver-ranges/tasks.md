@@ -32,11 +32,11 @@ this group is taken.
 Plumbing, and its evidence is that the build resolves — not a test asserting a string appears in
 `go.mod`, which would only prove the same string was typed twice.
 
-- [ ] 1.1 CHECK: Confirm the current latest is `github.com/Masterminds/semver/v3` v3.5.0 via
+- [x] 1.1 CHECK: Confirm the current latest is `github.com/Masterminds/semver/v3` v3.5.0 via
       `go list -m -versions`, rather than trusting a remembered version
-- [ ] 1.2 CHANGE: `go get github.com/Masterminds/semver/v3@v3.5.0` and `go mod tidy`
-- [ ] 1.3 VERIFY: Run `task build` — the module resolves and the binary builds
-- [ ] 1.4 VERIFY: Confirm the dependency is pure — `go doc` its surface and confirm the calls
+- [x] 1.2 CHANGE: `go get github.com/Masterminds/semver/v3@v3.5.0` and `go mod tidy`
+- [x] 1.3 VERIFY: Run `task build` — the module resolves and the binary builds
+- [x] 1.4 VERIFY: Confirm the dependency is pure — `go doc` its surface and confirm the calls
       this change uses (`NewVersion`, `NewConstraint`, `Constraint.Check`, `Version.Compare`)
       touch no network, no filesystem, and start no process
 
