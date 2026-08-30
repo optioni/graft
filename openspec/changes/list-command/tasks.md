@@ -174,23 +174,23 @@ SPEC.md is the contract and it describes `graft list` in one table row. The `--j
 a published interface with no home in it, and the failure-mode table is where this repository
 records what a command refuses.
 
-- [ ] 8.1 CHECK: Re-read SPEC.md's Commands, Output, and Failure modes sections and confirm what
+- [x] 8.1 CHECK: Re-read SPEC.md's Commands, Output, and Failure modes sections and confirm what
       is missing before editing: there is no `graft list` section, no JSON document, and no row
       for a positional argument to `list`
-- [ ] 8.2 CHANGE: Add a `## graft list` section to SPEC.md after `## graft add`, holding the two
+- [x] 8.2 CHANGE: Add a `## graft list` section to SPEC.md after `## graft add`, holding the two
       forms — the plain block and the JSON document, both as the exact text the tests assert —
       and stating that `list` reads `graft.lock` alone, writes nothing, and needs no network.
       Rewrite the command table's `graft list` row to point at it
-- [ ] 8.3 CHANGE: Add the failure-mode rows this change introduces: a `graft.lock` that cannot be
+- [x] 8.3 CHANGE: Add the failure-mode rows this change introduces: a `graft.lock` that cannot be
       parsed reported with `internal/lock`'s own message, and `graft list` given a positional
       argument. Do not restate rows that already cover `list`
-- [ ] 8.4 CHANGE: Add one line to README.md's command list only if the existing `graft list`
+- [x] 8.4 CHANGE: Add one line to README.md's command list only if the existing `graft list`
       line no longer describes what shipped; state the expected outcome is **no edit** if it does
-- [ ] 8.5 CHECK: Decide whether AGENTS.md needs a rule. The candidate is the one a future change
+- [x] 8.5 CHECK: Decide whether AGENTS.md needs a rule. The candidate is the one a future change
       would get wrong: the JSON document's shape is a contract, not a convenience, and its empty
       collections and ordering are asserted as bytes. Prefer rewriting the existing lock
       determinism rule to cover both artifacts over adding a second rule beside it
-- [ ] 8.6 VERIFY: Re-read the edited sections and confirm every example matches a test fixture
+- [x] 8.6 VERIFY: Re-read the edited sections and confirm every example matches a test fixture
       character for character — SPEC.md's examples are what the tests are written against
 
 ## 9. Change Review

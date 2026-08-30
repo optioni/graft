@@ -45,6 +45,7 @@ internal/source/    git resolution, content-addressed fetch cache
 internal/plan/      pure: manifest + lock + catalog -> file operations
 internal/apply/     the only package that writes to the working tree
 internal/sync/      the resolution sequence: fetch, plan, apply, and the report
+internal/list/      graft.lock -> the listing `graft list` prints, in both forms
 internal/cli/       the cobra command surface; internal/ui owns both streams
 ```
 
@@ -71,9 +72,16 @@ internal/cli/       the cobra command surface; internal/ui owns both streams
   ordinary destinations. It is about provenance, not a path string: graft writes its own two
   files from bytes it built itself — `graft.lock` on every run, `graft.toml` under
   `graft update --to` — and writes inside `.git` on no path at all.
-- **Lock serialization is deterministic** — sources by name, items by id, files by path.
-  Assert byte equality across two runs, not semantic equality, or every sync churns the
-  diff.
+- **Both artifacts graft emits are byte-deterministic** — `graft.lock` and the
+  `graft list --json` document alike, ordered sources by name, items by id, files by path.
+  Assert byte equality across two runs *and* across two inputs holding the same content in a
+  different order, never semantic equality: a lock that churns makes every sync a diff nobody
+  reads, and a document that churns breaks the consumer the JSON form exists for. The
+  document's field names, its field order, its two-space indentation, its single trailing
+  newline, and its rule that an empty collection renders as `[]` and never as `null` at every
+  level are contract as much as its ordering is — changing one is a breaking change to argue
+  for, not an incidental edit, and the two ways it silently breaks a consumer are both
+  invisible to a test that only decodes.
 - **`sync` never re-resolves a pin.** It installs what the lock says. Only `update` moves
   a pin. Re-resolving on sync would make `rev = "main"` drift silently, which defeats the
   point of pinning.

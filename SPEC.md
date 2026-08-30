@@ -130,7 +130,7 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 | `graft update --to <rev> <source>` | Move the pin in `graft.toml`, then sync. **v1** |
 | `graft add <source>[@rev] [selector...]` | Add or amend a source in `graft.toml`, then sync. **v1** |
 | `graft add <source> --list` | Print the source's catalog and exit, writing nothing. **v1** |
-| `graft list` | Items installed here, with source and resolved SHA. **v1** |
+| `graft list [--json]` | Items installed here, with source and resolved SHA. Reads `graft.lock` alone. See [`graft list`](#graft-list). **v1** |
 
 There is no `--force`. Sync always overwrites; a flag to make it do its job is the bug it
 is meant to prevent.
@@ -168,6 +168,90 @@ Two behaviors worth naming:
   when it has none. `@rev` overrides.
 
 `add` syncs on success. `--no-sync` writes the manifest only.
+
+## `graft list`
+
+`graft list` prints what `graft.lock` records: one block per source, naming the source, the
+`rev` it was pinned to, its short resolved SHA, and the items installed from it.
+
+```
+openspec-schemas  v1.2.0  (fae2a30)
+
+  agent:apply-orchestrator  1 file
+  schema:tdd                6 files
+```
+
+It goes to **stdout**, because a listing is the content the caller asked for rather than a
+summary of something that happened — `graft list | grep agent:` has to work, and it is the
+reason the command exists. Blocks are separated by one blank line; a source with no items is
+its header alone; nothing is coloured, because the two things the sync report styles do not
+exist here.
+
+`--json` prints the same information as one document, with the **full** forty-character SHA:
+
+```json
+{
+  "version": 1,
+  "sources": [
+    {
+      "name": "openspec-schemas",
+      "git": "github.com/optioni/openspec-schemas",
+      "rev": "v1.2.0",
+      "resolved": "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5",
+      "items": [
+        {
+          "id": "agent:apply-orchestrator",
+          "kind": "agent",
+          "name": "apply-orchestrator",
+          "files": [
+            ".claude/agents/apply-orchestrator.md"
+          ]
+        },
+        {
+          "id": "schema:tdd",
+          "kind": "schema",
+          "name": "tdd",
+          "files": [
+            "openspec/schemas/tdd/schema.yaml",
+            "openspec/schemas/tdd/templates/design.md",
+            "openspec/schemas/tdd/templates/planning-review.md",
+            "openspec/schemas/tdd/templates/proposal.md",
+            "openspec/schemas/tdd/templates/spec.md",
+            "openspec/schemas/tdd/templates/tasks.md"
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**The document is a contract.** Its field names, its field order, the order of every
+collection, its two-space indentation, and its single trailing newline are all pinned, and
+so is the rule that an empty collection renders as `[]` and never as `null` — at every
+level. `<`, `>`, and `&` are not escaped, so a git URL with a query string round-trips.
+`version` is the **document's** version, not `graft.lock`'s: the two formats are free to
+move independently, and one number meaning two things would tie them back together. `kind`
+and `name` are the two halves of `id`, carried rather than left to be derived, because
+`kind:name` is graft's grammar and not the consumer's.
+
+`list` reads `graft.lock` and nothing else. Not `graft.toml` — so a manifest whose `rev` has
+moved ahead is not reported here; that is `sync`'s failure and `update`'s repair. Not the
+working tree — a file the lock claims is listed whether or not it is still there, because
+`git status` is the verification report and a `list` that stat-ed its way to an answer would
+be the verification command this spec refuses. Not the network and not the fetch cache: it
+resolves nothing, fetches nothing, creates nothing, and writes nothing, so it works offline
+with no `git` on `PATH`.
+
+A repository with no `graft.lock`, and one whose lock declares no source, are the same
+answer. The plain form writes `nothing installed` to **stderr** and leaves stdout
+byte-empty, so a caller piping it receives zero bytes rather than a sentence that parses as
+an item. `--json` writes the document with an empty `sources` array, because a
+machine-readable form that printed nothing would make "nothing is installed"
+indistinguishable from "the command did not run".
+
+There is no `--source` filter and no second output format. A caller who wants one source
+pipes `--json` into a tool that filters JSON.
 
 ## Resolution
 
@@ -264,6 +348,8 @@ is why the destination is shown before install and why a consumer override alway
 | A source file cannot be read | Error naming the source and the path within its tree. |
 | A write names a source with no fetched tree | Error naming the source. An internal invariant; a plan and a fetch that disagree. |
 | The repository root cannot be opened | Error naming it. graft never creates the repository it runs in. |
+| `graft.lock` exists and cannot be parsed or validated, under `graft list` | Error with `internal/lock`'s own message, unaltered. stdout stays byte-empty in both forms: a `--json` run that failed emits no partial document. |
+| `graft list` given a positional argument | Usage error: `unknown argument "<argument>"`, naming the first one, with the hint line. |
 
 ## Exit codes
 
