@@ -6,10 +6,23 @@ package itemid
 
 import "strings"
 
-// Valid reports whether s is syntactically kind:name — exactly one colon with a
-// non-empty half on each side. Glob metacharacters are accepted as written; matching
-// an id or a selector against a catalog is not this package's job.
+// Split returns the two halves of s, and whether s is an id at all — exactly one colon
+// with a non-empty half on each side. Glob metacharacters are accepted as written;
+// matching an id or a selector against a catalog is not this package's job.
+//
+// An id that does not parse yields two empty strings rather than a partial answer, so a
+// caller that forgets to check ok gets nothing rather than half of something.
+func Split(s string) (kind, name string, ok bool) {
+	kind, name, ok = strings.Cut(s, ":")
+	if !ok || kind == "" || name == "" || strings.Contains(name, ":") {
+		return "", "", false
+	}
+	return kind, name, true
+}
+
+// Valid reports whether s is syntactically kind:name. It is Split's third result: the
+// grammar is stated once, so a rule tightened in one cannot leave the other behind.
 func Valid(s string) bool {
-	kind, name, ok := strings.Cut(s, ":")
-	return ok && kind != "" && name != "" && !strings.Contains(name, ":")
+	_, _, ok := Split(s)
+	return ok
 }

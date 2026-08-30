@@ -21,15 +21,15 @@ records why this group is kept.
 ## 1. itemid: the two halves of an id
 <!-- kind: behavior -->
 
-- [ ] 1.1 RED: Write failing unit tests for `itemid.Split`: `schema:tdd` splits into `schema`
+- [x] 1.1 RED: Write failing unit tests for `itemid.Split`: `schema:tdd` splits into `schema`
       and `tdd` with `ok` true; `agent:*` splits with the glob left as written; an empty half on
       either side, a missing colon, and a second colon each report `ok` false and return empty
       halves
-- [ ] 1.2 RED: Write a failing test asserting `Valid` and `Split` agree on every input in the
+- [x] 1.2 RED: Write a failing test asserting `Valid` and `Split` agree on every input in the
       table above — `Valid(s)` is exactly `Split(s)`'s `ok`
-- [ ] 1.3 GREEN: Implement `Split(s string) (kind, name string, ok bool)` and re-express `Valid`
+- [x] 1.3 GREEN: Implement `Split(s string) (kind, name string, ok bool)` and re-express `Valid`
       through it, so the grammar is stated once
-- [ ] 1.4 Run `go test ./internal/itemid/` — green, and the existing `Valid` tests unchanged
+- [x] 1.4 Run `go test ./internal/itemid/` — green, and the existing `Valid` tests unchanged
 
 ## 2. ui: the render vocabulary two commands share
 <!-- kind: refactor -->
