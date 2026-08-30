@@ -60,33 +60,33 @@ as `null`, and non-deterministic ordering. Every test here asserts **exact bytes
 determinism assertion is byte equality across two runs and across two locks with the same
 content in different orders — the same rule `graft.lock`'s own serialization is held to.
 
-- [ ] 3.1 RED: Write a failing unit test holding SPEC.md's `graft.lock` example as a hand-built
+- [x] 3.1 RED: Write a failing unit test holding SPEC.md's `graft.lock` example as a hand-built
       `*lock.Lock` and the expected JSON document as an exact golden string in the test file:
       *SPEC.md's own lock renders as this exact document*, trailing newline included
-- [ ] 3.2 RED: Write failing unit tests for the empty and boundary shapes: *A source with no
+- [x] 3.2 RED: Write failing unit tests for the empty and boundary shapes: *A source with no
       items renders `[]` rather than null* (plus an assertion that `null` appears nowhere), *An
       item with no files renders `[]` rather than null*, and the empty document for a lock with
       no sources
-- [ ] 3.3 RED: Write failing unit tests for *The document is valid JSON that round-trips*
+- [x] 3.3 RED: Write failing unit tests for *The document is valid JSON that round-trips*
       (decode and compare every value against the source lock, the full 40-character sha
       included), *A git URL containing an ampersand is not escaped*, and *The kind and name
       halves match the id*
-- [ ] 3.4 GREEN: Implement `internal/list`'s `Listing`, `Source`, and `Item` with the JSON tags
+- [x] 3.4 GREEN: Implement `internal/list`'s `Listing`, `Source`, and `Item` with the JSON tags
       and field order design.md → Contracts fixes, and `FromLock(*lock.Lock) *Listing` sorting
       sources by name, items by id, and files by path, allocating every slice with
       `make(..., 0, n)` so an empty one marshals as `[]`
-- [ ] 3.5 GREEN: Implement `(*Listing).JSON() []byte` with `json.NewEncoder` into a
+- [x] 3.5 GREEN: Implement `(*Listing).JSON() []byte` with `json.NewEncoder` into a
       `bytes.Buffer`, `SetIndent("", "  ")` and `SetEscapeHTML(false)`, returning the complete
       document including the trailing newline `Encode` appends. Discard `Encode`'s error with an
       explicit `_ =` and the comment saying why it cannot fail — a tree of strings, ints, and
       slices of those, into a `bytes.Buffer`
-- [ ] 3.6 GREEN: Implement `(*Listing).Empty()` and the `Version = 1` constant, documented as
+- [x] 3.6 GREEN: Implement `(*Listing).Empty()` and the `Version = 1` constant, documented as
       **this document's** version rather than `graft.lock`'s
-- [ ] 3.7 CHECK: Re-read `specs/list-execution/spec.md`'s JSON requirement against the golden
+- [x] 3.7 CHECK: Re-read `specs/list-execution/spec.md`'s JSON requirement against the golden
       string in the test, field name by field name and field order included, and confirm the
       published document and the spec say the same thing. This is the change's one interface a
       separate consumer depends on
-- [ ] 3.8 Run `go test ./internal/list/` — green, no regressions
+- [x] 3.8 Run `go test ./internal/list/` — green, no regressions
 
 ## 4. list: the plain rendering
 <!-- kind: behavior -->
