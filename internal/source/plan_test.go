@@ -42,7 +42,7 @@ func newPlanFixture(t *testing.T) *repo {
 func buildFromFixture(t *testing.T, r *repo, root string) (*plan.Plan, string) {
 	t.Helper()
 
-	sha, err := Resolve("shared", r.URL(), "v1.0.0")
+	sha, _, err := Resolve("shared", r.URL(), "v1.0.0")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

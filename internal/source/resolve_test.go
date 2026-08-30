@@ -14,7 +14,7 @@ const testSHA = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 func TestGitNotOnPATH(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
-	sha, err := Resolve("shared", "/srv/mirrors/assets", "main")
+	sha, matched, err := Resolve("shared", "/srv/mirrors/assets", "main")
 	if err == nil {
 		t.Fatalf("Resolve: want an error, got %q", sha)
 	}
@@ -24,18 +24,24 @@ func TestGitNotOnPATH(t *testing.T) {
 	if strings.Contains(err.Error(), "exec") {
 		t.Errorf("Resolve: message surfaces an exec error a user cannot act on: %q", err)
 	}
+	if matched != "" {
+		t.Errorf("Resolve: want an empty matched tag on failure, got %q", matched)
+	}
 }
 
 func TestResolveRefusesOptionShapedRemote(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	want := `source "shared": git "--upload-pack=./pwn.sh" may not begin with "-"`
 
-	sha, err := Resolve("shared", "--upload-pack=./pwn.sh", "main")
+	sha, matched, err := Resolve("shared", "--upload-pack=./pwn.sh", "main")
 	if err == nil || err.Error() != want {
 		t.Fatalf("Resolve:\n got %v\nwant %q", err, want)
 	}
 	if sha != "" {
 		t.Errorf("Resolve: want an empty sha on refusal, got %q", sha)
+	}
+	if matched != "" {
+		t.Errorf("Resolve: want an empty matched tag on refusal, got %q", matched)
 	}
 }
 
@@ -46,12 +52,15 @@ func TestResolveBranchResolvesToItsTip(t *testing.T) {
 	r.write("b.txt", "two\n")
 	tip := r.commit("two")
 
-	got, err := Resolve("shared", r.URL(), "main")
+	got, matched, err := Resolve("shared", r.URL(), "main")
 	if err != nil {
 		t.Fatalf("Resolve: unexpected error: %v", err)
 	}
 	if got != tip {
 		t.Errorf("Resolve(main):\n got %q\nwant %q (the tip, not %q)", got, tip, first)
+	}
+	if matched != "" {
+		t.Errorf("Resolve(main): matched = %q, want empty: a branch is a ref and names itself", matched)
 	}
 }
 
@@ -61,12 +70,15 @@ func TestResolveLightweightTagResolvesToItsCommit(t *testing.T) {
 	commit := r.commit("one")
 	r.tag("v1.0.1")
 
-	got, err := Resolve("shared", r.URL(), "v1.0.1")
+	got, matched, err := Resolve("shared", r.URL(), "v1.0.1")
 	if err != nil {
 		t.Fatalf("Resolve: unexpected error: %v", err)
 	}
 	if got != commit {
 		t.Errorf("Resolve(v1.0.1):\n got %q\nwant %q", got, commit)
+	}
+	if matched != "" {
+		t.Errorf("Resolve(v1.0.1): matched = %q, want empty: v1.0.1 is a ref and names itself", matched)
 	}
 }
 
@@ -83,7 +95,7 @@ func TestResolveAnnotatedTagResolvesToTheCommit(t *testing.T) {
 	if tagObject == commit {
 		t.Fatalf("fixture: annotated tag object %q equals the commit; the test proves nothing", tagObject)
 	}
-	got, err := Resolve("shared", r.URL(), "v1.0.0")
+	got, _, err := Resolve("shared", r.URL(), "v1.0.0")
 	if err != nil {
 		t.Fatalf("Resolve: unexpected error: %v", err)
 	}
@@ -104,7 +116,7 @@ func TestResolveTagWinsOverABranchOfTheSameName(t *testing.T) {
 	tip := r.commit("two")
 	r.tag("release")
 
-	got, err := Resolve("shared", r.URL(), "release")
+	got, _, err := Resolve("shared", r.URL(), "release")
 	if err != nil {
 		t.Fatalf("Resolve: unexpected error: %v", err)
 	}
@@ -119,7 +131,7 @@ func TestResolveTagWinsOverABranchOfTheSameName(t *testing.T) {
 func TestResolveFullSHAPassesThroughOffline(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
-	got, err := Resolve("shared", "/nonexistent-remote", testSHA)
+	got, _, err := Resolve("shared", "/nonexistent-remote", testSHA)
 	if err != nil {
 		t.Fatalf("Resolve: unexpected error: %v", err)
 	}
@@ -137,7 +149,7 @@ func TestResolveUppercaseSHAIsNotASHA(t *testing.T) {
 	r.commit("one")
 	upper := strings.ToUpper(testSHA)
 
-	sha, err := Resolve("shared", r.URL(), upper)
+	sha, _, err := Resolve("shared", r.URL(), upper)
 	if err == nil {
 		t.Fatalf("Resolve(%q): want an error, got %q", upper, sha)
 	}
@@ -152,7 +164,7 @@ func TestResolveRevNoRefMatches(t *testing.T) {
 	r.write("a.txt", "one\n")
 	r.commit("one")
 
-	sha, err := Resolve("shared", r.URL(), "v9.9.9")
+	sha, _, err := Resolve("shared", r.URL(), "v9.9.9")
 	if err == nil {
 		t.Fatalf("Resolve: want an error, got %q", sha)
 	}
@@ -174,7 +186,7 @@ func TestResolveAbbreviatedSHAIsNotARev(t *testing.T) {
 	commit := r.commit("one")
 	short := commit[:7]
 
-	sha, err := Resolve("shared", r.URL(), short)
+	sha, _, err := Resolve("shared", r.URL(), short)
 	if err == nil {
 		t.Fatalf("Resolve(%q): want an error, got %q", short, sha)
 	}
@@ -191,7 +203,7 @@ func TestResolveUnreachableRemote(t *testing.T) {
 	missing := t.TempDir() + "/nope"
 	prefix := `source "shared": cannot reach "` + missing + `": `
 
-	sha, err := Resolve("shared", missing, "main")
+	sha, _, err := Resolve("shared", missing, "main")
 	if err == nil {
 		t.Fatalf("Resolve: want an error, got %q", sha)
 	}
@@ -218,7 +230,7 @@ func TestResolveEmptyRev(t *testing.T) {
 	// PATH is emptied so a green result cannot mean git ran and declined.
 	t.Setenv("PATH", t.TempDir())
 
-	sha, err := Resolve("shared", "/srv/mirrors/assets", "")
+	sha, _, err := Resolve("shared", "/srv/mirrors/assets", "")
 	if err == nil {
 		t.Fatalf("Resolve: want an error, got %q", sha)
 	}

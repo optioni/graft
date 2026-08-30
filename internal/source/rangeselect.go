@@ -4,6 +4,18 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
+// parseRange parses rev as a semver constraint, wording the failure exactly as the rest
+// of this package words a source's errors. It is the one place that decides whether a
+// range is well-formed, so Resolve can refuse a malformed range before ever touching the
+// network and MatchRange can refuse it identically when handed a tag slice directly.
+func parseRange(name, rev string) (*semver.Constraints, error) {
+	c, err := semver.NewConstraint(rev)
+	if err != nil {
+		return nil, sourceErrf(name)("rev %q is not a valid semver range", rev)
+	}
+	return c, nil
+}
+
 // MatchRange selects the highest tag among tags that satisfies rev, a semver range, and
 // returns the tag name exactly as the remote spelled it. name locates the error, exactly
 // as every other message in this package.
@@ -15,9 +27,9 @@ import (
 func MatchRange(name, rev string, tags []string) (string, error) {
 	fail := sourceErrf(name)
 
-	constraint, err := semver.NewConstraint(rev)
+	constraint, err := parseRange(name, rev)
 	if err != nil {
-		return "", fail("rev %q is not a valid semver range", rev)
+		return "", err
 	}
 
 	type candidate struct {

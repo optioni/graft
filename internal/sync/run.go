@@ -242,7 +242,7 @@ func resolve(o Options, m *manifest.Manifest, current *lock.Lock) (resolved, err
 		// the catalog, the expansion, the listing — is the same code either way.
 		if !known || o.refreshes(s.Name) {
 			var err error
-			if sha, err = source.Resolve(s.Name, s.Git, s.Rev); err != nil {
+			if sha, _, err = source.Resolve(s.Name, s.Git, s.Rev); err != nil {
 				return resolved{}, err
 			}
 		}

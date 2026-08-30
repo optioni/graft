@@ -105,36 +105,36 @@ changes. The refusals that keep `internal/source` from executing anything must h
 path too — a second `ls-remote` call site is a second place to get the `--` and the leading-dash
 guard wrong.
 
-- [ ] 4.1 RED: Write failing integration tests over a fixture repository with tags:
+- [x] 4.1 RED: Write failing integration tests over a fixture repository with tags:
       *The highest satisfying tag wins* end to end, *An annotated tag resolves to its commit*,
       and *A range resolves through the range path and reports its tag*
-- [ ] 4.2 RED: Write failing integration tests for the failure paths: *An unreachable remote
+- [x] 4.2 RED: Write failing integration tests for the failure paths: *An unreachable remote
       under a range reports the network failure*, *A malformed range does not fall back to a ref
       lookup* (a branch of that exact name exists and is not returned), and *An unreachable
       remote under a range* is distinguishable from an unsatisfiable one
-- [ ] 4.3 RED: Write failing unit tests proving the guards hold on the range path with no git
+- [x] 4.3 RED: Write failing unit tests proving the guards hold on the range path with no git
       process started: *An option-shaped remote is refused under a range too* and
       *A malformed range is refused without a network call*
-- [ ] 4.4 RED: Write a failing integration test for *Resolving a range writes nothing* —
+- [x] 4.4 RED: Write a failing integration test for *Resolving a range writes nothing* —
       snapshot the working tree and the cache root before and after
-- [ ] 4.5 GREEN: Implement tag listing with `git ls-remote --tags -- <url>` through the existing
+- [x] 4.5 GREEN: Implement tag listing with `git ls-remote --tags -- <url>` through the existing
       `gitOutput` helper, reusing `CloneURL`'s leading-dash refusal and the same
       prompt-disabling environment. Strip `refs/tags/` and the `^{}` suffix, preferring the
       peeled ref for an annotated tag. Preserve the `errors.Is(err, errNoGit)` passthrough the
       ref path has: without it a missing git reports `cannot reach "<url>"` instead of
       `git not found on PATH`, which is an asserted error string
-- [ ] 4.6 GREEN: Change `Resolve` to `Resolve(name, git, rev) (sha, matched string, err error)`
+- [x] 4.6 GREEN: Change `Resolve` to `Resolve(name, git, rev) (sha, matched string, err error)`
       — `rev.IsRange` routes to the range path, everything else to the existing ref path unchanged,
       and a ref returns an empty `matched`. Update every caller — one in production
       (`internal/sync/run.go`) and the test call sites. Assert the empty-matched clause the
       `rev-resolution` scenarios now carry: a branch and a lightweight tag both report an empty
       matched tag
-- [ ] 4.7 CHECK: Re-read SPEC.md's `rev` line and `rev-resolution`'s existing scenarios, and
+- [x] 4.7 CHECK: Re-read SPEC.md's `rev` line and `rev-resolution`'s existing scenarios, and
       confirm every ref behavior is untouched: the peeled-tag precedence, the tag-beats-branch
       precedence, the sha passthrough with no network, the uppercase-sha case, and all three ref
       failure messages verbatim — `rev "<rev>" not found`, `cannot reach "<url>": `, and the
       option-shaped refusal
-- [ ] 4.8 Run `go test ./internal/source/` — green, and the pre-existing resolution tests
+- [x] 4.8 Run `go test ./internal/source/` — green, and the pre-existing resolution tests
       unedited apart from the new return value
 
 ## 5. lock: the matched tag
