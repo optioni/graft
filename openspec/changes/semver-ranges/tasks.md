@@ -179,20 +179,20 @@ source produces `matched = ""` in the next lock, which group 5's own validation 
 so groups 0, 7 and 9 all fail with nothing owning the cause. `plan` stays pure: it carries the
 value and forms no opinion about it.
 
-- [ ] 6.1 RED: Write a failing unit test for *A range source's next lock carries the matched tag
+- [x] 6.1 RED: Write a failing unit test for *A range source's next lock carries the matched tag
       and round-trips* — build a plan for a source with `rev = "^1.2.0"` and matched `v1.3.0`,
       serialize the next lock, and parse it back through `lock`'s own parser
-- [ ] 6.2 RED: Write a failing unit test for *A ref source's next lock carries no matched tag* —
+- [x] 6.2 RED: Write a failing unit test for *A ref source's next lock carries no matched tag* —
       the serialized bytes contain no `matched` line and parse back without error, which they
       would not if an empty `matched` were written
-- [ ] 6.3 GREEN: Add `Matched string` to `plan.Input` and set it on the `lock.Source` that
+- [x] 6.3 GREEN: Add `Matched string` to `plan.Input` and set it on the `lock.Source` that
       `Build` constructs, carried verbatim
-- [ ] 6.4 REFACTOR: Confirm `internal/plan` calls `rev.IsRange` nowhere and reads no file — a
+- [x] 6.4 REFACTOR: Confirm `internal/plan` calls `rev.IsRange` nowhere and reads no file — a
       third opinion about what a rev means is a third thing to keep in agreement, and a
       filesystem read here breaks the purity invariant
-- [ ] 6.5 CHECK: Re-read `sync-plan`'s round-trip requirement and confirm the plan cannot build
+- [x] 6.5 CHECK: Re-read `sync-plan`'s round-trip requirement and confirm the plan cannot build
       a lock `lock.Parse` would refuse, for a range source and a ref source alike
-- [ ] 6.6 Run `go test ./internal/plan/ ./internal/lock/` — green, no regressions
+- [x] 6.6 Run `go test ./internal/plan/ ./internal/lock/` — green, no regressions
 
 ## 7. sync: carrying the tag, and the report that names it
 <!-- kind: behavior -->

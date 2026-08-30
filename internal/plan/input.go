@@ -14,6 +14,13 @@ type Input struct {
 	Resolved string
 	Catalog  *catalog.Catalog
 
+	// Matched is the tag a range resolved to, exactly as internal/source reported it —
+	// empty for a ref. It is carried verbatim into the next lock's Source.Matched: this
+	// package forms no opinion about whether a rev is a range, because that predicate
+	// belongs to the packages that interpret a rev, and a third opinion here is a third
+	// place for them to disagree.
+	Matched string
+
 	// Items is keyed by item id. An installed item with no entry listed nothing,
 	// which is the same state as an item whose From names an empty directory.
 	Items map[string]Listing

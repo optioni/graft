@@ -177,6 +177,7 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 			Name:     in.Source.Name,
 			Git:      in.Source.Git,
 			Rev:      in.Source.Rev,
+			Matched:  in.Matched,
 			Resolved: in.Resolved,
 		}
 		// catalog.Expand returns items ordered by id, so every error raised below and
