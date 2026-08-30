@@ -357,8 +357,10 @@ is why the destination is shown before install and why a consumer override alway
 
 ## Output
 
-Machine-readable output goes to stdout; progress, summaries, and errors to stderr, so a
-pipe is never corrupted. Color is dropped when stdout is not a TTY or `NO_COLOR` is set —
+Stdout carries what the caller asked for — output shaped for a program, and equally output
+a person asked to see: `--version`, help, and a listing. Progress, summaries, notes about
+the *absence* of content, and errors go to stderr, so a pipe is never corrupted by text a
+human was meant to read. Color is dropped when stdout is not a TTY or `NO_COLOR` is set —
 `NO_COLOR` counting as set when it is present and not empty, whatever its value. One
 decision covers both streams. There are no spinners, no progress bars, and no behavior that
 exists only on a TTY apart from the `add` picker.

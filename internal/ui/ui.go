@@ -1,9 +1,11 @@
 // Package ui is graft's output surface: the two streams, the error format, and the one
 // colour decision.
 //
-// SPEC.md splits the streams by audience rather than by severity — machine-readable output
-// to stdout, and progress, summaries, and errors to stderr — so that a pipe is never
-// corrupted by text a human was meant to read. This package owns both, and every stream any
+// SPEC.md splits the streams by audience rather than by severity: stdout carries the content
+// a caller asked for — output shaped for a program, and equally output a person asked to see,
+// such as --version, help, and a listing — while progress, summaries, notes about the absence
+// of content, and errors go to stderr, so that a pipe is never corrupted by text a human was
+// meant to read. This package owns both, and every stream any
 // other component is handed is one it wrapped: cobra renders its own help and usage, and a
 // stream it was given raw would put bytes on stdout that nothing here can see fail.
 package ui

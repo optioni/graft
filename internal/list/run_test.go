@@ -141,8 +141,12 @@ func TestRunIsDeterministicWhateverOrderTheLockIsIn(t *testing.T) {
 	if a, b := string(first.JSON()), string(second.JSON()); a != b {
 		t.Errorf("the two locks produce different documents:\n%s\n---\n%s", a, b)
 	}
-	if a, b := string(first.JSON()), string(runIn(t, canonical).JSON()); a != b {
+	again := runIn(t, canonical)
+	if a, b := string(first.JSON()), string(again.JSON()); a != b {
 		t.Errorf("two runs of one lock produce different documents:\n%s\n---\n%s", a, b)
+	}
+	if a, b := strings.Join(first.Lines(), "\n"), strings.Join(again.Lines(), "\n"); a != b {
+		t.Errorf("two runs of one lock list differently:\n%s\n---\n%s", a, b)
 	}
 }
 

@@ -54,6 +54,14 @@ func snapshotTree(t *testing.T, dir string) map[string]string {
 	return out
 }
 
+// tempCache keeps every run off the developer's real fetch cache. list reads neither, and
+// pointing it somewhere disposable is what makes that a fact about the test rather than a
+// claim about the code.
+func tempCache(t *testing.T) []string {
+	t.Helper()
+	return []string{"XDG_CACHE_HOME=" + t.TempDir()}
+}
+
 // fixtureDocument is the document the seeded fixture lists as, built from the values only
 // the running test knows. The bytes either side of them are the contract, written out in
 // full rather than assembled from the same code the implementation uses.
@@ -146,7 +154,7 @@ func TestGraftListArgumentSurface(t *testing.T) {
 	t.Run("a positional argument is a usage error", func(t *testing.T) {
 		t.Parallel()
 
-		got := runGraft(t, bin, t.TempDir(), "list", "shared")
+		got := runGraftIn(t, bin, t.TempDir(), tempCache(t), "list", "shared")
 
 		if want := "graft: unknown argument \"shared\"\n" + hint + "\n"; got.stderr != want {
 			t.Errorf("stderr = %q, want %q", got.stderr, want)
@@ -162,7 +170,7 @@ func TestGraftListArgumentSurface(t *testing.T) {
 	t.Run("only the first positional argument is named", func(t *testing.T) {
 		t.Parallel()
 
-		got := runGraft(t, bin, t.TempDir(), "list", "shared", "other")
+		got := runGraftIn(t, bin, t.TempDir(), tempCache(t), "list", "shared", "other")
 
 		if !strings.Contains(got.stderr, `"shared"`) {
 			t.Errorf("stderr does not name the first argument: %q", got.stderr)
@@ -178,7 +186,7 @@ func TestGraftListArgumentSurface(t *testing.T) {
 	t.Run("an unknown flag is a usage error", func(t *testing.T) {
 		t.Parallel()
 
-		got := runGraft(t, bin, t.TempDir(), "list", "--format=yaml")
+		got := runGraftIn(t, bin, t.TempDir(), tempCache(t), "list", "--format=yaml")
 
 		if want := "graft: unknown flag: --format\n" + hint + "\n"; got.stderr != want {
 			t.Errorf("stderr = %q, want %q", got.stderr, want)
@@ -195,7 +203,7 @@ func TestGraftListArgumentSurface(t *testing.T) {
 	t.Run("its help names only the flag it has", func(t *testing.T) {
 		t.Parallel()
 
-		got := runGraft(t, bin, t.TempDir(), "list", "--help")
+		got := runGraftIn(t, bin, t.TempDir(), tempCache(t), "list", "--help")
 
 		for _, want := range []string{"list", "--json"} {
 			if !strings.Contains(got.stdout, want) {
@@ -238,7 +246,7 @@ func TestGraftListWithNothingInstalled(t *testing.T) {
 			}
 			before := snapshotTree(t, dir)
 
-			plain := runGraft(t, bin, dir, "list")
+			plain := runGraftIn(t, bin, dir, tempCache(t), "list")
 			if plain.stderr != "nothing installed\n" {
 				t.Errorf("stderr = %q, want %q", plain.stderr, "nothing installed\n")
 			}
@@ -252,7 +260,7 @@ func TestGraftListWithNothingInstalled(t *testing.T) {
 			// The machine-readable form answers "nothing" in the same shape as "something":
 			// a form that printed nothing would make it indistinguishable from a command
 			// that did not run.
-			doc := runGraft(t, bin, dir, "list", "--json")
+			doc := runGraftIn(t, bin, dir, tempCache(t), "list", "--json")
 			if want := "{\n  \"version\": 1,\n  \"sources\": []\n}\n"; doc.stdout != want {
 				t.Errorf("stdout = %q, want %q", doc.stdout, want)
 			}
@@ -294,7 +302,7 @@ func TestGraftListRefusesALockItCannotRead(t *testing.T) {
 			}
 
 			for _, args := range [][]string{{"list"}, {"list", "--json"}} {
-				got := runGraft(t, bin, dir, args...)
+				got := runGraftIn(t, bin, dir, tempCache(t), args...)
 				if got.stderr != tc.want {
 					t.Errorf("%v: stderr = %q, want %q", args, got.stderr, tc.want)
 				}
@@ -306,6 +314,33 @@ func TestGraftListRefusesALockItCannotRead(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The same refusal for a lock that is not a file at all. The message is the operating
+// system's, so the assertion is on the prefix internal/lock puts in front of it — which is
+// the contract: the lock's own wording, with no second layer of context.
+func TestGraftListRefusesALockThatIsADirectory(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "graft.lock"), 0o755); err != nil {
+		t.Fatalf("creating the directory: %v", err)
+	}
+
+	for _, args := range [][]string{{"list"}, {"list", "--json"}} {
+		got := runGraftIn(t, bin, dir, tempCache(t), args...)
+
+		if !strings.HasPrefix(got.stderr, "graft: graft.lock: ") {
+			t.Errorf("%v: stderr = %q, want the graft: graft.lock: prefix", args, got.stderr)
+		}
+		if got.stdout != "" {
+			t.Errorf("%v: stdout = %q, want byte-empty", args, got.stdout)
+		}
+		if got.code != 1 {
+			t.Errorf("%v: exit code = %d, want 1", args, got.code)
+		}
 	}
 }
 

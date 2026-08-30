@@ -47,13 +47,15 @@ func TestSplit(t *testing.T) {
 func TestValidAgreesWithSplit(t *testing.T) {
 	t.Parallel()
 
-	for in := range splitCases {
+	for in, want := range splitCases {
 		t.Run(in, func(t *testing.T) {
 			t.Parallel()
 
-			_, _, ok := itemid.Split(in)
-			if got := itemid.Valid(in); got != ok {
-				t.Errorf("Valid(%q) = %v, but Split reports ok = %v", in, got, ok)
+			// Against the table rather than against Split's own answer: Valid is written
+			// through Split today, and a test comparing the two would pass by construction
+			// and go on passing if either were later re-implemented on its own.
+			if got := itemid.Valid(in); got != want.ok {
+				t.Errorf("Valid(%q) = %v, want %v", in, got, want.ok)
 			}
 		})
 	}

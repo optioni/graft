@@ -1,5 +1,59 @@
 # Command Output Specification
 
+## MODIFIED Requirements
+
+### Requirement: The standard output stream carries the content a caller asked for
+
+`internal/ui` SHALL own both of graft's output streams and SHALL carry them separately. The
+**standard output** stream SHALL carry the content a caller asked graft for — output shaped
+for a program, and equally output a person asked to see: `--version`, help, and a listing.
+Progress, summaries, notes about the *absence* of content, and errors SHALL go to the
+**error** stream, so a pipe is never corrupted by text a human was meant to read.
+
+The split is by audience rather than by severity, and the audience is decided by what was
+asked for rather than by whether the text is machine-readable. A listing is the content the
+command exists to emit, so `graft list | grep agent:` has to work; a sync report is a summary
+of something that happened, so it does not go where a pipe would carry it. `nothing
+installed` is a note about there being no content, so it goes where notes go and stdout stays
+byte-empty.
+
+Ownership means every stream any other component is handed SHALL be a writer `internal/ui`
+wrapped, so that output written by a dependency — cobra's help and usage renderers, which
+graft does not format itself — still lands on the stream `internal/ui` chose and still has
+its write failures recorded. No component SHALL be given the process's real streams
+directly.
+
+A run that fails SHALL write **nothing at all** to the standard output stream from the
+failure onward, and a run whose only output is a note or an error SHALL leave the standard
+output stream byte-empty.
+
+#### Scenario: A note leaves stdout untouched
+
+- **WHEN** a note is written through the output surface
+- **THEN** the error stream holds the note followed by one newline
+- **AND** the standard output stream is byte-empty
+
+#### Scenario: An error report leaves stdout untouched
+
+- **WHEN** the error `source "shared": rev "v9.9.9" not found` is reported through the
+  output surface
+- **THEN** the error stream holds the report
+- **AND** the standard output stream is byte-empty
+
+#### Scenario: Machine-readable output goes to stdout only
+
+- **WHEN** the line `openspec-schemas v1.2.0` is printed through the output surface
+- **THEN** the standard output stream holds `openspec-schemas v1.2.0` followed by one
+  newline
+- **AND** the error stream is byte-empty
+
+#### Scenario: Content a person asked for goes to stdout too
+
+- **WHEN** `graft list` prints a listing in a repository with something installed
+- **THEN** the standard output stream holds the listing and the error stream is empty
+- **AND** when the same repository has nothing installed, the note `nothing installed` goes
+  to the error stream instead and the standard output stream is byte-empty
+
 ## ADDED Requirements
 
 ### Requirement: The render vocabulary two commands share is one decision

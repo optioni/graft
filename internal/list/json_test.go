@@ -116,8 +116,10 @@ func TestJSONRoundTrips(t *testing.T) {
 		t.Fatalf("decoding the document: %v", err)
 	}
 
-	if got.Version != list.Version {
-		t.Errorf("version = %d, want %d", got.Version, list.Version)
+	// The literal the golden pins, not list.Version: comparing a decoded value against the
+	// constant that produced it cannot tell a right answer from a wrong one.
+	if got.Version != 1 {
+		t.Errorf("version = %d, want 1", got.Version)
 	}
 	if len(got.Sources) != len(l.Sources) {
 		t.Fatalf("sources = %d, want %d", len(got.Sources), len(l.Sources))

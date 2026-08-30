@@ -196,7 +196,7 @@ records what a command refuses.
 ## 9. Change Review
 <!-- kind: operational -->
 
-- [ ] 9.1 CHECK: Dispatch an independent reviewer — not a fork of the implementing session —
+- [x] 9.1 CHECK: Dispatch an independent reviewer — not a fork of the implementing session —
       given only `proposal.md`, the three spec files, `design.md`, `tasks.md`, and the diff.
       Concentration points for this change: the JSON document's exact bytes against the spec;
       empty collections rendering as `[]` at every level; determinism across two runs and two
@@ -204,19 +204,19 @@ records what a command refuses.
       that the helper move changed no rendered byte of the sync report; that every asserted error
       string is `internal/lock`'s own, unaltered; and that no test asserts a value the
       implementation also declares
-- [ ] 9.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line
+- [x] 9.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a one-line
       reason, note the SUGGESTIONs, and re-run the affected tests
-- [ ] 9.3 VERIFY: Confirm no blocking or unowned finding remains, and that the artifacts still
+- [x] 9.3 VERIFY: Confirm no blocking or unowned finding remains, and that the artifacts still
       describe what shipped
 
 ## 10. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 10.1 CHECK: Confirm the intended commands and the tiers they cover — `task lint`,
+- [x] 10.1 CHECK: Confirm the intended commands and the tiers they cover — `task lint`,
       `task cover` over `./internal/...`, `task build`, and `openspec validate` — and that
       `export PATH="/opt/homebrew/bin:$PATH"` is set for all of them
-- [ ] 10.2 VERIFY: Run `task lint` — 0 errors, `gofumpt -l` silent
-- [ ] 10.3 VERIFY: Run `task test` — green, race detector clean
-- [ ] 10.4 VERIFY: Run `task cover` — green and at or above the 80% floor over `./internal/...`
-- [ ] 10.5 VERIFY: Run `task build` — the binary builds
-- [ ] 10.6 VERIFY: Run `openspec validate list-command --strict` — clean
+- [x] 10.2 VERIFY: Run `task lint` — 0 errors, `gofumpt -l` silent
+- [x] 10.3 VERIFY: Run `task test` — green, race detector clean
+- [x] 10.4 VERIFY: Run `task cover` — green and at or above the 80% floor over `./internal/...`
+- [x] 10.5 VERIFY: Run `task build` — the binary builds
+- [x] 10.6 VERIFY: Run `openspec validate list-command --strict` — clean
