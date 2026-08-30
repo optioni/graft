@@ -336,12 +336,12 @@ each false. CLAUDE.md carries the rules a future change would get wrong.
 ## 12. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 12.1 CHECK: Confirm the intended commands and the tiers they cover — `task lint`,
+- [x] 12.1 CHECK: Confirm the intended commands and the tiers they cover — `task lint`,
       `task test`, `task cover` over `./internal/...`, `task build`, and `openspec validate` —
       and that `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:/opt/homebrew/bin:$PATH"` is
       set, since `openspec` is an npm global and Homebrew's `node` is currently broken
-- [ ] 12.2 VERIFY: Run `task lint` — 0 errors, `gofumpt -l` silent
-- [ ] 12.3 VERIFY: Run `task test` — green, race detector clean
-- [ ] 12.4 VERIFY: Run `task cover` — green and at or above the 80% floor over `./internal/...`
-- [ ] 12.5 VERIFY: Run `task build` — the binary builds
-- [ ] 12.6 VERIFY: Run `openspec validate semver-ranges --strict` — clean
+- [x] 12.2 VERIFY: Run `task lint` — 0 errors, `gofumpt -l` silent
+- [x] 12.3 VERIFY: Run `task test` — green, race detector clean
+- [x] 12.4 VERIFY: Run `task cover` — green and at or above the 80% floor over `./internal/...`
+- [x] 12.5 VERIFY: Run `task build` — the binary builds
+- [x] 12.6 VERIFY: Run `openspec validate semver-ranges --strict` — clean
