@@ -2,6 +2,7 @@ package sync
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/optioni/graft/internal/ui"
 )
@@ -44,12 +45,19 @@ func (r *Report) Lines(u *ui.UI) []string {
 // header names the source and what moved: `name  rev  (sha)`, with either half rendered as
 // `old -> new` when it moved. A source the lock had never seen, and one being reported only
 // because it is going away, have no previous half and render each once.
+//
+// The matched column appears only for a source whose rev is a range — which is exactly
+// when Matched or PrevMatched is non-empty, since a ref's report never carries one — so a
+// report containing no range is byte-identical to what graft printed before ranges
+// existed. A range renders its own request unchanged, because a range does not move
+// unless the consumer edits it, and shows the movement in the matched column instead.
 func (s SourceReport) header() string {
-	return fmt.Sprintf("%s  %s  (%s)",
-		s.Name,
-		transition(s.PrevRev, s.Rev),
-		transition(ui.ShortSHA(s.PrevResolved), ui.ShortSHA(s.Resolved)),
-	)
+	parts := []string{s.Name, transition(s.PrevRev, s.Rev)}
+	if s.Matched != "" || s.PrevMatched != "" {
+		parts = append(parts, transition(s.PrevMatched, s.Matched))
+	}
+	parts = append(parts, "("+transition(ui.ShortSHA(s.PrevResolved), ui.ShortSHA(s.Resolved))+")")
+	return strings.Join(parts, "  ")
 }
 
 // transition renders `old -> new`, or just the new value when there is no old one or the

@@ -196,6 +196,80 @@ func stripEscapes(s string) string {
 	return b.String()
 }
 
+// A range's own request is rendered once — it does not move unless the consumer edits
+// it — and the movement shows up in the matched column instead.
+func TestReportHeaderRangeMatchedTagMoved(t *testing.T) {
+	t.Parallel()
+
+	r := &Report{
+		Written: 6,
+		Sources: []SourceReport{{
+			Name:         "openspec-schemas",
+			PrevRev:      "^1.2.0",
+			Rev:          "^1.2.0",
+			PrevMatched:  "v1.2.0",
+			Matched:      "v1.3.0",
+			PrevResolved: "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5",
+			Resolved:     "9c1e77accccccccccccccccccccccccccccccccc",
+			Items:        []ItemReport{{Verb: verbUpdated, ID: "schema:tdd", Files: 6}},
+		}},
+	}
+	want := "openspec-schemas  ^1.2.0  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)"
+	if got := r.Lines(plainUI())[0]; got != want {
+		t.Errorf("header = %q, want %q", got, want)
+	}
+}
+
+func TestReportHeaderNewRangeSourceShowsRangeAndTagOnceEach(t *testing.T) {
+	t.Parallel()
+
+	r := &Report{
+		Written: 1,
+		Sources: []SourceReport{{
+			Name:     "extra",
+			Rev:      "^2.0.0",
+			Matched:  "v2.1.0",
+			Resolved: "0123456789abcdef0123456789abcdef01234567",
+			Items:    []ItemReport{{Verb: verbAdded, ID: "agent:x", Files: 1}},
+		}},
+	}
+	want := "extra  ^2.0.0  v2.1.0  (0123456)"
+	if got := r.Lines(plainUI())[0]; got != want {
+		t.Errorf("header = %q, want %q", got, want)
+	}
+}
+
+func TestReportHeaderRangeTagUnchangedRendersEveryHalfOnce(t *testing.T) {
+	t.Parallel()
+
+	r := &Report{
+		Written: 1,
+		Sources: []SourceReport{{
+			Name:         "openspec-schemas",
+			PrevRev:      "^1.2.0",
+			Rev:          "^1.2.0",
+			PrevMatched:  "v1.3.0",
+			Matched:      "v1.3.0",
+			PrevResolved: "9c1e77accccccccccccccccccccccccccccccccc",
+			Resolved:     "9c1e77accccccccccccccccccccccccccccccccc",
+			Items:        []ItemReport{{Verb: verbUpdated, ID: "schema:tdd", Files: 1}},
+		}},
+	}
+	want := "openspec-schemas  ^1.2.0  v1.3.0  (9c1e77a)"
+	if got := r.Lines(plainUI())[0]; got != want {
+		t.Errorf("header = %q, want %q", got, want)
+	}
+}
+
+// A report with no range must be byte-identical to what graft printed before ranges
+// existed: no empty matched column and no extra spacing anywhere. specReport carries no
+// Matched or PrevMatched on any source, so this is the existing TestReportAlignment,
+// named again here as the guard this group must keep green throughout.
+func TestReportWithNoRangeIsUnchanged(t *testing.T) {
+	t.Parallel()
+	assertLines(t, specReport().Lines(plainUI()), specExample)
+}
+
 // The cases SPEC.md's own example does not reach. Its note is on the last item, so the
 // ordering is untested there; and no item in it holds zero files.
 func TestReportAlignmentEdges(t *testing.T) {

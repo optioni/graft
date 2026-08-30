@@ -203,38 +203,38 @@ two sources depending on the branch taken, and `newReport` derives from the two 
 from resolution. Carrying it on only the resolving path would make every `graft sync` over a
 range write a lock its own validation refuses.
 
-- [ ] 7.1 RED: Write a failing integration test for the non-resolving path — *A newer tag
+- [x] 7.1 RED: Write a failing integration test for the non-resolving path — *A newer tag
       satisfying a range does not move the pin*: `graft sync` over a range whose lock entry
       exists writes a byte-identical lock, `matched` intact, with no tag listing
-- [ ] 7.2 RED: Write a failing integration test for the first-resolution path — *A range source
+- [x] 7.2 RED: Write a failing integration test for the first-resolution path — *A range source
       with no lock entry is resolved once and recorded*: `graft sync` over a hand-added range
       source does list tags, selects the highest, and records `matched`
-- [ ] 7.3 RED: Write a failing integration test for *A range with no lock entry that no tag
+- [x] 7.3 RED: Write a failing integration test for *A range with no lock entry that no tag
       satisfies fails the run*, asserting the exact message and that nothing is written
-- [ ] 7.4 RED: Write failing unit tests over a built report value: *A range whose matched tag
+- [x] 7.4 RED: Write failing unit tests over a built report value: *A range whose matched tag
       moved shows the range once and the tag twice*, *A newly added range source shows the range
       and its tag once each*, and *A range whose tag did not move renders every half once*
-- [ ] 7.5 CHARACTERIZE: Confirm `TestReportAlignment` is green before anything in this group
+- [x] 7.5 CHARACTERIZE: Confirm `TestReportAlignment` is green before anything in this group
       moves, and keep it unedited throughout — it already passes and must keep passing, so it is
       a guard rather than a RED step
-- [ ] 7.6 RED: Write failing integration tests for *A new tag satisfying a range moves the pin*,
+- [x] 7.6 RED: Write failing integration tests for *A new tag satisfying a range moves the pin*,
       *A new tag outside the range does not move the pin*, and *A range that stops matching is an
       update failure, not a sync failure*
-- [ ] 7.7 GREEN: Carry `matched` into the `pinned` map alongside the sha, so the non-resolving
+- [x] 7.7 GREEN: Carry `matched` into the `pinned` map alongside the sha, so the non-resolving
       path reads it from `current.Sources`, and take it from `source.Resolve` on the branch that
       resolves. Feed both into `plan.Input.Matched`
-- [ ] 7.8 GREEN: Render the optional matched column in the report. Reuse `ui.ShortSHA` and the
+- [x] 7.8 GREEN: Render the optional matched column in the report. Reuse `ui.ShortSHA` and the
       existing half rendering rather than a second copy of either
-- [ ] 7.9 RED: Write a failing test for *A matched tag that moved onto the same commit still
+- [x] 7.9 RED: Write a failing test for *A matched tag that moved onto the same commit still
       gets a header* — `report.go`'s per-source skip is
       `len(items)==0 && hadBefore && hasAfter && b.Rev==a.Rev && b.Resolved==a.Resolved`, which
       swallows a retag onto one commit: the lock changes and the report shows a summary with no
       block explaining it
-- [ ] 7.10 GREEN: Add `b.Matched == a.Matched` to that skip condition
-- [ ] 7.11 REFACTOR: Render the matched half with the existing `transition(before, after)`
+- [x] 7.10 GREEN: Add `b.Matched == a.Matched` to that skip condition
+- [x] 7.11 REFACTOR: Render the matched half with the existing `transition(before, after)`
       helper in `internal/sync/render.go`, which already does exactly this for rev and sha —
       do not write a second copy
-- [ ] 7.12 Run `go test ./internal/sync/` — green, with `TestReportAlignment` unedited
+- [x] 7.12 Run `go test ./internal/sync/` — green, with `TestReportAlignment` unedited
 
 ## 8. list: matched in both forms, and document version 2
 <!-- kind: behavior -->

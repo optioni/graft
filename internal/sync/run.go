@@ -224,9 +224,14 @@ type resolved struct {
 // Nothing here writes to the repository. internal/source writes under the cache root and
 // nowhere else, and the cache is not the working tree.
 func resolve(o Options, m *manifest.Manifest, current *lock.Lock) (resolved, error) {
-	pinned := make(map[string]string, len(current.Sources))
+	// matched travels the same road as the sha: read from the previous lock on the
+	// non-resolving path, and only from source.Resolve on the branch that actually
+	// resolves. Carrying it on only the resolving path would make every sync over a
+	// range write a lock its own validation refuses.
+	type pin struct{ sha, matched string }
+	pinned := make(map[string]pin, len(current.Sources))
 	for _, s := range current.Sources {
-		pinned[s.Name] = s.Resolved
+		pinned[s.Name] = pin{sha: s.Resolved, matched: s.Matched}
 	}
 
 	cache := source.Cache{Root: o.CacheRoot}
@@ -237,17 +242,17 @@ func resolve(o Options, m *manifest.Manifest, current *lock.Lock) (resolved, err
 	}
 
 	for _, s := range m.Sources {
-		sha, known := pinned[s.Name]
+		p, known := pinned[s.Name]
 		// The one branch that tells a sync from an update. Everything below it — the fetch,
 		// the catalog, the expansion, the listing — is the same code either way.
 		if !known || o.refreshes(s.Name) {
 			var err error
-			if sha, _, err = source.Resolve(s.Name, s.Git, s.Rev); err != nil {
+			if p.sha, p.matched, err = source.Resolve(s.Name, s.Git, s.Rev); err != nil {
 				return resolved{}, err
 			}
 		}
 
-		entry, err := cache.Fetch(s.Name, s.Git, sha)
+		entry, err := cache.Fetch(s.Name, s.Git, p.sha)
 		if err != nil {
 			return resolved{}, err
 		}
@@ -274,7 +279,8 @@ func resolve(o Options, m *manifest.Manifest, current *lock.Lock) (resolved, err
 
 		out.inputs = append(out.inputs, plan.Input{
 			Source:   s,
-			Resolved: sha,
+			Resolved: p.sha,
+			Matched:  p.matched,
 			Catalog:  cat,
 			Items:    listings,
 		})

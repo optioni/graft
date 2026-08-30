@@ -56,6 +56,8 @@ type SourceReport struct {
 	Name         string
 	Rev          string
 	PrevRev      string
+	Matched      string
+	PrevMatched  string
 	Resolved     string
 	PrevResolved string
 	Items        []ItemReport
@@ -108,8 +110,12 @@ func newReport(before *lock.Lock, p *plan.Plan, catalogs map[string]*catalog.Cat
 
 		items := itemReports(b, a, hasAfter, catalogs[name])
 		// A source with no item lines is still worth a header when its pin moved; one
-		// whose pin held and whose items all held has nothing to say at all.
-		if len(items) == 0 && hadBefore && hasAfter && b.Rev == a.Rev && b.Resolved == a.Resolved {
+		// whose pin held and whose items all held has nothing to say at all. Matched is
+		// checked alongside Rev and Resolved: a retag onto the same commit changes
+		// nothing else, and a report that skipped it would print a summary describing a
+		// lock diff it never explained.
+		if len(items) == 0 && hadBefore && hasAfter &&
+			b.Rev == a.Rev && b.Resolved == a.Resolved && b.Matched == a.Matched {
 			continue
 		}
 
@@ -117,12 +123,12 @@ func newReport(before *lock.Lock, p *plan.Plan, catalogs map[string]*catalog.Cat
 		switch {
 		case !hasAfter:
 			// Reported only because it is going away: there is no new half to move to.
-			s.Rev, s.Resolved = b.Rev, b.Resolved
+			s.Rev, s.Matched, s.Resolved = b.Rev, b.Matched, b.Resolved
 		case !hadBefore:
-			s.Rev, s.Resolved = a.Rev, a.Resolved
+			s.Rev, s.Matched, s.Resolved = a.Rev, a.Matched, a.Resolved
 		default:
-			s.PrevRev, s.PrevResolved = b.Rev, b.Resolved
-			s.Rev, s.Resolved = a.Rev, a.Resolved
+			s.PrevRev, s.PrevMatched, s.PrevResolved = b.Rev, b.Matched, b.Resolved
+			s.Rev, s.Matched, s.Resolved = a.Rev, a.Matched, a.Resolved
 		}
 		s.Items = items
 		r.Sources = append(r.Sources, s)
