@@ -73,29 +73,29 @@ the whole reason it is syntactic — so every test here runs without git.
 Selection takes a `[]string` of tag names and returns one, so every case here is a unit test
 over a slice. The remote's job is producing that slice, and that is group 4.
 
-- [ ] 3.1 RED: Write failing unit tests for the parse surface: *A caret range parses* and
+- [x] 3.1 RED: Write failing unit tests for the parse surface: *A caret range parses* and
       *A malformed range is refused without a network call*, asserting the exact message
       `source "shared": rev "^^1" is not a valid semver range`
-- [ ] 3.2 RED: Write failing unit tests for selection over a fixed tag slice: *The highest
+- [x] 3.2 RED: Write failing unit tests for selection over a fixed tag slice: *The highest
       satisfying tag wins*, *A tag without the v prefix is accepted*, *Unparseable tags are
       ignored rather than refused*, *A range matching exactly one tag*, and *An exact-version
       range selects that version*
-- [ ] 3.3 RED: Write failing unit tests for prereleases: *A prerelease is not selected by a
+- [x] 3.3 RED: Write failing unit tests for prereleases: *A prerelease is not selected by a
       plain range*, *A range naming a prerelease admits it*, and *Only prereleases exist and the
       range names none*
-- [ ] 3.4 RED: Write failing unit tests for the empty and unsatisfiable shapes, asserting both
+- [x] 3.4 RED: Write failing unit tests for the empty and unsatisfiable shapes, asserting both
       messages exactly: *No tag satisfies the range*, *The source publishes no semver tags*, and
       *The source publishes no tags at all*
-- [ ] 3.5 RED: Write failing unit tests for determinism: *Tag order from the remote does not
+- [x] 3.5 RED: Write failing unit tests for determinism: *Tag order from the remote does not
       affect the result* (the same slice shuffled) and *Two tags naming the same version*,
       resolving the tie by tag name
-- [ ] 3.6 GREEN: Implement the range parse and `MatchRange(rev string, tags []string) (string,
+- [x] 3.6 GREEN: Implement the range parse and `MatchRange(rev string, tags []string) (string,
       error)` — parse each tag with `semver.NewVersion`, discard what does not parse, filter by
       the constraint, exclude prereleases unless the range names one, and take the maximum,
       breaking a tie on the tag name so the result never depends on input order
-- [ ] 3.7 REFACTOR: Confirm the two unsatisfiable messages are built in one place, so the
+- [x] 3.7 REFACTOR: Confirm the two unsatisfiable messages are built in one place, so the
       distinction between "no semver tags" and "none match" cannot drift between them
-- [ ] 3.8 Run `go test ./internal/source/` — green, no regressions
+- [x] 3.8 Run `go test ./internal/source/` — green, no regressions
 
 ## 4. source: resolving a range against the remote
 <!-- kind: behavior -->
