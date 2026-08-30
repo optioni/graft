@@ -91,18 +91,18 @@ content in different orders — the same rule `graft.lock`'s own serialization i
 ## 4. list: the plain rendering
 <!-- kind: behavior -->
 
-- [ ] 4.1 RED: Write a failing unit test for *SPEC.md's own lock renders as one block*, holding
+- [x] 4.1 RED: Write a failing unit test for *SPEC.md's own lock renders as one block*, holding
       the expected lines exactly and asserting no line carries trailing whitespace
-- [ ] 4.2 RED: Write failing unit tests for *Two sources are separated by one blank line* (the
+- [x] 4.2 RED: Write failing unit tests for *Two sources are separated by one blank line* (the
       listing does not end with a blank line), *A source with no installed items is its header
       alone*, and *A resolved sha shorter than seven characters is printed whole*
-- [ ] 4.3 GREEN: Implement `(*Listing).Lines() []string` — the header
+- [x] 4.3 GREEN: Implement `(*Listing).Lines() []string` — the header
       `<name>  <rev>  (<short sha>)`, a blank line, the item lines indented two spaces with the
       id padded to the block's widest id, and one blank line between blocks. Use `ui.ShortSHA`,
       `ui.FileCount`, and `ui.Pad` rather than a second copy of any of them
-- [ ] 4.4 REFACTOR: Confirm no helper here duplicates one in `internal/sync/render.go`; if one
+- [x] 4.4 REFACTOR: Confirm no helper here duplicates one in `internal/sync/render.go`; if one
       does, it belongs in `internal/ui` beside the three already there
-- [ ] 4.5 Run `go test ./internal/list/` — green, no regressions
+- [x] 4.5 Run `go test ./internal/list/` — green, no regressions
 
 ## 5. list: reading the lock the repository has
 <!-- kind: behavior -->
