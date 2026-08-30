@@ -192,8 +192,13 @@ own: a file absent from `graft.lock` is invisible to graft and can never be dele
 ### Requirement: The next lock records exactly what the plan produces
 
 The plan's next lock SHALL record, for each source in the manifest, its name, `git`, and
-`rev` as written in `graft.toml`, the sha it resolved to, and one item per installed item
-holding every destination that item produces. Sources SHALL be ordered by name, items by
+`rev` as written in `graft.toml`, the tag a range matched, the sha it resolved to, and one
+item per installed item holding every destination that item produces. The matched tag SHALL
+be carried through exactly as resolution reported it — the tag name for a range, and empty
+for a ref — because `graft.lock` requires it for the one and refuses it for the other, and
+a plan may never build a lock a later `sync` would refuse to read.
+
+Sources SHALL be ordered by name, items by
 id, and files by path. A source present in the lock but absent from the manifest SHALL NOT
 appear. Serializing the next lock twice from the same inputs SHALL produce byte-identical
 output, and the serialized bytes SHALL parse back through `graft.lock`'s own parser without
@@ -212,9 +217,10 @@ are not, because it is the only one a caller can violate silently: unique source
 unique item ids, and no path claimed twice are all consequences of what this specification
 already requires, so the round-trip scenario below catches a violation of any of them, while
 a bad `resolved` is carried verbatim into the lock by a serializer that validates nothing.
-Leaving it to the caller would put two packages in disagreement about what a valid
-`graft.lock` is, and the disagreement would surface one run later, in a different package,
-against a file the user is told not to edit.
+
+The matched tag SHALL NOT be checked the same way. `internal/plan` SHALL carry it verbatim
+and SHALL NOT decide whether a rev is a range, because that predicate belongs to the packages
+that interpret a rev, and a third opinion about it is a third place for the three to disagree.
 
 #### Scenario: A resolved sha that is not a sha fails the plan
 
@@ -260,6 +266,34 @@ against a file the user is told not to edit.
   order
 - **AND** byte equality — not semantic equality — is what is asserted, because a lock that
   reorders on every run churns the diff of every consumer
+
+#### Scenario: A range source's next lock carries the matched tag and round-trips
+
+- **WHEN** a plan is built for a source whose `rev` is `^1.2.0`, resolved to `v1.3.0` at a
+  valid sha
+- **THEN** the next lock records `rev = "^1.2.0"` and `matched = "v1.3.0"`
+- **AND** serializing it and parsing it back through `graft.lock`'s own parser succeeds,
+  which it would not if `matched` were dropped
+
+#### Scenario: A ref source's next lock carries no matched tag
+
+- **WHEN** a plan is built for a source whose `rev` is `v1.2.0`
+- **THEN** the next lock's matched value is empty
+- **AND** the serialized bytes contain no `matched` line, and parse back without error, which
+  they would not if an empty `matched` were written
+
+#### Scenario: A bad resolved sha is refused before anything is planned
+
+- **WHEN** a plan is built for a source whose resolved sha is `v1.2.0`
+- **THEN** it fails with `source "shared": resolved "v1.2.0" is not a 40-character hex sha`
+- **AND** no plan is returned
+
+#### Scenario: The next lock round-trips through the lock's own parser
+
+- **WHEN** a next lock is serialized from a plan built over several sources and items
+- **THEN** parsing those bytes with `graft.lock`'s parser returns a lock with identical
+  content
+- **AND** serializing the same plan twice produces byte-identical output
 
 ### Requirement: No two items resolve to the same path
 

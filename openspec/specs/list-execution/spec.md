@@ -91,13 +91,15 @@ nothing would make "nothing is installed" indistinguishable from "the command di
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "sources": []
 }
 ```
 
   followed by one newline
 - **AND** the error stream is empty and the exit code is `0`
+- **AND** the version is `2` even though nothing is installed: the document's version names
+  the format, not the content, so a consumer can branch on it before inspecting `sources`
 
 #### Scenario: A lock declaring no source is the same as no lock
 
@@ -125,7 +127,11 @@ error stream because they are reports about something that happened.
 Each source SHALL be rendered as a block:
 
 - a header line `<name>  <rev>  (<short sha>)`, two spaces between fields, the sha the first
-  seven characters of the lock's `resolved` value in parentheses;
+  seven characters of the lock's `resolved` value in parentheses. When the source's rev is a
+  range, the matched tag SHALL appear between the rev and the sha, two spaces on either side:
+  `<name>  <rev>  <matched>  (<short sha>)`. The column SHALL be absent — not empty, not
+  padded — for every source whose rev is a ref, so a listing containing no range is
+  byte-identical to what graft printed before ranges existed;
 - one blank line;
 - one line per item, indented by two spaces, holding the item's id padded to the width of the
   longest id in that block, two spaces, and the item's file count rendered as `1 file` or
@@ -162,6 +168,13 @@ openspec-schemas  v1.2.0  (fae2a30)
 - **AND** no line carries trailing whitespace
 - **AND** the error stream is empty and the exit code is `0`
 
+#### Scenario: A range source names the tag it matched
+
+- **GIVEN** the same lock with `rev = "^1.2.0"` and `matched = "v1.2.0"`
+- **WHEN** `graft list` is invoked in it
+- **THEN** the header line reads exactly `openspec-schemas  ^1.2.0  v1.2.0  (fae2a30)`
+- **AND** the item lines below it are unchanged
+
 #### Scenario: Two sources are separated by one blank line
 
 - **GIVEN** a lock recording source `a` with one item and source `b` with one item
@@ -190,6 +203,14 @@ openspec-schemas  v1.2.0  (fae2a30)
 - **WHEN** the header is rendered
 - **THEN** it reads `<name>  <rev>  (abc)` rather than being truncated or padded
 
+#### Scenario: A ref source's header gains no column
+
+- **GIVEN** a lock in which one source pins a range and another pins a tag
+- **WHEN** the listing is rendered
+- **THEN** the range source's header carries the matched column and the tag source's does not
+- **AND** the two headers are not padded into a shared column layout: each block is
+  independent, exactly as it is today
+
 ### Requirement: `graft list --json` prints one document whose shape is a contract
 
 `graft list --json` SHALL write a single JSON document to the **standard output** stream and
@@ -200,15 +221,21 @@ change to be argued for rather than an incidental edit.
 
 The document SHALL be an object with exactly two members, in this order:
 
-- `version` — an integer, the version of **this document's** format, currently `1`. It is not
+- `version` — an integer, the version of **this document's** format, now `2`. It is not
   `graft.lock`'s version: the lock's format and the document's are free to move independently,
-  and one number meaning two things would tie them together.
+  and one number meaning two things would tie them together. The bump from `1` to `2` is what
+  the field exists for: a source object gained a member, and a consumer pinned to `1` learns
+  that from the number rather than from a decode failure.
 - `sources` — an array, in source-name order.
 
-Each source SHALL be an object with exactly five members, in this order: `name`, `git`, `rev`,
-`resolved`, `items`. `resolved` SHALL be the **full** forty-character sha — the seven-character
-form exists to be read by a person, and a program that wants to compare shas needs all of it.
-`items` SHALL be an array in item-id order.
+Each source SHALL be an object with exactly six members, in this order: `name`, `git`, `rev`,
+`matched`, `resolved`, `items`. `resolved` SHALL be the **full** forty-character sha — the
+seven-character form exists to be read by a person, and a program that wants to compare shas
+needs all of it. `matched` SHALL be the tag a range selected, and SHALL be the **empty
+string** when the rev is a ref. It is present unconditionally rather than omitted, because a
+member that appears on some objects and not others makes every consumer write a branch, which
+is the same reason an empty collection here is `[]` and never `null`. `items` SHALL be an
+array in item-id order.
 
 Each item SHALL be an object with exactly four members, in this order: `id`, `kind`, `name`,
 `files`. `kind` and `name` are the two halves of the id. They are derivable from it, and they
@@ -235,12 +262,13 @@ with the same content written in different orders SHALL produce byte-identical d
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "name": "openspec-schemas",
       "git": "github.com/optioni/openspec-schemas",
       "rev": "v1.2.0",
+      "matched": "",
       "resolved": "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5",
       "items": [
         {
@@ -272,6 +300,14 @@ with the same content written in different orders SHALL produce byte-identical d
 
   followed by exactly one newline
 - **AND** the error stream is empty and the exit code is `0`
+
+#### Scenario: A range source carries the tag it matched
+
+- **GIVEN** the same lock with `rev = "^1.2.0"` and `matched = "v1.2.0"`
+- **WHEN** `graft list --json` is invoked
+- **THEN** that source's `rev` member is `^1.2.0` and its `matched` member is `v1.2.0`
+- **AND** `matched` appears between `rev` and `resolved`, in that position, on every source
+  object
 
 #### Scenario: The document is valid JSON that round-trips
 

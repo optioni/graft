@@ -69,13 +69,23 @@ summary line says, not what "nothing to do" means.
 ### Requirement: A source whose pin or items moved gets a header naming what moved
 
 For each source with something to report, the error stream SHALL carry a header line holding
-the source name, then two spaces, then the rev, then two spaces, then the short sha in
-parentheses. When the rev or the sha moved, both halves SHALL be rendered as
-`<old> -> <new>`:
+the source name, then two spaces, then the rev, then — when the rev is a range — two spaces
+and the matched tag, then two spaces, then the short sha in parentheses. When the rev, the
+matched tag, or the sha moved, that half SHALL be rendered as `<old> -> <new>`:
 
 ```
 openspec-schemas  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
 ```
+
+A range renders its own request unchanged — a range does not move unless the consumer edits
+it — and shows the movement in the matched column instead:
+
+```
+openspec-schemas  ^1.2.0  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
+```
+
+The matched column SHALL appear only for a source whose rev is a range, so a report
+containing no range is byte-identical to what graft prints today.
 
 A source the lock had no entry for, and one whose rev and sha are unchanged, SHALL render each
 half once — `openspec-schemas  v1.2.0  (fae2a30)`. A short sha SHALL be the first seven
@@ -114,6 +124,41 @@ is still reported.
 - **WHEN** two sources both have items to report
 - **THEN** the second source's header is preceded by exactly one blank line
 - **AND** the sources appear in name order
+
+#### Scenario: A range whose matched tag moved shows the range once and the tag twice
+
+- **WHEN** source `openspec-schemas` pinned at `rev = "^1.2.0"` is moved by `graft update`
+  from matched `v1.2.0` at `fae2a30…` to matched `v1.3.0` at `9c1e77a…`
+- **THEN** the header reads
+  `openspec-schemas  ^1.2.0  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)`
+- **AND** the range itself is rendered once, because the consumer's request did not change
+
+#### Scenario: A newly added range source shows the range and its tag once each
+
+- **WHEN** source `extra` pinned at `rev = "^2.0.0"` is installed for the first time,
+  matching `v2.1.0` at `0123456789abcdef0123456789abcdef01234567`
+- **THEN** the header reads `extra  ^2.0.0  v2.1.0  (0123456)`
+
+#### Scenario: A range whose tag did not move renders every half once
+
+- **WHEN** a source pinned at `rev = "^1.2.0"` re-resolves to the same matched tag and the
+  same sha, and it has items to report for another reason
+- **THEN** the header reads `openspec-schemas  ^1.2.0  v1.3.0  (9c1e77a)`
+
+#### Scenario: A matched tag that moved onto the same commit still gets a header
+
+- **WHEN** a source pinned at `rev = "^1.2.0"` moves from matched `v1.2.0` to matched `v1.3.0`
+  and both tags name the **same** commit, so the resolved sha did not change
+- **THEN** the source still gets a header reading
+  `openspec-schemas  ^1.2.0  v1.2.0 -> v1.3.0  (fae2a30)`
+- **AND** it is not skipped as having nothing to say: `graft.lock` changed, so a report that
+  omitted the source would print a summary describing a diff it never explained
+
+#### Scenario: A report with no range is unchanged
+
+- **WHEN** every source in a run pins a ref
+- **THEN** every header is byte-identical to what graft printed before this change
+- **AND** no empty matched column and no extra spacing appears anywhere
 
 ### Requirement: Each changed item gets one line naming the verb, the item, and its file count
 

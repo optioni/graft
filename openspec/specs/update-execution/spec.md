@@ -18,10 +18,17 @@ top is `--to`, which writes `graft.toml` — the only path in `update` that does
 ### Requirement: `graft update` re-resolves every pin and then syncs
 
 `graft update`, invoked with no argument, SHALL re-resolve the `rev` of every source
-`graft.toml` declares — a tag or branch through `git ls-remote`, a full sha passed through —
-and SHALL then perform every step `graft sync` performs with the result: fetch each sha into
+`graft.toml` declares — a tag or branch through `git ls-remote`, a full sha passed through, a
+range through the source's tag list as `rev-ranges` specifies — and SHALL then perform every
+step `graft sync` performs with the result: fetch each sha into
 the content-addressed cache, read each source's `catalog.yaml`, expand its selectors, list each
 installed item's files, build the plan, apply it, and write `graft.lock` last.
+
+Re-resolving a range SHALL be the **only** way a range's matched tag moves. `graft sync` SHALL
+NOT re-evaluate a range under any circumstance: a range in `graft.toml` beside a sha in
+`graft.lock` is not drift, it is a resolved pin, and sync installs it exactly as it installs
+any other. Without that, a range would make every sync non-reproducible and offline sync
+impossible — which is the whole reason `sync` never re-resolves.
 
 It SHALL NOT take a source's sha from `graft.lock` because the lock happens to hold one. That
 is the single behavioral difference between `update` and `sync`, and it is the reason this
@@ -103,6 +110,55 @@ default cache root.
 - **THEN** the error stream holds exactly `up to date` and one newline and the exit code is `0`
 - **AND** nothing was resolved, nothing was fetched, no directory was created, and `graft.lock`
   is written holding the header and `version = 1`
+
+#### Scenario: `--to` can write a range into graft.toml
+
+- **WHEN** `graft update --to "^1.2.0" shared` runs against a manifest pinning
+  `rev     = "v1.0.0"`
+- **THEN** `graft.toml` differs from the original in exactly one line, holding
+  `rev     = "^1.2.0"` with its original alignment and every comment intact
+- **AND** the run then resolves that range, selects the highest satisfying tag, and records it
+  as `matched` in `graft.lock`
+
+#### Scenario: `--to` can write a range containing a space
+
+- **WHEN** `graft update --to ">=1.2.0 <2.0.0" shared` runs
+- **THEN** the manifest holds `rev     = ">=1.2.0 <2.0.0"` — the space is inside a TOML string
+  and needs no escaping, so the in-place editor writes it literally
+- **AND** the value is refused only if it contains a quotation mark, a backslash, or a control
+  character, exactly as any other rev is
+
+#### Scenario: A new tag satisfying a range moves the pin
+
+- **WHEN** `graft.lock` records source `shared` at `rev = "^1.2.0"` with `matched = "v1.2.0"`
+  resolved to `<old sha>`, the source has since published `v1.3.0`, and `graft update` runs
+- **THEN** `graft.lock` records `matched = "v1.3.0"` and `resolved` is `v1.3.0`'s sha
+- **AND** `rev` is still `^1.2.0`, unchanged, because the consumer's request did not move
+- **AND** `graft.toml` is byte-identical, because `update` without `--to` never writes it
+
+#### Scenario: A new tag outside the range does not move the pin
+
+- **WHEN** `graft.lock` records source `shared` at `rev = "^1.2.0"` with `matched = "v1.3.0"`,
+  the source has since published `v2.0.0`, and `graft update` runs
+- **THEN** the error stream holds exactly `up to date` and one newline
+- **AND** `graft.lock` is byte-identical, because `v2.0.0` crosses a major the range excludes
+
+#### Scenario: `graft sync` does not re-evaluate a range
+
+- **WHEN** `graft.lock` records source `shared` at `rev = "^1.2.0"` with `matched = "v1.2.0"`,
+  the source has since published `v1.3.0`, and `graft sync` runs
+- **THEN** the sha installed is `v1.2.0`'s, the lock still records `matched = "v1.2.0"`, and
+  the exit code is `0`
+- **AND** no `git ls-remote --tags` is run, because sync resolves nothing
+
+#### Scenario: A range that stops matching is an update failure, not a sync failure
+
+- **WHEN** `graft.lock` records source `shared` at `rev = "^1.2.0"`, every tag satisfying it
+  has been deleted from the source, and `graft update` runs
+- **THEN** the run fails with
+  `source "shared": rev "^1.2.0" matches none of the source's semver tags`
+- **AND** the working tree is byte-identical and `graft.lock` is unwritten
+- **AND** `graft sync` on the same repository still succeeds, because it re-resolves nothing
 
 ### Requirement: `graft update <source>` moves that source's pin and no other
 
