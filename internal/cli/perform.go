@@ -21,9 +21,9 @@ import (
 // failure-mode table is written as those messages, and a layer of context here would say the
 // same thing twice.
 func perform(u *ui.UI, o sync.Options) error {
-	root, err := os.Getwd()
+	root, err := workingDirectory()
 	if err != nil {
-		return fmt.Errorf("cannot determine the working directory: %w", err)
+		return err
 	}
 	cacheRoot, err := source.DefaultCacheRoot()
 	if err != nil {
@@ -41,4 +41,15 @@ func perform(u *ui.UI, o sync.Options) error {
 		u.Note(line)
 	}
 	return nil
+}
+
+// workingDirectory is the repository graft runs in. Every command starts here, so the
+// message is worded once: three commands saying the same failure three ways is three
+// contracts to keep.
+func workingDirectory() (string, error) {
+	root, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine the working directory: %w", err)
+	}
+	return root, nil
 }

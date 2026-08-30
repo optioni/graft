@@ -169,6 +169,7 @@ Sources and the items to install are declared in graft.toml.`,
 	// installs one the moment a subcommand exists — see newHelpCommand.
 	root.AddCommand(newSync(u))
 	root.AddCommand(newUpdate(u))
+	root.AddCommand(newList(u))
 	root.SetHelpCommand(newHelpCommand())
 
 	return root

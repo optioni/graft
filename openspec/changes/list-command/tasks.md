@@ -132,39 +132,39 @@ message arrives **unaltered**, with no second layer of context wrapped around it
 ## 6. cli: the `list` command
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing acceptance tests for the argument surface: *A positional argument
+- [x] 6.1 RED: Write failing acceptance tests for the argument surface: *A positional argument
       is a usage error*, *Only the first positional argument is named*, *An unknown flag is a
       usage error*, and *A read-only subcommand's help names only the flag it has*
-- [ ] 6.2 RED: Write failing acceptance tests for the empty repository: *A repository with no
+- [x] 6.2 RED: Write failing acceptance tests for the empty repository: *A repository with no
       lock prints a note on stderr* (exact stderr, byte-empty stdout, exit `0`, and a directory
       listing proving nothing was created), *A repository with no lock still prints a JSON
       document*, and *A directory with no graft files at all is not an error*
-- [ ] 6.3 RED: Write failing acceptance tests for the refusals and the read-only promise: *A
+- [x] 6.3 RED: Write failing acceptance tests for the refusals and the read-only promise: *A
       lock from a newer graft is refused* (both forms), *A malformed lock is refused before
       anything is printed* (stdout byte-empty — no opening brace), *A listing leaves the working
       tree byte-identical*, *A listing creates no cache directory*, *A lock claiming a file that
       is not there still lists it*, and *A listing runs with no source repository reachable*
-- [ ] 6.4 GREEN: Extract the working-directory lookup out of `internal/cli/perform.go` into a
+- [x] 6.4 GREEN: Extract the working-directory lookup out of `internal/cli/perform.go` into a
       helper both `perform` and `list` call, so all three commands carry one
       `cannot determine the working directory: ` message
-- [ ] 6.5 GREEN: Implement `newList(u *ui.UI) *cobra.Command` — `Use: "list"`, graft's own
+- [x] 6.5 GREEN: Implement `newList(u *ui.UI) *cobra.Command` — `Use: "list"`, graft's own
       argument validator producing `unknown argument "<arg>"`, a `--json` bool flag, and a `RunE`
       that calls `list.Run` and writes: the document through `u.Out()` for `--json`, the note
       through `u.Note` when the listing is empty, and the lines through `u.Print` otherwise.
       Register it on the root beside `sync` and `update`
-- [ ] 6.6 REFACTOR: Confirm the command holds no decision of its own — every string it prints
+- [x] 6.6 REFACTOR: Confirm the command holds no decision of its own — every string it prints
       comes from `internal/list` or `internal/ui`, so nothing this change adds sits where the
       coverage gate cannot see it
-- [ ] 6.7 CHECK: Re-run the existing `command-invocation` acceptance tests and extend *Help
+- [x] 6.7 CHECK: Re-run the existing `command-invocation` acceptance tests and extend *Help
       lists the commands graft has* to name `list`; confirm no other existing scenario's text
       changed
-- [ ] 6.8 Run `go test ./internal/cli/` — green, no regressions
+- [x] 6.8 Run `go test ./internal/cli/` — green, no regressions
 
 ## 7. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 7.1 VERIFY: Confirm the group 0 acceptance test now passes end to end
-- [ ] 7.2 REFACTOR: Fold any tree-snapshot or document-fixture helper the acceptance cases
+- [x] 7.1 VERIFY: Confirm the group 0 acceptance test now passes end to end
+- [x] 7.2 REFACTOR: Fold any tree-snapshot or document-fixture helper the acceptance cases
       duplicate into one place in `internal/cli`
 
 ## 8. Documentation: SPEC.md gains the command it always named

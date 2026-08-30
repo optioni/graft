@@ -61,6 +61,7 @@ func TestHelpListsTheCommandsGraftHas(t *testing.T) {
 	for name, short := range map[string]string{
 		"sync":   "Make the tree match graft.lock",
 		"update": "Re-resolve pins to their current shas and sync",
+		"list":   "Show what is installed here, and at which sha",
 	} {
 		if !strings.Contains(stdout, name) {
 			t.Errorf("help does not name %s:\n%s", name, stdout)
