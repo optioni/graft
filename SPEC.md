@@ -73,7 +73,12 @@ install = ["schema:tdd", "agent:*"]
 
 - `git` — anything `git clone` accepts. Shorthand `host/owner/repo` expands to HTTPS.
   Private repos work exactly as far as the user's existing git credentials reach.
-- `rev` — a tag, branch, or full SHA. No ranges, no semver.
+- `rev` — a tag, branch, full SHA, or a semver range (`^1.2.0`, `~1.2`, `>=1.2.0
+  <2.0.0`). A value is a range iff its first character is one of `^ ~ > < =`, it contains
+  a space or `||`, or it is exactly `*`; every other value is a ref, resolved exactly as
+  before. `graft sync` never resolves a range — it installs the tag `graft.lock` already
+  recorded. Only `graft update` re-evaluates one, against the source's own tags, and
+  records which tag it picked as `matched` in `graft.lock`.
 - `install` — item selectors. `kind:name`, or a glob in the name position (`agent:*`,
   `agent:outside-in-*`). A selector matching nothing is an error, not a warning.
 - Optional per-source destination override, for a repo whose layout differs:
@@ -113,6 +118,23 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 
 - `rev` records the request, `resolved` the SHA it became. A `rev` that no longer matches
   `graft.toml` means the manifest moved and `sync` has not run.
+- **`matched` records the tag a range resolved to**, present only when `rev` is a range —
+  never for a ref, and never as an empty string. A pin on a range looks like:
+
+  ```toml
+  [[source]]
+  name     = "openspec-schemas"
+  git      = "github.com/optioni/openspec-schemas"
+  rev      = "^1.2.0"
+  matched  = "v1.3.0"
+  resolved = "9c1e77accccccccccccccccccccccccccccccccc"
+  ```
+
+  Without it, `^1.2.0` beside a bare SHA would turn a version bump into an unreadable
+  diff. `version` does not move for this addition: a lock with no range re-serializes to
+  byte-identical bytes, and an older graft handed one that carries `matched` reports
+  `unknown key "matched"` rather than an upgrade message — loud, and reachable only by a
+  consumer who wrote a range and then downgraded.
 - Globs are expanded. Reviewing a version bump means reading the lock diff.
 - **`files` exists to make deletion safe.** graft may never remove a file it does not find
   in the lock. This is what lets `.claude/agents/` hold repo-owned agents beside synced
@@ -126,7 +148,7 @@ resolved = "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5"
 | Command | Behavior |
 |---|---|
 | `graft sync` | Make the tree match the lock. Fetch, write, prune. Never re-resolves a pin. Idempotent. **v1** |
-| `graft update [source]` | Re-resolve each `rev` to its current SHA, rewrite the lock, then sync. **v1** |
+| `graft update [source]` | Re-resolve each `rev` to its current SHA — a range against the source's own tags, everything else as `sync` would — rewrite the lock, then sync. **v1** |
 | `graft update --to <rev> <source>` | Move the pin in `graft.toml`, then sync. **v1** |
 | `graft add <source>[@rev] [selector...]` | Add or amend a source in `graft.toml`, then sync. **v1** |
 | `graft add <source> --list` | Print the source's catalog and exit, writing nothing. **v1** |
@@ -187,16 +209,24 @@ reason the command exists. Blocks are separated by one blank line; a source with
 its header alone; nothing is coloured, because the two things the sync report styles do not
 exist here.
 
+When a source's `rev` is a semver range, the matched tag appears between the rev and the
+SHA, two spaces on either side — absent, not padded, for every source pinned to a ref:
+
+```
+openspec-schemas  ^1.2.0  v1.3.0  (9c1e77a)
+```
+
 `--json` prints the same information as one document, with the **full** forty-character SHA:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "name": "openspec-schemas",
       "git": "github.com/optioni/openspec-schemas",
       "rev": "v1.2.0",
+      "matched": "",
       "resolved": "fae2a30c1d4b8e9f0a2b3c4d5e6f708192a3b4c5",
       "items": [
         {
@@ -233,7 +263,12 @@ level. `<`, `>`, and `&` are not escaped, so a git URL with a query string round
 `version` is the **document's** version, not `graft.lock`'s: the two formats are free to
 move independently, and one number meaning two things would tie them back together. `kind`
 and `name` are the two halves of `id`, carried rather than left to be derived, because
-`kind:name` is graft's grammar and not the consumer's.
+`kind:name` is graft's grammar and not the consumer's. `matched` is the tag a range
+resolved to, sitting between `rev` and `resolved` on every source object, present
+unconditionally and the empty string for a ref — an omitted member would make every
+consumer branch on presence, the same reason an empty collection is `[]` and never
+absent. This is why `version` moved from `1` to `2`: every source object changed shape, and
+a consumer pinned to `1` learns that from the number rather than from a decode failure.
 
 `list` reads `graft.lock` and nothing else. Not `graft.toml` — so a manifest whose `rev` has
 moved ahead is not reported here; that is `sync`'s failure and `update`'s repair. Not the
@@ -257,8 +292,10 @@ pipes `--json` into a tool that filters JSON.
 
 1. Read and validate `graft.toml` and `graft.lock`.
 2. For each source in the manifest, take its SHA from the lock. A source with no lock entry
-   is resolved once — `git ls-remote` for tags and branches, a full SHA passes through —
-   and recorded. An existing pin is never re-resolved by `sync`.
+   is resolved once — `git ls-remote` for tags and branches, a full SHA passes through, a
+   semver range by listing the source's own tags and selecting the highest that satisfies
+   it — and recorded, `matched` included for a range. An existing pin is never re-resolved
+   by `sync`; only `graft update` re-evaluates one, and only against that one source's tags.
 3. Fetch that SHA into `~/.cache/graft/<host>/<owner>/<repo>/<sha>/`, a content-addressed
    cache. An existing entry is reused, so a resolved sync works offline.
 4. Read `catalog.yaml` from the fetched tree. Its absence means the repo is not graftable —
@@ -326,6 +363,9 @@ is why the destination is shown before install and why a consumer override alway
 | Condition | Behavior |
 |---|---|
 | `rev` not found in the source | Error, naming the rev and the source. |
+| `rev` is a range that is not valid semver constraint syntax | Error: `source "<name>": rev "<range>" is not a valid semver range`. Refused before any network call, and never falls back to a ref lookup. |
+| `rev` is a range and the source publishes no semver tags | Error: `source "<name>": rev "<range>" is a range, and the source publishes no semver tags`. |
+| `rev` is a range no published tag satisfies | Error: `source "<name>": rev "<range>" matches none of the source's semver tags`. Distinguished from the row above so the reader knows whether to fix the range or stop using one on that source. |
 | `catalog.yaml` missing or invalid | Error: the repo is not graftable. No fallback. |
 | A selector matches no item | Error listing what the catalog does provide. Typo protection. |
 | `add` without selectors and without a TTY | Error naming the selectors it needed. Never hangs, never guesses. |
@@ -379,6 +419,14 @@ openspec-schemas  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
   removed  agent:phase-orchestrator  1 file   no longer provided
 
 6 files written, 1 removed - review with `git diff`
+```
+
+A source whose `rev` is a semver range renders its own request unchanged — it does not
+move unless the consumer edits it — and shows the movement in the matched column instead,
+between the rev and the SHA:
+
+```
+openspec-schemas  ^1.2.0  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
 ```
 
 A sync with nothing to do prints `up to date` and nothing else. Output that appears when

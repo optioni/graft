@@ -290,30 +290,30 @@ document changes together — a stale one is a test that passes against the old 
 SPEC.md and PRD.md are the contract and the motivation, and this change makes one sentence in
 each false. CLAUDE.md carries the rules a future change would get wrong.
 
-- [ ] 10.1 CHECK: Re-read PRD.md's non-goals, SPEC.md's `rev` line, `graft.lock` section,
+- [x] 10.1 CHECK: Re-read PRD.md's non-goals, SPEC.md's `rev` line, `graft.lock` section,
       `graft update` section, and Failure modes table, and CLAUDE.md's pin rule — and list what
       is now false before editing anything
-- [ ] 10.2 CHANGE: **Rewrite** PRD.md's "no version solving, no semver ranges" non-goal in place
+- [x] 10.2 CHANGE: **Rewrite** PRD.md's "no version solving, no semver ranges" non-goal in place
       rather than deleting it, so it says what is still true: one source at a time, no
       transitive dependencies, no cross-source constraint solving. Do not add a second bullet
       beside the stale one
-- [ ] 10.3 CHANGE: **Rewrite** SPEC.md's `rev` line to admit a range, add the range forms and the
+- [x] 10.3 CHANGE: **Rewrite** SPEC.md's `rev` line to admit a range, add the range forms and the
       `matched` key to the `graft.lock` example and its notes, and state under `graft update`
       that a range is re-evaluated there and nowhere else
-- [ ] 10.4 CHANGE: Update the three SPEC.md examples this change falsifies, each of which a test
+- [x] 10.4 CHANGE: Update the three SPEC.md examples this change falsifies, each of which a test
       asserts against character for character: the `--json` document in `## graft list`
       (`"version": 1`, no `matched` member), the plain-listing header beside it, and the
       sync-report header example in the Output section. Show the range form of each
-- [ ] 10.5 CHANGE: Add the failure-mode rows this change introduces — an unsatisfiable range, a
+- [x] 10.5 CHANGE: Add the failure-mode rows this change introduces — an unsatisfiable range, a
       source publishing no semver tags, and a malformed range. Do not restate rows that already
       cover resolution
-- [ ] 10.6 CHANGE: **Rewrite** CLAUDE.md's `sync` never re-resolves a pin rule in place to cover
+- [x] 10.6 CHANGE: **Rewrite** CLAUDE.md's `sync` never re-resolves a pin rule in place to cover
       the range case, and rewrite the JSON-document determinism rule to name version 2. Expected
       net addition is under ten lines; if it is more, something existing is stale and should be
       cut instead
-- [ ] 10.7 CHECK: Decide whether README.md's command list still describes what shipped. Expected
+- [x] 10.7 CHECK: Decide whether README.md's command list still describes what shipped. Expected
       outcome is **no edit** — no command was added or removed
-- [ ] 10.8 VERIFY: Re-read every edited section and confirm each example matches a test fixture
+- [x] 10.8 VERIFY: Re-read every edited section and confirm each example matches a test fixture
       character for character
 
 ## 11. Change Review

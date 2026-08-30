@@ -81,10 +81,18 @@ internal/cli/       the cobra command surface; internal/ui owns both streams
   newline, and its rule that an empty collection renders as `[]` and never as `null` at every
   level are contract as much as its ordering is — changing one is a breaking change to argue
   for, not an incidental edit, and the two ways it silently breaks a consumer are both
-  invisible to a test that only decodes.
-- **`sync` never re-resolves a pin.** It installs what the lock says. Only `update` moves
-  a pin. Re-resolving on sync would make `rev = "main"` drift silently, which defeats the
-  point of pinning.
+  invisible to a test that only decodes. The document's own `version` is **2**: it moved from
+  `1` when every source object gained `matched`, sitting between `rev` and `resolved` and
+  present unconditionally — empty for a ref, so a consumer branches on the field's value, never
+  its presence. `graft.lock`'s own `version` stayed `1` for the same addition; the two version
+  numbers name different formats and are free to move independently.
+- **`sync` never re-resolves a pin — a semver range included.** It installs what the lock
+  says, however far a branch has since moved or however many newer tags satisfy a range.
+  Only `update` moves a pin, re-resolving a range against the source's own tags and
+  recording the tag it picked as `matched` in `graft.lock`. Re-resolving on sync would make
+  `rev = "main"` or `rev = "^1.2.0"` drift silently, which defeats the point of pinning — the
+  one exception is a source `sync` finds no lock entry for at all, which it resolves once
+  because a first resolution is not a re-evaluation.
 - **`graft.toml` is a human's file.** The pin moves by replacing one value in place, never by
   re-serializing a parsed manifest: re-encoding deletes every comment, normalizes the alignment
   SPEC.md's own example uses, and turns a one-line pin move into a whole-file diff nobody reads.

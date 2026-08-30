@@ -42,8 +42,12 @@ reproducibly, on any machine, in CI, with no global state.
 
 ## Non-goals
 
-- **Not a package manager.** No transitive dependencies, no version solving, no semver
-  ranges. A source is pinned to a tag, branch, or SHA.
+- **Not a package manager.** One source at a time: no transitive dependencies, no
+  cross-source constraint solving, no dependency graph, no registry lookup. A source is
+  pinned to a tag, branch, SHA — or a semver range, resolved once by `graft update`
+  against that one source's own tags to a concrete tag it records, never re-evaluated by
+  `graft sync`. Choosing the newest tag matching a range is a `max` over one list, not a
+  solver.
 - **Not a registry.** Git is the registry. No hosting, no publishing step, no accounts.
 - **Not a merge tool.** Synced files are derived artifacts, overwritten without ceremony —
   the `node_modules` contract. Editing one in place is a user error, not a merge conflict.
