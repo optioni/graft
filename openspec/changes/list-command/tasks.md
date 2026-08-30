@@ -38,17 +38,17 @@ Structure only. The three helpers move; no rendered byte changes anywhere. The n
 new address assert exactly what the moved code already produced, which is what keeps this a
 refactor rather than a behavior change wearing one's clothes.
 
-- [ ] 2.1 CHARACTERIZE: Run `go test ./internal/sync/` and confirm `TestReportAlignment` —
+- [x] 2.1 CHARACTERIZE: Run `go test ./internal/sync/` and confirm `TestReportAlignment` —
       SPEC.md's report example asserted line for line — is green before anything moves. It is the
       characterization for this group and it may not be edited by it
-- [ ] 2.2 REFACTOR: Move `short`, `fileCount`, and `pad` from `internal/sync/render.go` into
+- [x] 2.2 REFACTOR: Move `short`, `fileCount`, and `pad` from `internal/sync/render.go` into
       `internal/ui` as `ShortSHA`, `FileCount`, and `Pad`, with the `shortSHA = 7` constant, and
       call them from `internal/sync/render.go`. Carry each function's existing doc comment across
       and keep the bodies byte-identical
-- [ ] 2.3 REFACTOR: Add unit tests at the new address for the five `command-output` scenarios —
+- [x] 2.3 REFACTOR: Add unit tests at the new address for the five `command-output` scenarios —
       `1 file` / `6 files` / `0 files`, the seven-character sha, a sha too short to shorten, the
       three padding cases, and that padding is computed on unstyled text
-- [ ] 2.4 VERIFY: Run `go test ./internal/sync/ ./internal/ui/` — green, with
+- [x] 2.4 VERIFY: Run `go test ./internal/sync/ ./internal/ui/` — green, with
       `internal/sync/render_test.go` unedited
 
 ## 3. list: the listing value and the JSON document

@@ -2,13 +2,9 @@ package sync
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/optioni/graft/internal/ui"
 )
-
-// shortSHA is how many characters of a resolved sha the report shows.
-const shortSHA = 7
 
 // upToDateLine is what a sync with nothing to do prints, and the whole of what it prints.
 // Output that appears when nothing happened trains the reader to stop reading it.
@@ -52,7 +48,7 @@ func (s SourceReport) header() string {
 	return fmt.Sprintf("%s  %s  (%s)",
 		s.Name,
 		transition(s.PrevRev, s.Rev),
-		transition(short(s.PrevResolved), short(s.Resolved)),
+		transition(ui.ShortSHA(s.PrevResolved), ui.ShortSHA(s.Resolved)),
 	)
 }
 
@@ -65,13 +61,6 @@ func transition(before, after string) string {
 	return before + " -> " + after
 }
 
-func short(sha string) string {
-	if len(sha) <= shortSHA {
-		return sha
-	}
-	return sha[:shortSHA]
-}
-
 // itemLines renders one source's block, aligned within that block.
 //
 // The verb and the id are padded and followed by two spaces. The count is padded and
@@ -82,7 +71,7 @@ func (s SourceReport) itemLines(u *ui.UI) []string {
 	var verbWidth, idWidth, countWidth int
 	counts := make([]string, len(s.Items))
 	for i, it := range s.Items {
-		counts[i] = fileCount(it.Files)
+		counts[i] = ui.FileCount(it.Files)
 		verbWidth = max(verbWidth, len(it.Verb))
 		idWidth = max(idWidth, len(it.ID))
 		countWidth = max(countWidth, len(counts[i]))
@@ -92,37 +81,21 @@ func (s SourceReport) itemLines(u *ui.UI) []string {
 	for i, it := range s.Items {
 		// Padding is computed on the unstyled text and the escape sequences go on after,
 		// so a coloured report has the same columns as a plain one.
-		line := "  " + u.Bold(it.Verb) + pad(len(it.Verb), verbWidth) + "  " +
-			it.ID + pad(len(it.ID), idWidth) + "  " + counts[i]
+		line := "  " + u.Bold(it.Verb) + ui.Pad(len(it.Verb), verbWidth) + "  " +
+			it.ID + ui.Pad(len(it.ID), idWidth) + "  " + counts[i]
 		if it.Note != "" {
-			line += pad(len(counts[i]), countWidth) + "  " + u.Dim(it.Note)
+			line += ui.Pad(len(counts[i]), countWidth) + "  " + u.Dim(it.Note)
 		}
 		out = append(out, line)
 	}
 	return out
 }
 
-// pad returns the spaces that take a field of the given length up to width.
-func pad(length, width int) string {
-	if length >= width {
-		return ""
-	}
-	return strings.Repeat(" ", width-length)
-}
-
 // summary is the last line: what was written, what was removed, and where to look. A dry
 // run says what would happen instead, so a reader can never mistake a plan for a result.
 func (r *Report) summary() string {
 	if r.DryRun {
-		return fmt.Sprintf("%s to write, %d to remove - nothing written", fileCount(r.Written), r.Removed)
+		return fmt.Sprintf("%s to write, %d to remove - nothing written", ui.FileCount(r.Written), r.Removed)
 	}
-	return fmt.Sprintf("%s written, %d removed - review with `git diff`", fileCount(r.Written), r.Removed)
-}
-
-// fileCount renders a count with its noun: "1 file" or "<n> files".
-func fileCount(n int) string {
-	if n == 1 {
-		return "1 file"
-	}
-	return fmt.Sprintf("%d files", n)
+	return fmt.Sprintf("%s written, %d removed - review with `git diff`", ui.FileCount(r.Written), r.Removed)
 }
