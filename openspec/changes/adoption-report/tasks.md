@@ -57,12 +57,12 @@
 ## 5. Documentation
 <!-- kind: operational -->
 
-- [ ] 5.1 CHECK: Re-read SPEC.md's Output section, which lists the report's verbs, and its
+- [x] 5.1 CHECK: Re-read SPEC.md's Output section, which lists the report's verbs, and its
   `catalog.yaml` section, which claims `add` shows every destination before writing
-- [ ] 5.2 CHANGE: Add `adopted` to the verb list with its note and the summary's
+- [x] 5.2 CHANGE: Add `adopted` to the verb list with its note and the summary's
   parenthetical, and correct the destination sentence to describe `--list` and the picker —
   which do show destinations first — rather than claiming the non-interactive form does
-- [ ] 5.3 VERIFY: Confirm no other document repeats either claim
+- [x] 5.3 VERIFY: Confirm no other document repeats either claim
 
 ## 6. Change Review
 <!-- kind: operational -->

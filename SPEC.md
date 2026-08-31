@@ -59,8 +59,10 @@ never require a graft release. Naming is convention, not enforcement: a source s
 agents should call the kind `agent` so consumers of several sources see one vocabulary.
 
 Because the kind name is arbitrary it carries no guarantee, so **the destination is what a
-consumer actually agrees to**. `add` shows the destination for every item before writing,
-and a consumer override in `graft.toml` beats whatever the catalog proposed.
+consumer actually agrees to**. `graft add <source> --list` and the picker show the destination
+for every item before anything is written; the non-interactive form writes directly and
+reports every file it wrote over, and a consumer override in `graft.toml` beats whatever the
+catalog proposed.
 
 ## `graft.toml` — the consumer's request
 
@@ -430,8 +432,8 @@ An error is one line on stderr: `graft: ` followed by the message from the table
 unaltered — each already locates its own problem. Asking graft for something it does not
 have adds a second line, `run "graft --help" for usage`, rather than a wall of usage.
 
-Changes are reported per item with the words `added`, `updated`, and `removed` — not
-symbols — at item granularity:
+Changes are reported per item with the words `added`, `adopted`, `updated`, and `removed` —
+not symbols — at item granularity:
 
 ```
 openspec-schemas  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
@@ -441,6 +443,25 @@ openspec-schemas  v1.2.0 -> v1.3.0  (fae2a30 -> 9c1e77a)
 
 6 files written, 1 removed - review with `git diff`
 ```
+
+A write that goes over content `graft.lock` did not claim is reported: the verb is `adopted`
+where `added` would otherwise be false, the line carries the note `replaced existing content`,
+and the summary counts the files.
+
+```
+openspec-schemas  v0.1.0  (353d668)
+
+  adopted  agent:reviewer  1 file   replaced existing content
+  added    schema:tdd      6 files
+
+7 files written (1 replaced existing content), 0 removed - review with `git diff`
+```
+
+An item already in `graft.lock` keeps the verb `updated` and takes the same note. A
+destination the lock already claimed is graft rewriting its own file and is not reported, nor
+is one whose bytes already match. Replacement is a fact about the filesystem, so `--dry-run`,
+which writes nothing, reports none. graft does not refuse to overwrite — a synced file is a
+derived artifact, and adoption is how a repository starts using graft at all.
 
 A source whose `rev` is a semver range renders its own request unchanged — it does not
 move unless the consumer edits it — and shows the movement in the matched column instead,
