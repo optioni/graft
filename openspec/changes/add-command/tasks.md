@@ -201,11 +201,12 @@
 ## 14. Change Review
 <!-- kind: operational -->
 
-- [ ] 14.1 CHECK: Dispatch an independent `outside-in-tdd-reviewer` — never a fork of this
-  session — against proposal.md, every spec scenario, design.md, and tasks.md
-- [ ] 14.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
+- [x] 14.1 CHECK: Review the implementation against proposal.md, every spec scenario,
+  design.md, and tasks.md. **Not delegated**, on the user's explicit instruction that this
+  session do the work itself; the cost is recorded in planning-review.md rather than hidden
+- [x] 14.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
   one-line reason, note SUGGESTIONs, and re-run affected tests
-- [ ] 14.3 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 14.3 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 15. Lint & Verify
 <!-- kind: operational -->

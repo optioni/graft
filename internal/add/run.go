@@ -72,14 +72,14 @@ func Run(r Request) (*Report, error) {
 		return nil, err
 	}
 
-	amended, edits, err := amend(r, name, data, m)
+	amended, e, err := amend(r, name, data, m)
 	if err != nil {
 		return nil, err
 	}
 
 	changed := !slices.Equal(amended, data)
 	if !changed {
-		edits = []string{unchangedLine}
+		e.lines = []string{unchangedLine}
 	}
 
 	if r.NoSync {
@@ -88,7 +88,7 @@ func Run(r Request) (*Report, error) {
 				return nil, err
 			}
 		}
-		return &Report{Edits: edits}, nil
+		return &Report{Edits: e.lines}, nil
 	}
 
 	o := sync.Options{Root: r.Root, CacheRoot: r.CacheRoot}
@@ -97,7 +97,7 @@ func Run(r Request) (*Report, error) {
 		// left to internal/sync to read for itself, which is the same file.
 		o.Manifest = amended
 	}
-	if movedPin(edits) {
+	if e.pinMoved {
 		// The one source whose pin moved is re-resolved, exactly as `update <source>`
 		// re-resolves one. Every other source's sha still comes from graft.lock, and this
 		// source's would too — against a pin that no longer matches it.
@@ -108,7 +108,7 @@ func Run(r Request) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Report{Edits: edits, Sync: report}, nil
+	return &Report{Edits: e.lines, Sync: report}, nil
 }
 
 // readManifest reads graft.toml, treating its absence as an empty manifest.
@@ -141,10 +141,10 @@ func readManifest(root string) ([]byte, *manifest.Manifest, error) {
 // is not belt and braces: both edits are text edits, and a text edit's real failure is
 // landing somewhere other than the line it named — which produces a file that parses
 // perfectly while the run installs something else.
-func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, []string, error) {
+func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, edits, error) {
 	var (
-		edits []string
-		err   error
+		e   edits
+		err error
 	)
 
 	existing := declared(m, name)
@@ -155,20 +155,20 @@ func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, [
 		if rev == "" {
 			// The one network call an add with no @rev makes before it writes anything.
 			if rev, err = source.DefaultRev(name, r.Git); err != nil {
-				return nil, nil, err
+				return nil, edits{}, err
 			}
 		}
 		if amended, err = manifest.AddSource(amended, name, r.Git, rev, dedupe(r.Install)); err != nil {
-			return nil, nil, err
+			return nil, edits{}, err
 		}
-		edits = append(edits, fmt.Sprintf("%s: added source %q at %s", manifest.Filename, name, rev))
+		e.lines = append(e.lines, fmt.Sprintf("%s: added source %q at %s", manifest.Filename, name, rev))
 	} else {
 		if existing.Git != r.Git {
 			// Two repositories cannot share a source name. Retargeting a declared source
 			// would move every file it owns, so the collision is named rather than
 			// resolved: the message carries the value the manifest holds, which is the
 			// fact the consumer needs to pick a way out.
-			return nil, nil, fmt.Errorf("%s: source %q: already declared with git %q",
+			return nil, edits{}, fmt.Errorf("%s: source %q: already declared with git %q",
 				manifest.Filename, name, existing.Git)
 		}
 		if rev == "" {
@@ -176,25 +176,37 @@ func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, [
 		}
 		if rev != existing.Rev {
 			if amended, err = manifest.SetRev(amended, name, rev); err != nil {
-				return nil, nil, err
+				return nil, edits{}, err
 			}
-			edits = append(edits, fmt.Sprintf("%s: moved source %q to %s", manifest.Filename, name, rev))
+			e.pinMoved = true
+			e.lines = append(e.lines, fmt.Sprintf("%s: moved source %q to %s", manifest.Filename, name, rev))
 		}
 
 		added := missing(existing.Install, dedupe(r.Install))
 		if len(added) > 0 {
 			if amended, err = manifest.AddInstall(amended, name, added); err != nil {
-				return nil, nil, err
+				return nil, edits{}, err
 			}
-			edits = append(edits, fmt.Sprintf("%s: added %s to source %q",
+			e.lines = append(e.lines, fmt.Sprintf("%s: added %s to source %q",
 				manifest.Filename, strings.Join(added, ", "), name))
 		}
 	}
 
 	if err := check(amended, name, r.Git, rev, r.Install); err != nil {
-		return nil, nil, err
+		return nil, edits{}, err
 	}
-	return amended, edits, nil
+	return amended, e, nil
+}
+
+// edits is what an amendment did: the lines describing it, and whether it moved a pin.
+//
+// The pin move is a field rather than something read back out of the lines, because it
+// decides whether this run re-resolves the source — and a decision that parses a
+// human-readable message stops being made the moment someone rewords the message, with
+// nothing going red.
+type edits struct {
+	lines    []string
+	pinMoved bool
 }
 
 // check re-parses the amended bytes and confirms they say what was asked for.
@@ -257,14 +269,6 @@ func missing(have, want []string) []string {
 // unchangedLine is what an add that asked for nothing new reports. It still syncs: the
 // manifest already said what was wanted, and the tree may not yet match it.
 const unchangedLine = manifest.Filename + ": unchanged"
-
-// movedPin reports whether the edits moved a pin, which is what decides whether this run
-// re-resolves the source it touched.
-func movedPin(edits []string) bool {
-	return slices.ContainsFunc(edits, func(line string) bool {
-		return strings.HasPrefix(line, manifest.Filename+": moved source ")
-	})
-}
 
 // Lines is what an add prints: the manifest edit first, then the sync report unchanged.
 //

@@ -127,3 +127,63 @@ Verified against the live code rather than assumed:
   case, which is a MODIFIED requirement in that change rather than a gap in this one. The
   scenario asserting the refusal is identical on a terminal exists so that narrowing has
   something to move.
+
+## Implementation Review (group 14)
+
+Also not delegated, for the same reason and at the same cost. What follows is what the pass
+found, recorded so that a reader can judge it rather than take it on trust.
+
+### Fixed
+
+1. **The re-resolution decision was read out of a human-readable message — WARNING, fixed.**
+   `add.Run` decided whether to re-resolve a source by testing whether any report line began
+   with `graft.toml: moved source `. Rewording that message — an ordinary edit, and one the
+   error-strings rule invites — would have silently stopped the pin move from being
+   re-resolved, with nothing going red until a user noticed a lock that disagreed with its
+   manifest. The amendment now returns an explicit `pinMoved` field. The acceptance test
+   *An explicit rev on a declared source moves the pin* is what goes red if it regresses:
+   without the re-resolution the pin check refuses the run outright.
+
+2. **A spec scenario named a manifest shape that cannot reach the amender — WARNING, fixed.**
+   *An unamendable manifest is refused in the amender's words* described an `install` written
+   as a multi-line string. `manifest.Parse` refuses that before any amendment is attempted, so
+   the scenario tested the parser rather than the amender. It now names an inline table, which
+   parses and which no `[sources.<name>]` header covers.
+
+3. **`AddInstall` had to refuse an escaped element, which the spec did not say — WARNING,
+   fixed.** The amendment compares each element against the selectors it was given; comparing
+   undecoded text would miss a match and write a duplicate the next parse refuses. The refusal
+   was implemented and the spec gained the scenario and the reason, rather than the code
+   carrying a rule the contract did not.
+
+4. **Three matrix rows named a tier the tests do not use — WARNING, fixed.** Seven
+   add-execution scenarios, the three report scenarios, and the four `--list` scenarios are
+   tested at `internal/add` against a fixture repository rather than through the process
+   boundary, which is the fastest tier that can express them. The matrix now says so. The
+   scenarios that genuinely need the boundary — the stream split, a failed run leaving no
+   manifest, `--no-sync` making no network call — stayed acceptance.
+
+### Deferred, with reasons
+
+- **`graft add` in a repository holding `graft.lock` and no `graft.toml` prunes every other
+  source's files.** It follows directly from the documented rule — a source the manifest no
+  longer declares has its files pruned from the lock alone — and `add` creating the manifest
+  is the documented behavior. It is still the one path where a user who deleted `graft.toml`
+  by hand gets files removed without editing a manifest. Left as is because changing it means
+  a new refusal nothing specifies; worth raising for `self-hosting`.
+- **The hidden `help` command appears in `graft --help` with an empty description, and then
+  refuses when invoked.** Verified pre-existing by building `48464b9`: it is `command-surface`'s
+  and not this change's, and fixing it here would be an undiscussed change to another
+  capability's output.
+- **`--list` uses a declared source's kind overrides without checking that its `git` matches.**
+  An override is a statement about where a kind belongs in this repository, so applying it is
+  defensible; a run that went on to *write* would refuse the mismatch before anything landed.
+
+### Verified rather than assumed
+
+- Every one of the 61 spec scenarios has a test or a deterministic check, and every matrix row
+  names the tier its test actually runs at.
+- `task lint` is clean, `task cover` reports 93.4% over `./internal/...` against a floor of 80%,
+  and `task build` produces a binary whose `--help` lists `add`.
+- Nothing was added to `cmd/graft`, which CI never executes.
+- `graft.lock`'s format and `version`, and the `graft list --json` document's, are untouched.
