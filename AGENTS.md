@@ -149,7 +149,12 @@ Never push or open a PR without being asked.
 
 ## Synced files
 
-`openspec/schemas/tdd/` and `.claude/agents/` are **copies** from
-[openspec-schemas](https://github.com/optioni/openspec-schemas). Edit them there, not
-here. They are copied by hand today; once `sync` works they convert to a `graft.toml`
-entry and this repo becomes its own first consumer.
+`openspec/schemas/tdd/` and `.claude/agents/` are **vendored by graft** from
+[openspec-schemas](https://github.com/optioni/openspec-schemas), declared in this repo's own
+`graft.toml` and pinned by `graft.lock`. Editing them here is pointless — the next
+`graft sync` overwrites them, silently, because a synced file is a derived artifact. Edit
+them in that repository, publish a tag, and `graft update` here.
+
+This repo is graft's first consumer, which is what the `dogfood` CI job tests: it syncs and
+fails if the tree moves. A red dogfood job means the committed tree and `graft.lock`
+disagree, which is the one thing worth failing a build over.

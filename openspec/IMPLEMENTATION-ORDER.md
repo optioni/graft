@@ -3,6 +3,10 @@
 The roadmap from empty scaffold to a self-hosting `graft`. Each row is one OpenSpec change
 with its own proposal, specs, design, tasks, and planning review.
 
+**The roadmap is complete.** Every row below is archived, plus two changes it did not
+anticipate — `catalog-hardening` and `semver-ranges` — and graft now vendors its own agents
+and schema through its own `graft.toml`.
+
 Read [SPEC.md](../SPEC.md) first — it is the contract every change below implements.
 
 This is a plan, not a commitment. A change may split when its tasks turn out to carry two
@@ -55,7 +59,7 @@ without touching anything.
 
 | Change | Delivers | Depends on |
 |---|---|---|
-| `self-hosting` | ⏸ `graft.toml` replaces the hand-copied `openspec/schemas/tdd/` and `.claude/agents/`, and the dogfood CI job stops being inert. **Proposed and blocked**: `openspec-schemas` publishes no `catalog.yaml`. | `add-command`, `update-command` |
+| `self-hosting` | ✅ `graft.toml` replaces the hand-copied `openspec/schemas/tdd/` and `.claude/agents/`, and the dogfood CI job stops being inert. | `add-command`, `update-command` |
 
 ## Dependencies
 

@@ -47,12 +47,8 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: task build
-      # graft syncs its own openspec schema and agents; the tree must not move.
-      # Inert until `sync` exists and graft.toml replaces the hand-copied files.
-      - run: |
-          if [ ! -f graft.toml ]; then
-            echo "no graft.toml yet — skipping until sync is implemented"
-            exit 0
-          fi
-          ./graft sync
-          git diff --exit-code
+      # graft syncs its own openspec schema and agents; the tree must not move. A
+      # failure here means the committed tree and graft.lock disagree, which is the
+      # most realistic integration test available and the one thing worth a red build.
+      - run: ./graft sync
+      - run: git diff --exit-code

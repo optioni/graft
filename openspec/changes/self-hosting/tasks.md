@@ -41,21 +41,21 @@ stalled rather than waiting.
 ## 3. Documentation
 <!-- kind: operational -->
 
-- [ ] 3.1 CHECK: Re-read AGENTS.md's **Synced files** section, which says the two directories
+- [x] 3.1 CHECK: Re-read AGENTS.md's **Synced files** section, which says the two directories
   are copied by hand and will convert to a `graft.toml` entry "once `sync` works"
-- [ ] 3.2 CHANGE: Rewrite it in place to say graft owns them, that editing them here is
+- [x] 3.2 CHANGE: Rewrite it in place to say graft owns them, that editing them here is
   pointless because the next sync overwrites, and where to edit instead — deleting the
   now-false sentence rather than appending beside it
-- [ ] 3.3 CHANGE: Mark `self-hosting` done in `openspec/IMPLEMENTATION-ORDER.md`, and say
+- [x] 3.3 CHANGE: Mark `self-hosting` done in `openspec/IMPLEMENTATION-ORDER.md`, and say
   there that the roadmap is complete
-- [ ] 3.4 VERIFY: No other document still describes the copy as manual
+- [x] 3.4 VERIFY: No other document still describes the copy as manual
 
 ## 4. The dogfood job
 <!-- kind: operational -->
 
-- [ ] 4.1 CHECK: Re-read `.github/workflows/ci.yml`'s dogfood step and confirm its skip is
+- [x] 4.1 CHECK: Re-read `.github/workflows/ci.yml`'s dogfood step and confirm its skip is
   now unreachable — it skips only when `graft.toml` is absent
-- [ ] 4.2 CHANGE: Remove the skip branch and its "inert until" comment, leaving
+- [x] 4.2 CHANGE: Remove the skip branch and its "inert until" comment, leaving
   `./graft sync` and `git diff --exit-code`; a job that can silently skip is a job that will
   silently skip
 - [ ] 4.3 VERIFY: The next CI run's dogfood job syncs and passes, and its log shows the sync
