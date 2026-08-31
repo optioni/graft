@@ -67,18 +67,18 @@
 ## 6. Change Review
 <!-- kind: operational -->
 
-- [ ] 6.1 CHECK: Review the implementation against proposal.md, every spec scenario,
+- [x] 6.1 CHECK: Review the implementation against proposal.md, every spec scenario,
   design.md, and tasks.md
-- [ ] 6.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING, note
+- [x] 6.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING, note
   SUGGESTIONs, re-run affected tests
-- [ ] 6.3 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 6.3 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 7. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 7.1 CHECK: Inspect the intended verification commands and the tiers they cover
-- [ ] 7.2 VERIFY: Run `task lint` — 0 errors
-- [ ] 7.3 VERIFY: Run `task test` — green
-- [ ] 7.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
-- [ ] 7.5 VERIFY: Run `task build` — the binary builds
-- [ ] 7.6 VERIFY: Run `openspec validate adoption-report --strict`
+- [x] 7.1 CHECK: Inspect the intended verification commands and the tiers they cover
+- [x] 7.2 VERIFY: Run `task lint` — 0 errors
+- [x] 7.3 VERIFY: Run `task test` — green
+- [x] 7.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
+- [x] 7.5 VERIFY: Run `task build` — the binary builds
+- [x] 7.6 VERIFY: Run `openspec validate adoption-report --strict`

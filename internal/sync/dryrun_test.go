@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/optioni/graft/internal/sync"
@@ -121,4 +122,35 @@ func TestRunDryRunFailsAlike(t *testing.T) {
 	assertError(t, err, want)
 
 	c.assertEntries("graft.toml")
+}
+
+// Replacement is a fact about the filesystem, and a dry run reaches no write to observe it.
+// It says so by saying nothing: the same line, and the file still the consumer's own.
+func TestDryRunReportsNoAdoption(t *testing.T) {
+	t.Parallel()
+
+	r := newRepo(t)
+	r.seed()
+	r.commit("v1")
+	r.tag("v1.0.0")
+
+	c := newConsumer(t)
+	c.manifest(r, "v1.0.0", "agent:reviewer")
+	c.file(".claude/agents/reviewer.md", "# my own reviewer\n")
+
+	report, err := c.dryRun()
+	if err != nil {
+		t.Fatalf("dryRun: %v", err)
+	}
+
+	lines := strings.Join(report.Lines(ui.New(io.Discard, io.Discard, false)), "\n")
+	if strings.Contains(lines, "adopted") || strings.Contains(lines, "replaced existing content") {
+		t.Errorf("a dry run reported adoption:\n%s", lines)
+	}
+	if !strings.Contains(lines, "added  agent:reviewer  1 file") {
+		t.Errorf("the item is not reported added:\n%s", lines)
+	}
+	if got := c.read(".claude/agents/reviewer.md"); got != "# my own reviewer\n" {
+		t.Errorf("a dry run wrote to the file: %q", got)
+	}
 }
