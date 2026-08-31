@@ -425,8 +425,10 @@ landed on the wrong line SHALL fail the run with
 
 #### Scenario: An unamendable manifest is refused in the amender's words
 
-- **WHEN** `graft.toml` declares `shared` with `install` written as a multi-line basic string
-  rather than an array, and `graft add optioni/shared schema:tdd` runs
+- **WHEN** `graft.toml` declares its sources as an inline table —
+  `sources = { shared = { git = "…", rev = "…", install = ["agent:reviewer"] } }`, which
+  parses and which no `[sources.shared]` header covers — and
+  `graft add optioni/shared schema:tdd` runs
 - **THEN** the exit code is `1` and the failure is `internal/manifest`'s refusal, naming the
   source and the key
 - **AND** `graft.toml` is byte-identical and nothing is fetched

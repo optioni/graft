@@ -119,22 +119,22 @@
 ## 8. The add sequence
 <!-- kind: behavior -->
 
-- [ ] 8.1 RED: Write failing tests for: *An unparsable graft.toml is refused before anything
+- [x] 8.1 RED: Write failing tests for: *An unparsable graft.toml is refused before anything
   is resolved*, *A new selector joins an existing source*, *A selector
   already declared is not written twice*, *The same selector given twice is written once*, *A
   different repository under a taken name is refused*, *An unamendable manifest is refused in
   the amender's words*
-- [ ] 8.2 RED: Write failing tests for the amendment's read-back check — bytes that parse but
+- [x] 8.2 RED: Write failing tests for the amendment's read-back check — bytes that parse but
   do not declare what was asked for fail with `the amendment did not take effect`
-- [ ] 8.3 GREEN: Implement `add.Run` — read the manifest or treat its absence as empty bytes,
+- [x] 8.3 GREEN: Implement `add.Run` — read the manifest or treat its absence as empty bytes,
   derive, resolve the default rev only when no `@rev` was given, amend, re-parse, check
-- [ ] 8.4 GREEN: Implement the two tails: `--no-sync` through `apply.Manifest`, and the
+- [x] 8.4 GREEN: Implement the two tails: `--no-sync` through `apply.Manifest`, and the
   syncing path through `sync.Run` with `Options.Manifest` set, plus `Update{Source: name}`
   only when the pin actually moved
-- [ ] 8.5 RED then GREEN: *Adding a selector to a branch pin does not move it* — the lock's
+- [x] 8.5 RED then GREEN: *Adding a selector to a branch pin does not move it* — the lock's
   sha survives an `add` that names no rev
-- [ ] 8.6 REFACTOR: Keep the sequence readable as one ordered function, as `sync.Run` is
-- [ ] 8.7 Run `go test ./internal/add/ ./internal/sync/` — no regressions
+- [x] 8.6 REFACTOR: Keep the sequence readable as one ordered function, as `sync.Run` is
+- [x] 8.7 Run `go test ./internal/add/ ./internal/sync/` — no regressions
 
 ## 9. Reporting the manifest edit
 <!-- kind: behavior -->
