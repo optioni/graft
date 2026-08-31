@@ -171,10 +171,15 @@ With selectors, `add` is non-interactive: it writes them to `graft.toml` and syn
 graft add optioni/openspec-schemas@v1.3.0 schema:tdd 'agent:*'
 ```
 
-Without selectors, and on a TTY, it presents the source's catalog as a multi-select list
-showing each item's **destination**, and writes what was chosen. Without selectors and
-without a TTY, it is an error naming the selectors it needed — never a hang, never a
-default guess.
+Without selectors, and with a TTY on both standard input and the error stream, it presents
+the source's catalog as a multi-select list showing each item's **destination**, and writes
+what was chosen. Arrow keys or `j`/`k` move, `space` toggles, `a` selects or clears
+everything, `enter` confirms, and `q`, `esc`, or `ctrl-c` cancel. Standard output is not
+consulted, so a piped `add` can still ask. Without a TTY it is an error naming the selectors
+it needed — never a hang, never a default guess.
+
+The list is drawn on the error stream and erased before anything else is printed, so
+standard output stays byte-empty for a syncing `add` whether or not a picker was shown.
 
 **The picker chooses selectors and has no other powers.** Everything it can do, a flag can
 do; every effect it has runs through the same code path as the non-interactive form. This
@@ -378,7 +383,8 @@ is why the destination is shown before install and why a consumer override alway
 | `rev` is a range no published tag satisfies | Error: `source "<name>": rev "<range>" matches none of the source's semver tags`. Distinguished from the row above so the reader knows whether to fix the range or stop using one on that source. |
 | `catalog.yaml` missing or invalid | Error: the repo is not graftable. No fallback. |
 | A selector matches no item | Error listing what the catalog does provide. Typo protection. |
-| `add` without selectors | Error: `add requires at least one selector, or --list to see what the source offers`. Never hangs, never guesses. Until the picker exists this is the answer on a terminal too; with it, the refusal narrows to the case where there is no TTY. |
+| `add` without selectors and without a TTY | Error: `add requires at least one selector, or --list to see what the source offers`. Never hangs, never guesses. With a TTY on both standard input and the error stream, the picker asks instead. |
+| The `add` picker cancelled, or confirmed with nothing selected | Error: `add cancelled`. Nothing is written: no `graft.toml`, no `graft.lock`, no destination file. The two are one outcome because each means there is nothing to install. |
 | `add` given a git value with no usable last segment | Error: `cannot derive a source name from "<git>"`. The name must be a TOML bare key — a dot excluded, since `[sources.my.repo]` is a different table — and a name graft would have to quote is one the consumer should choose. |
 | `add` naming a source already declared for a different repository | Error: `graft.toml: source "<name>": already declared with git "<git>"`, naming the value the manifest holds. Retargeting a declared source would move every file it owns. |
 | `add` against an `install` that is not a plain array of strings under `[sources.<name>]` | Error: `graft.toml: source "<name>": cannot amend install: install is not a plain array of strings under [sources.<name>]`. Covers a source written as an inline table, an element carrying an escape, and an array the file never closes. |

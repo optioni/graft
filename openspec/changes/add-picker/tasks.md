@@ -78,12 +78,12 @@
 ## 7. Documentation
 <!-- kind: operational -->
 
-- [ ] 7.1 CHECK: Re-read SPEC.md's `## graft add` section and its failure-mode row for an
+- [x] 7.1 CHECK: Re-read SPEC.md's `## graft add` section and its failure-mode row for an
   add with no selectors, and confirm both now describe behavior that exists
-- [ ] 7.2 CHANGE: Rewrite that row in place — it currently says "until the picker exists
+- [x] 7.2 CHANGE: Rewrite that row in place — it currently says "until the picker exists
   this is the answer on a terminal too", which this change makes false — and add the
   cancellation row
-- [ ] 7.3 VERIFY: Confirm no other document repeats the narrowed rule
+- [x] 7.3 VERIFY: Confirm no other document repeats the narrowed rule
 
 ## 8. Change Review
 <!-- kind: operational -->
