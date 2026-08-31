@@ -59,7 +59,7 @@ without touching anything.
 
 | Change | Delivers | Depends on |
 |---|---|---|
-| `self-hosting` | ✅ `graft.toml` replaces the hand-copied `openspec/schemas/tdd/` and `.claude/agents/`, and the dogfood CI job stops being inert. | `add-command`, `update-command` |
+| `self-hosting` | ✅ `graft.toml` replaces the hand-copied `openspec/schemas/tdd/` and `.claude/agents/`. The dogfood CI job it was to activate was dropped instead — the source is private and CI cannot read it. | `add-command`, `update-command` |
 
 ## Dependencies
 

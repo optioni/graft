@@ -76,9 +76,19 @@ else — no step is ever spelled out twice.
 GitHub Actions. On pull requests and pushes to `main`: `task ci` on `ubuntu-latest` and
 `macos-latest`, with the module cache warmed. That is the whole pipeline.
 
-One extra job dogfoods: the repo consumes `openspec-schemas` through graft, so CI runs a
-sync and asserts the tree is unchanged. It is the most realistic integration test available
-and it costs one job.
+There was a second job that dogfooded — `graft sync` followed by `git diff --exit-code`,
+asserting the repo's own vendored tree had not moved. It is gone. `openspec-schemas` is
+private, so the job cannot read it without a credential of its own, and a CI job that cannot
+run is worse than none: it is a red build everyone learns to ignore.
+
+The check itself is not gone, only its automation. Run it by hand when a pin moves:
+
+```sh
+task build && ./graft sync && git diff --exit-code
+```
+
+That is the same two commands, and it is the most realistic integration test this repo has —
+which is why it is written down here rather than left to memory.
 
 Note this is **producer** CI only. Repos that consume graft need no CI integration —
 syncing is a deliberate human action on committed files, and a repo sitting on an older pin
@@ -149,7 +159,6 @@ proposal (`/opsx:propose`), not as ad-hoc planning; bug fixes and trivial change
 direct. Commit after each task group, and archive a change once it is implemented and
 verified.
 
-**Bootstrap:** graft cannot yet install its own schema, so `openspec/schemas/tdd/` and
-`.claude/agents/` are copied in by hand from `openspec-schemas`. They convert to a normal
-`graft.toml` entry as soon as `sync` works — the dogfooding job above depends on that
-switch happening.
+**Bootstrap:** finished. `openspec/schemas/tdd/` and `.claude/agents/` were copied in by hand
+until graft could install them; they are a normal `graft.toml` entry now, pinned in
+`graft.lock`, and graft is its own first consumer.

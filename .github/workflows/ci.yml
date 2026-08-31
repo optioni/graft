@@ -34,21 +34,3 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: task ci
-
-  dogfood:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-      - uses: arduino/setup-task@v2
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: task build
-      # graft syncs its own openspec schema and agents; the tree must not move. A
-      # failure here means the committed tree and graft.lock disagree, which is the
-      # most realistic integration test available and the one thing worth a red build.
-      - run: ./graft sync
-      - run: git diff --exit-code

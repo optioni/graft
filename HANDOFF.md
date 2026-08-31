@@ -25,7 +25,7 @@ Nothing is in flight. The only work left is not implementation: see **Not done**
 | 10 | `semver-ranges` | archived — not in IMPLEMENTATION-ORDER.md; inserted ahead of `add-command` because a range changes the `graft.toml` contract and the sync/update split, neither of which is `add`'s business |
 | 11 | `add-command` | archived — `graft add`, `--list`, and `--no-sync` build and run; the manifest is amended by surgical text edit |
 | 12 | `add-picker` | archived — the interactive multi-select and the `kind:*` collapse offer; verified through a real pty as well as by unit tests |
-| 13 | `self-hosting` | archived — `graft.toml` declares `openspec-schemas@v0.1.0`; the dogfood CI job no longer skips |
+| 13 | `self-hosting` | archived — `graft.toml` declares `openspec-schemas@v0.1.0`. The dogfood CI job was dropped rather than activated: the source is private and CI has no credential for it |
 
 ## If a vendored file ever moves
 
@@ -59,9 +59,11 @@ Do not run `graft sync`/`graft update` against this repo's own `.claude/agents/`
 
 ## Not done, and not forgotten
 
-- **Nothing is pushed.** `origin` (`git@github.com:optioni/graft.git`) is empty. Two things
-  wait on that: a scheduled *cloud* resume cannot work (it would clone nothing), and the
-  dogfood CI job has never actually run. Its two commands were run by hand and pass.
+- **The dogfood check is manual now.** `./graft sync && git diff --exit-code`, by hand, when
+  a pin moves. The CI job that did it was dropped: `openspec-schemas` is private, `GITHUB_TOKEN`
+  only reaches the repo it runs in, and a job that cannot read its source is a red build
+  everyone learns to ignore. Making that repo public, or giving graft a read token as a secret,
+  would let it come back.
 - `HOMEBREW_TAP_TOKEN` is not set as a repo secret; `~/Code/homebrew-tap` has no commits.
 - `openspec-schemas` now publishes `catalog.yaml` and `v0.1.0`; nothing is outstanding there.
 - **Homebrew's `node` is broken** — missing `libllhttp.9.3.dylib`. Worked around by putting

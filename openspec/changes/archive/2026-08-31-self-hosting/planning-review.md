@@ -76,6 +76,11 @@ Verified rather than assumed:
   "this works *without* credentials" — cannot be tested from a machine that has them. It needed
   either a clean credential environment or the authoritative answer from the API, and it got
   neither.
+
+  **Outcome:** the owner chose to drop the dogfood job rather than make the source public or
+  add a read token. The check survives as a manual one, written into ENGINEERING.md and
+  AGENTS.md. Everything else in this change — `graft.toml`, `graft.lock`, and graft owning the
+  two vendored directories — stands unchanged.
 - **The layout matches SPEC.md's own example**: `extras/agents/*.md` and
   `extras/openspec-schemas/tdd/`, so the `catalog.yaml` in design.md needs no rearranging of
   the source and no consumer override here.

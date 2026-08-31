@@ -155,6 +155,8 @@ Never push or open a PR without being asked.
 `graft sync` overwrites them, silently, because a synced file is a derived artifact. Edit
 them in that repository, publish a tag, and `graft update` here.
 
-This repo is graft's first consumer, which is what the `dogfood` CI job tests: it syncs and
-fails if the tree moves. A red dogfood job means the committed tree and `graft.lock`
-disagree, which is the one thing worth failing a build over.
+This repo is graft's first consumer. CI does **not** check that — the job that did was
+dropped once `openspec-schemas` turned out to be private, because a job that cannot read its
+source is a red build everyone learns to ignore. Run the check by hand when a pin moves:
+`./graft sync && git diff --exit-code`. Anything but a clean diff means the committed tree
+and `graft.lock` disagree.
