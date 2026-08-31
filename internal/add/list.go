@@ -6,6 +6,7 @@ import (
 
 	"github.com/optioni/graft/internal/catalog"
 	"github.com/optioni/graft/internal/manifest"
+	"github.com/optioni/graft/internal/picker"
 	"github.com/optioni/graft/internal/plan"
 	"github.com/optioni/graft/internal/source"
 	"github.com/optioni/graft/internal/ui"
@@ -33,52 +34,16 @@ func List(r Request) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	rev := r.Rev
-	if rev == "" {
-		if rev, err = source.DefaultRev(name, r.Git); err != nil {
-			return nil, err
-		}
+	rev, err := effectiveRev(r, name, nil)
+	if err != nil {
+		return nil, err
 	}
-	sha, _, err := source.Resolve(name, r.Git, rev)
+	title, items, err := offer(r, name, rev)
 	if err != nil {
 		return nil, err
 	}
 
-	cache := source.Cache{Root: r.CacheRoot}
-	entry, err := cache.Fetch(name, r.Git, sha)
-	if err != nil {
-		return nil, err
-	}
-	cat, err := source.ReadCatalog(entry)
-	if err != nil {
-		return nil, err
-	}
-
-	overrides, err := declaredOverrides(r.Root, name)
-	if err != nil {
-		return nil, err
-	}
-
-	in := plan.Input{
-		Source: manifest.Source{Name: name, Git: r.Git, Rev: rev, Kinds: overrides},
-		// Every item is listed, because every item is being offered — the selectors are
-		// what the consumer has not chosen yet.
-		Resolved: sha,
-		Catalog:  cat,
-		Items:    make(map[string]plan.Listing, len(cat.Items)),
-	}
-	items := slices.Clone(cat.Items)
-	slices.SortFunc(items, func(a, b catalog.Item) int { return strings.Compare(a.ID, b.ID) })
-	for _, it := range items {
-		listing, err := source.List(entry, name, it)
-		if err != nil {
-			return nil, err
-		}
-		in.Items[it.ID] = listing
-	}
-
-	out := []string{name + "  " + rev + "  (" + ui.ShortSHA(sha) + ")"}
+	out := []string{title}
 	if len(items) == 0 {
 		return append(out, noItems), nil
 	}
@@ -89,13 +54,67 @@ func List(r Request) ([]string, error) {
 	}
 	out = append(out, "")
 	for _, it := range items {
-		dests, err := plan.ItemDestinations(in, it)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, "  "+it.ID+ui.Pad(len(it.ID), idWidth)+"  "+strings.Join(dests, ", "))
+		out = append(out, "  "+it.ID+ui.Pad(len(it.ID), idWidth)+"  "+strings.Join(it.Destinations, ", "))
 	}
 	return out, nil
+}
+
+// offer is what a source has to show: a header naming it, the rev, and the sha it resolved
+// to, and every item it provides with the destinations this consumer would get.
+//
+// It is one function because `--list` and the picker must show the same thing. Two
+// walks of a catalog would agree today and drift the first time either learned something
+// the other did not, and the destination is what a consumer actually agrees to.
+//
+// Nothing is written. The fetch populates the content-addressed cache, exactly as
+// --dry-run's does, and the cache is not the working tree.
+func offer(r Request, name, rev string) (string, []picker.Item, error) {
+	sha, _, err := source.Resolve(name, r.Git, rev)
+	if err != nil {
+		return "", nil, err
+	}
+
+	cache := source.Cache{Root: r.CacheRoot}
+	entry, err := cache.Fetch(name, r.Git, sha)
+	if err != nil {
+		return "", nil, err
+	}
+	cat, err := source.ReadCatalog(entry)
+	if err != nil {
+		return "", nil, err
+	}
+
+	overrides, err := declaredOverrides(r.Root, name)
+	if err != nil {
+		return "", nil, err
+	}
+
+	in := plan.Input{
+		Source:   manifest.Source{Name: name, Git: r.Git, Rev: rev, Kinds: overrides},
+		Resolved: sha,
+		Catalog:  cat,
+		Items:    make(map[string]plan.Listing, len(cat.Items)),
+	}
+	// Every item is offered, because the selectors are exactly what has not been chosen yet.
+	items := slices.Clone(cat.Items)
+	slices.SortFunc(items, func(a, b catalog.Item) int { return strings.Compare(a.ID, b.ID) })
+	for _, it := range items {
+		listing, err := source.List(entry, name, it)
+		if err != nil {
+			return "", nil, err
+		}
+		in.Items[it.ID] = listing
+	}
+
+	out := make([]picker.Item, 0, len(items))
+	for _, it := range items {
+		dests, err := plan.ItemDestinations(in, it)
+		if err != nil {
+			return "", nil, err
+		}
+		out = append(out, picker.Item{ID: it.ID, Kind: it.Kind, Destinations: dests})
+	}
+	return name + "  " + rev + "  (" + ui.ShortSHA(sha) + ")", out, nil
 }
 
 // declaredOverrides is the consumer's destination overrides for this source, or nil when

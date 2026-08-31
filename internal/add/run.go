@@ -11,6 +11,7 @@ import (
 
 	"github.com/optioni/graft/internal/apply"
 	"github.com/optioni/graft/internal/manifest"
+	"github.com/optioni/graft/internal/picker"
 	"github.com/optioni/graft/internal/source"
 	"github.com/optioni/graft/internal/sync"
 	"github.com/optioni/graft/internal/ui"
@@ -34,6 +35,15 @@ type Request struct {
 
 	// Install is the selectors to declare, in the order given.
 	Install []string
+
+	// Choose is called when Install is empty, with the source header and every item the
+	// catalog offers, and returns the selectors to declare. It is how the picker enters
+	// the sequence — at the one point a command line's selectors would have entered it,
+	// and with no other way to affect the run.
+	//
+	// Returning no selectors is a cancellation. A nil Choose with no selectors is an
+	// internal invariant: the command surface refuses that invocation before it gets here.
+	Choose func(title string, items []picker.Item) ([]string, error)
 
 	// NoSync writes graft.toml and stops: nothing is fetched for a plan, nothing is
 	// written to a destination, and graft.lock is neither written nor created.
@@ -71,8 +81,24 @@ func Run(r Request) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
+	existing := declared(m, name)
 
-	amended, e, err := amend(r, name, data, m)
+	// Resolved before the selectors are chosen, because the catalog the picker shows is
+	// the catalog at this rev. Deciding it afterwards would offer a list from one commit
+	// and install from another.
+	rev, err := effectiveRev(r, name, existing)
+	if err != nil {
+		return nil, err
+	}
+
+	install := r.Install
+	if len(install) == 0 {
+		if install, err = choose(r, name, rev); err != nil {
+			return nil, err
+		}
+	}
+
+	amended, e, err := amend(r, name, rev, install, data, existing)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +137,52 @@ func Run(r Request) (*Report, error) {
 	return &Report{Edits: e.lines, Sync: report}, nil
 }
 
+// ErrCancelled is the outcome of an add whose picker chose nothing: the user cancelled, or
+// confirmed an empty selection. Nothing is written and nothing is fetched beyond the
+// catalog that was shown.
+var ErrCancelled = errors.New("add cancelled")
+
+// effectiveRev is the rev this add uses: the one the invocation named, else the one the
+// manifest already holds for this source, else the source's own default pin.
+//
+// An add naming no rev against a declared source keeps that source's rev. A command that
+// quietly bumped a pin whenever it added a selector would be a second `update`, and would
+// defeat the promise that only an explicit act moves one.
+func effectiveRev(r Request, name string, existing *manifest.Source) (string, error) {
+	switch {
+	case r.Rev != "":
+		return r.Rev, nil
+	case existing != nil:
+		return existing.Rev, nil
+	}
+	return source.DefaultRev(name, r.Git)
+}
+
+// choose asks the caller's chooser for selectors, having fetched the source and read its
+// catalog so that what is offered is what the source actually provides.
+//
+// A source that cannot be reached, or is not graftable, fails here with that failure rather
+// than with an empty list — a picker showing nothing is a question with no answer.
+func choose(r Request, name, rev string) ([]string, error) {
+	if r.Choose == nil {
+		// Unreachable from the command surface, which refuses an add with no selectors
+		// when there is no terminal to choose on.
+		return nil, fmt.Errorf("add requires at least one selector")
+	}
+	title, items, err := offer(r, name, rev)
+	if err != nil {
+		return nil, err
+	}
+	chosen, err := r.Choose(title, items)
+	if err != nil {
+		return nil, err
+	}
+	if len(chosen) == 0 {
+		return nil, ErrCancelled
+	}
+	return chosen, nil
+}
+
 // readManifest reads graft.toml, treating its absence as an empty manifest.
 //
 // `add` is the only command permitted to create the file, which is why absence is not an
@@ -141,24 +213,16 @@ func readManifest(root string) ([]byte, *manifest.Manifest, error) {
 // is not belt and braces: both edits are text edits, and a text edit's real failure is
 // landing somewhere other than the line it named — which produces a file that parses
 // perfectly while the run installs something else.
-func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, edits, error) {
+func amend(r Request, name, rev string, install []string, data []byte, existing *manifest.Source) ([]byte, edits, error) {
 	var (
 		e   edits
 		err error
 	)
 
-	existing := declared(m, name)
 	amended := slices.Clone(data)
-	rev := r.Rev
 
 	if existing == nil {
-		if rev == "" {
-			// The one network call an add with no @rev makes before it writes anything.
-			if rev, err = source.DefaultRev(name, r.Git); err != nil {
-				return nil, edits{}, err
-			}
-		}
-		if amended, err = manifest.AddSource(amended, name, r.Git, rev, dedupe(r.Install)); err != nil {
+		if amended, err = manifest.AddSource(amended, name, r.Git, rev, dedupe(install)); err != nil {
 			return nil, edits{}, err
 		}
 		e.lines = append(e.lines, fmt.Sprintf("%s: added source %q at %s", manifest.Filename, name, rev))
@@ -171,9 +235,6 @@ func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, e
 			return nil, edits{}, fmt.Errorf("%s: source %q: already declared with git %q",
 				manifest.Filename, name, existing.Git)
 		}
-		if rev == "" {
-			rev = existing.Rev
-		}
 		if rev != existing.Rev {
 			if amended, err = manifest.SetRev(amended, name, rev); err != nil {
 				return nil, edits{}, err
@@ -182,7 +243,7 @@ func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, e
 			e.lines = append(e.lines, fmt.Sprintf("%s: moved source %q to %s", manifest.Filename, name, rev))
 		}
 
-		added := missing(existing.Install, dedupe(r.Install))
+		added := missing(existing.Install, dedupe(install))
 		if len(added) > 0 {
 			if amended, err = manifest.AddInstall(amended, name, added); err != nil {
 				return nil, edits{}, err
@@ -192,7 +253,7 @@ func amend(r Request, name string, data []byte, m *manifest.Manifest) ([]byte, e
 		}
 	}
 
-	if err := check(amended, name, r.Git, rev, r.Install); err != nil {
+	if err := check(amended, name, r.Git, rev, install); err != nil {
 		return nil, edits{}, err
 	}
 	return amended, e, nil

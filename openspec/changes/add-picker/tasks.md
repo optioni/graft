@@ -49,18 +49,18 @@
 ## 5. The chooser in the add sequence
 <!-- kind: behavior -->
 
-- [ ] 5.1 RED: Write failing tests in `internal/add` for: *No selectors on a terminal opens
+- [x] 5.1 RED: Write failing tests in `internal/add` for: *No selectors on a terminal opens
   the picker*, *A cancelled picker writes nothing*, *An ungraftable source fails before any
   list is shown* — each with a scripted chooser against a fixture repository
-- [ ] 5.2 GREEN: Add `Request.Choose`, and restructure `Run` so the rev is resolved and the
+- [x] 5.2 GREEN: Add `Request.Choose`, and restructure `Run` so the rev is resolved and the
   catalog read once, before the chooser is called and before the amendment
-- [ ] 5.3 GREEN: Build the picker's items from the catalog and `plan.ItemDestinations`, so
+- [x] 5.3 GREEN: Build the picker's items from the catalog and `plan.ItemDestinations`, so
   the picker and `--list` show the same destinations by construction
-- [ ] 5.4 RED then GREEN: The manifest a chosen selector produces is byte-identical to the
+- [x] 5.4 RED then GREEN: The manifest a chosen selector produces is byte-identical to the
   one the same selector typed on the command line produces
-- [ ] 5.5 CHECK: Confirm nothing is written before the chooser returns — a cancelled run
+- [x] 5.5 CHECK: Confirm nothing is written before the chooser returns — a cancelled run
   leaves the repository byte-identical, `graft.toml` included
-- [ ] 5.6 Run `go test ./internal/add/` — no regressions
+- [x] 5.6 Run `go test ./internal/add/` — no regressions
 
 ## 6. The command surface
 <!-- kind: behavior -->

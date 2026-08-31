@@ -44,7 +44,7 @@ a manifest, a lock, a cache, or a repository root.
   `Cancelled() bool`, `Selectors() []string`.
 - `picker.Run(t Terminal, items []Item) ([]string, error)` where
   `Terminal{In io.Reader; Out io.Writer; MakeRaw func() (func(), error)}`.
-- `add.Request.Choose func([]picker.Item) ([]string, error)` — called only when `Install` is
+- `add.Request.Choose func(title string, items []picker.Item) ([]string, error)` — called only when `Install` is
   empty, after the rev is resolved and the catalog read. A nil `Choose` with no selectors is
   an internal invariant the command surface never produces.
 - `cli.Options` gains `Stdin io.Reader`, `Interactive func() bool`, and
