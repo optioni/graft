@@ -32,6 +32,16 @@ type Write struct {
 	Item   string
 	From   string
 	Dest   string
+
+	// Claimed reports whether the lock this plan was built against already claims Dest,
+	// for any source and any item. A claimed path is a file graft wrote and is rewriting;
+	// an unclaimed one is either absent or somebody else's, and only a filesystem can say
+	// which — that is internal/apply's question, and this is what tells it which paths are
+	// worth asking about.
+	//
+	// It is a set operation over the lock this package is already given, so it costs no
+	// filesystem access and this package stays pure.
+	Claimed bool
 }
 
 // claim records which item took a destination, so the second item to reach it can name
@@ -221,8 +231,34 @@ func Build(inputs []Input, lk *lock.Lock) (*Plan, error) {
 	}
 
 	slices.SortFunc(p.Writes, func(a, b Write) int { return strings.Compare(a.Dest, b.Dest) })
+	markClaimed(p.Writes, lockedPaths(lk))
 	p.Prune = pruneSet(lk, produced)
 	return p, nil
+}
+
+// lockedPaths is every path the lock claims, across every source and item. The question a
+// caller asks of it is whether graft owned a path, not which item owned it: a path moving
+// between items is still graft rewriting its own file.
+func lockedPaths(lk *lock.Lock) map[string]struct{} {
+	out := map[string]struct{}{}
+	if lk == nil {
+		return out
+	}
+	for _, s := range lk.Sources {
+		for _, it := range s.Items {
+			for _, f := range it.Files {
+				out[f] = struct{}{}
+			}
+		}
+	}
+	return out
+}
+
+// markClaimed records, per write, whether the lock already claimed its destination.
+func markClaimed(writes []Write, locked map[string]struct{}) {
+	for i := range writes {
+		_, writes[i].Claimed = locked[writes[i].Dest]
+	}
 }
 
 // pruneSet is exactly those paths the lock claims that the new resolution no longer

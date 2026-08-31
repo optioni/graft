@@ -1,23 +1,23 @@
 ## 0. Acceptance Test — Outer Loop RED
 <!-- kind: behavior -->
 
-- [ ] 0.1 Extend the `add` acceptance harness with a consumer that already holds a file at a
+- [x] 0.1 Extend the `add` acceptance harness with a consumer that already holds a file at a
   destination the source will write, committed, with content of its own
-- [ ] 0.2 RED: Write the failing end-to-end test for *An item that replaced a hand-written
+- [x] 0.2 RED: Write the failing end-to-end test for *An item that replaced a hand-written
   file is adopted* — `graft add` reports `adopted … replaced existing content` and the
   summary counts it
-- [ ] 0.3 Confirm it fails because the report says `added`, not because the fixture is wrong
+- [x] 0.3 Confirm it fails because the report says `added`, not because the fixture is wrong
 
 ## 1. The plan marks what the lock already claimed
 <!-- kind: behavior -->
 <!-- parallel-after: 0 -->
 
-- [ ] 1.1 RED: Write failing tests for: *A path the lock claims is marked claimed*, *A path
+- [x] 1.1 RED: Write failing tests for: *A path the lock claims is marked claimed*, *A path
   claimed under a different source or item still counts as claimed*, *A path no lock claims is
   not marked*, *An empty lock claims nothing*
-- [ ] 1.2 GREEN: Add `Write.Claimed`, set from the lock `plan.Build` is already given
-- [ ] 1.3 VERIFY: `internal/plan`'s purity test still passes and no new test needs a directory
-- [ ] 1.4 Run `go test ./internal/plan/` — no regressions
+- [x] 1.2 GREEN: Add `Write.Claimed`, set from the lock `plan.Build` is already given
+- [x] 1.3 VERIFY: `internal/plan`'s purity test still passes and no new test needs a directory
+- [x] 1.4 Run `go test ./internal/plan/` — no regressions
 
 ## 2. The applier observes what it replaced
 <!-- kind: behavior -->

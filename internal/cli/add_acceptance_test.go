@@ -417,3 +417,63 @@ func changedLineCount(before, after string) int {
 	}
 	return n
 }
+
+// The report's verb has to be true. A repository that has been hand-editing a file at a
+// destination is the ordinary way graft gets adopted, and `added` says the opposite of what
+// happened to it.
+func TestGraftAddReportsAFileItReplaced(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	repo := newSourceRepo(t)
+	repo.seedCatalog()
+	repo.commit("v1")
+	repo.tag("v1.0.0")
+
+	c := newBareConsumer(t)
+	c.writeFile(".claude/agents/reviewer.md", "# my own reviewer, written by hand\n")
+
+	got := runGraftIn(t, bin, c.dir, c.env, "add", repo.dir+"@v1.0.0", "agent:reviewer")
+
+	if got.code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr:\n%s", got.code, got.stderr)
+	}
+	for _, want := range []string{
+		"adopted  agent:reviewer  1 file  replaced existing content",
+		"1 file written (1 replaced existing content), 0 removed",
+	} {
+		if !strings.Contains(got.stderr, want) {
+			t.Errorf("the report does not contain %q:\n%s", want, got.stderr)
+		}
+	}
+	// Reported, not refused: adoption is how a repository starts using graft.
+	if got := c.read(".claude/agents/reviewer.md"); got != "# reviewer\n" {
+		t.Errorf("the file was not replaced: %q", got)
+	}
+}
+
+// Adoption is a one-time event. Once the lock claims the path it is graft's own file, and
+// rewriting it is what a sync does rather than something to report.
+func TestGraftSyncAfterAnAdoptionReportsNothingAdopted(t *testing.T) {
+	t.Parallel()
+
+	bin := buildGraft(t)
+	repo := newSourceRepo(t)
+	repo.seedCatalog()
+	repo.commit("v1")
+	repo.tag("v1.0.0")
+
+	c := newBareConsumer(t)
+	c.writeFile(".claude/agents/reviewer.md", "# my own reviewer, written by hand\n")
+	if first := runGraftIn(t, bin, c.dir, c.env, "add", repo.dir+"@v1.0.0", "agent:reviewer"); first.code != 0 {
+		t.Fatalf("the first add failed: %s", first.stderr)
+	}
+
+	second := runGraftIn(t, bin, c.dir, c.env, "sync")
+	if second.code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr:\n%s", second.code, second.stderr)
+	}
+	if strings.Contains(second.stderr, "replaced existing content") {
+		t.Errorf("the second run still reports adoption:\n%s", second.stderr)
+	}
+}

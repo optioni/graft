@@ -116,12 +116,26 @@ func TestDeterminism_AnIdempotentReplanPrunesNothing(t *testing.T) {
 		t.Errorf("the lock changed on a re-plan:\n first %s\nsecond %s",
 			lock.Marshal(first.Lock), lock.Marshal(second.Lock))
 	}
-	if !slices.Equal(first.Writes, second.Writes) {
+	// Compared on identity rather than on the whole struct: Claimed is a property of the
+	// lock the plan was built against, not of the plan's shape, and it is *supposed* to
+	// differ here — the first plan had an empty lock and the second has one claiming every
+	// path. Asserting it below is a stronger statement than ignoring it.
+	if !slices.EqualFunc(first.Writes, second.Writes, sameFile) {
 		t.Errorf("Writes: a re-plan dropped or reordered writes:\n first %+v\nsecond %+v",
 			first.Writes, second.Writes)
 	}
 	if len(second.Writes) == 0 {
 		t.Error("Writes: a re-plan wrote nothing; a plan has no notion of unchanged")
+	}
+	for _, w := range first.Writes {
+		if w.Claimed {
+			t.Errorf("Writes: %q was claimed against an empty lock", w.Dest)
+		}
+	}
+	for _, w := range second.Writes {
+		if !w.Claimed {
+			t.Errorf("Writes: %q was not claimed on a re-plan against the plan's own lock", w.Dest)
+		}
 	}
 }
 
@@ -137,4 +151,10 @@ func TestDeterminism_BuildDoesNotReorderItsCallersSlice(t *testing.T) {
 		t.Errorf("Build reordered its caller's slice: got %q, %q",
 			inputs[0].Source.Name, inputs[1].Source.Name)
 	}
+}
+
+// sameFile compares two writes by which file they move where, ignoring whether the lock
+// already claimed the destination.
+func sameFile(a, b Write) bool {
+	return a.Source == b.Source && a.Item == b.Item && a.From == b.From && a.Dest == b.Dest
 }
