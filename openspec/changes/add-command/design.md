@@ -54,7 +54,7 @@ The three files' formats are unchanged. `graft.lock`'s `version` stays `1` and t
 
 New internal surfaces, all additive:
 
-- `manifest.AddSource(data []byte, s Source) ([]byte, error)` and
+- `manifest.AddSource(data []byte, name, git, rev string, install []string) ([]byte, error)` and
   `manifest.AddInstall(data []byte, name string, selectors []string) ([]byte, error)`.
   Both return bytes or an error and never both, exactly as `SetRev` does.
 - `source.DefaultRev(name, git string) (string, error)`.

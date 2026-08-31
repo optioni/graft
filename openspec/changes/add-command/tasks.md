@@ -1,13 +1,13 @@
 ## 0. Acceptance Test — Outer Loop RED
 <!-- kind: behavior -->
 
-- [ ] 0.1 Build the `add` acceptance harness beside `internal/cli`'s existing ones: a fixture
+- [x] 0.1 Build the `add` acceptance harness beside `internal/cli`'s existing ones: a fixture
   source repo with `user.name` and `user.email` set on the repo, a catalog offering
   `agent:reviewer`, a tag, and a temp working tree with neither `graft.toml` nor `graft.lock`
-- [ ] 0.2 RED: Write the failing end-to-end test for *A first source is added to a repository
+- [x] 0.2 RED: Write the failing end-to-end test for *A first source is added to a repository
   with no graft.toml* — `graft add <fixture>@v1.0.0 agent:reviewer` writes the file, the
   manifest, and the lock, and exits 0
-- [ ] 0.3 Confirm it fails because `add` is not a command yet, not because the fixture or the
+- [x] 0.3 Confirm it fails because `add` is not a command yet, not because the fixture or the
   cache root is misconfigured
 
 ## 1. Appending a source table to graft.toml

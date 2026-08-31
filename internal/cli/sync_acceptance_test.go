@@ -54,7 +54,10 @@ type sourceRepo struct {
 
 func newSourceRepo(t *testing.T) *sourceRepo {
 	t.Helper()
-	r := &sourceRepo{t: t, dir: t.TempDir()}
+	// Named rather than left as t.TempDir()'s numeric leaf: `graft add` derives a source
+	// name from the git value's last path segment, so the fixture's own directory name is
+	// what the manifest it writes will be keyed on.
+	r := &sourceRepo{t: t, dir: filepath.Join(t.TempDir(), "shared")}
 	r.git("-c", "init.defaultBranch=main", "init", "-q", r.dir)
 	r.git("-C", r.dir, "config", "user.name", "graft fixture")
 	r.git("-C", r.dir, "config", "user.email", "fixture@graft.test")
