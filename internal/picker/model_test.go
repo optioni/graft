@@ -103,14 +103,12 @@ func TestEnterConfirmsInCatalogOrder(t *testing.T) {
 func TestCancellingDiscardsASelection(t *testing.T) {
 	t.Parallel()
 
-	for _, k := range []Key{KeyCancel} {
-		m := press(New(threeItems()), KeySpace, KeyDown, KeySpace, k)
-		if !m.Done() || !m.Cancelled() {
-			t.Errorf("cancel key did not cancel: done=%t cancelled=%t", m.Done(), m.Cancelled())
-		}
-		if got := m.Selectors(); len(got) != 0 {
-			t.Errorf("selectors = %q, want none after a cancellation", got)
-		}
+	m := press(New(threeItems()), KeySpace, KeyDown, KeySpace, KeyCancel)
+	if !m.Done() || !m.Cancelled() {
+		t.Errorf("cancel did not cancel: done=%t cancelled=%t", m.Done(), m.Cancelled())
+	}
+	if got := m.Selectors(); len(got) != 0 {
+		t.Errorf("selectors = %q, want none after a cancellation", got)
 	}
 }
 

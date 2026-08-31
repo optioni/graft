@@ -78,3 +78,45 @@ Verified rather than assumed:
   cannot be read. A resize mid-picker redraws at the old height until the next key.
 - **No search or filtering.** A catalog is tens of items. If one ever is not, this is an
   additive change to the model alone.
+
+## Implementation Review (group 8)
+
+Not delegated, on the same standing instruction, at the same cost.
+
+### Fixed
+
+1. **A test that could not fail — WARNING, fixed.** `TestAddWithoutSelectorsIsRefused` looped
+   over a terminal flag and asserted the same refusal either way. Once the picker existed,
+   the `true` case should have stopped refusing — but the flag it set was `IsTerminal`, which
+   the new decision does not consult, and under `go test` standard input is never a terminal,
+   so the test passed for a reason unrelated to what it claimed. It now drives `Interactive`
+   directly and is split in two, and the second half was checked by removing the guard and
+   watching it go red.
+
+2. **A one-element loop dressed as a table — SUGGESTION, fixed.** The cancellation test
+   iterated over a slice holding one key. Flattened.
+
+### Verified rather than assumed
+
+- **The picker works through a real pseudo-terminal.** Driven with `script -q /dev/null`, a
+  scripted `space`, `enter` selected `agent:reviewer`, wrote the manifest, and installed the
+  file; `q` printed `graft: add cancelled` and left the directory empty. The suite needs no
+  pty, and this was still worth doing once by hand — the frames, the redraw, the erase, and
+  raw mode are all things a byte-stream test cannot see.
+- Every one of the 22 spec scenarios has a test. `internal/picker` is 92.1% covered and
+  `internal/add` 89.8%; the repository is at 93.5% against a floor of 80%.
+- `task lint` is clean and `task test` is green under `-race`.
+- Nothing new writes to the working tree: the picker writes to a stream, and every file
+  operation still goes through `internal/apply`.
+
+### Deferred, with reasons
+
+- **`--list` on a declared source shows the source's default pin, not the manifest's rev,
+  while the picker shows the manifest's.** Each is defensible — `--list` answers "what does
+  this source offer", the picker answers "what will I install" — and no scenario pins either.
+  Left alone rather than changed inside a review; worth deciding deliberately if it ever
+  confuses anyone.
+- **A terminal resized mid-picker redraws at the old height until the next key.** Handling
+  SIGWINCH means a signal handler in a package that currently has no concurrency at all.
+- **`term.MakeRaw` is the one line the suite does not reach**, by design: it lives in
+  `internal/cli`'s default `MakeRaw`, and the pty run above is what exercises it.

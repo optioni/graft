@@ -88,18 +88,18 @@
 ## 8. Change Review
 <!-- kind: operational -->
 
-- [ ] 8.1 CHECK: Review the implementation against proposal.md, every spec scenario,
+- [x] 8.1 CHECK: Review the implementation against proposal.md, every spec scenario,
   design.md, and tasks.md, with the concentration points the reviewer instructions name
-- [ ] 8.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
+- [x] 8.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING with a
   one-line reason, note SUGGESTIONs, and re-run affected tests
-- [ ] 8.3 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 8.3 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 9. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 9.1 CHECK: Inspect the intended verification commands and the tiers they cover
-- [ ] 9.2 VERIFY: Run `task lint` — 0 errors
-- [ ] 9.3 VERIFY: Run `task test` — green
-- [ ] 9.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
-- [ ] 9.5 VERIFY: Run `task build` — the binary builds
-- [ ] 9.6 VERIFY: Run `openspec validate add-picker --strict`
+- [x] 9.1 CHECK: Inspect the intended verification commands and the tiers they cover
+- [x] 9.2 VERIFY: Run `task lint` — 0 errors
+- [x] 9.3 VERIFY: Run `task test` — green
+- [x] 9.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
+- [x] 9.5 VERIFY: Run `task build` — the binary builds
+- [x] 9.6 VERIFY: Run `openspec validate add-picker --strict`
