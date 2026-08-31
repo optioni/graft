@@ -84,3 +84,56 @@ Verified rather than assumed:
 - **This repository has no published remote.** `git ls-remote https://github.com/optioni/graft`
   returns nothing. Nothing in this change depends on that, but the dogfood job only runs once
   the repository is somewhere CI can see it.
+
+## Implementation Review (group 5)
+
+Not delegated, on the same standing instruction as the three changes before it.
+
+### The one deviation, and why it was taken rather than escalated
+
+**The first sync moved two vendored files, which task 1.3 said should stop the change.** It
+said that because design.md's risk row assumed the copies here were the newer ones. They were
+not, and the direction of the diff is what settled it: both changes are pure additions from
+the source — `+23` lines in `.claude/agents/apply-orchestrator.md` and `+27` in
+`openspec/schemas/tdd/schema.yaml`, both the worktree-isolation guidance — with nothing in
+this repository that the source lacks.
+
+That inverts the conclusion. Bytes this repository holds that the source does not would be an
+upstream change that never landed, and committing over them would destroy work; bytes the
+source holds that this repository does not are a hand copy that fell behind, and taking them
+is the entire point of declaring the source. The check was right to fire and wrong about what
+to do, so design.md's risk row and task 1.3 now read on direction rather than on the
+assumption, and the outcome is recorded in the task itself.
+
+Worth naming plainly: this repository's agent definitions changed as a result. They are
+better — the guidance they gained is the same cross-session concurrency lesson HANDOFF.md
+records from the reverted commits on 08-24 — but a change to the instructions future sessions
+follow is not a silent detail, and it is in the commit message for that reason.
+
+### Verified rather than assumed
+
+- **The annotated tag resolved to its peeled commit.** `git ls-remote --tags` shows the tag
+  object at `9dd912d` and the commit at `353d668`; `graft.lock` records `353d668`. A lock
+  recording a tag object would be a pin that resolves to something that is not a commit, and
+  this is the first time that path has run against a real annotated tag.
+- **The lock claims exactly the vendored tree.** The ten paths in `graft.lock` and the ten
+  files under the two destinations compare equal, so a later removal upstream prunes them
+  rather than leaving orphans.
+- **The sync is idempotent.** A second `graft sync` prints `up to date` and
+  `git diff --exit-code` passes over the vendored tree — which is literally what the dogfood
+  job runs, executed here before trusting CI to run it.
+- **`graft list` and `graft list --json` agree**: one source, five items, ten files, document
+  version 2.
+- **`task lint` clean, `task test` green under `-race`, 93.5% coverage, `task build` builds.**
+
+### Deferred, with reasons
+
+- **The dogfood job has never actually run.** `optioni/graft` has no published remote, so CI
+  has nothing to run against. The job's two commands were executed by hand here instead, which
+  is the same check without the runner. It goes green or red for real on the first push.
+- **`agent:*` will adopt agents the source adds later.** Deliberate — it is why the glob was
+  chosen — and each arrival is visible in the sync report and in `git diff`. The opposite
+  failure, an agent silently not arriving, is the one nobody notices.
+- **No consumer override is declared.** The catalog's destinations already produce this
+  repository's existing paths; adding an override that restates them would be a second place
+  for them to disagree.

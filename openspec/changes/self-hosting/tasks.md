@@ -64,18 +64,18 @@ stalled rather than waiting.
 ## 5. Change Review
 <!-- kind: operational -->
 
-- [ ] 5.1 CHECK: Review the applied change against proposal.md, design.md, and this list —
+- [x] 5.1 CHECK: Review the applied change against proposal.md, design.md, and this list —
   in particular that no file under either destination differs from what was committed before
-- [ ] 5.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING, note
+- [x] 5.2 CHANGE: Fix every CRITICAL, resolve or consciously accept each WARNING, note
   SUGGESTIONs
-- [ ] 5.3 VERIFY: Confirm no blocking or unowned finding remains
+- [x] 5.3 VERIFY: Confirm no blocking or unowned finding remains
 
 ## 6. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 6.1 CHECK: Inspect the intended verification commands and the tiers they cover
-- [ ] 6.2 VERIFY: Run `task lint` — 0 errors
-- [ ] 6.3 VERIFY: Run `task test` — green
-- [ ] 6.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
-- [ ] 6.5 VERIFY: Run `task build` — the binary builds
-- [ ] 6.6 VERIFY: Run `openspec validate self-hosting --strict`
+- [x] 6.1 CHECK: Inspect the intended verification commands and the tiers they cover
+- [x] 6.2 VERIFY: Run `task lint` — 0 errors
+- [x] 6.3 VERIFY: Run `task test` — green
+- [x] 6.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
+- [x] 6.5 VERIFY: Run `task build` — the binary builds
+- [x] 6.6 VERIFY: Run `openspec validate self-hosting --strict`
