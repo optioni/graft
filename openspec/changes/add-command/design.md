@@ -157,6 +157,7 @@ one source and no other — are only observable end to end.
 | An install that is not an array is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A source written as an inline table is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | An unterminated array is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
+| An element carrying an escape is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A selector carrying a quote is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A name that is not a bare key is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | The highest stable tag wins | Direct call against a fixture repo with the named refs | integration | real `git`, fixture remote in `t.TempDir()` | `go test ./internal/source/` |
@@ -169,7 +170,7 @@ one source and no other — are only observable end to end.
 | A graft.toml that is not a regular file is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 | A symlinked ancestor is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 
-<!-- 60 rows, one per spec scenario -->
+<!-- 61 rows, one per spec scenario -->
 ## Decisions
 
 **The install amendment inserts after the last element, not before the closing bracket.**

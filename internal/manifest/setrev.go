@@ -32,48 +32,43 @@ func SetRev(data []byte, name, rev string) ([]byte, error) {
 	}
 
 	text := string(data)
-	inTable := false
+	lo, hi, ok := sourceTableSpan(text, name)
+	if !ok {
+		return nil, cannotMove(name)
+	}
+
 	open := "" // the multi-line delimiter still to be closed, or "" outside every string
-	for pos := 0; pos < len(text); {
+	for pos := lo; pos < hi; {
 		line, next := lineAt(text, pos)
 		raw := strings.TrimSuffix(line, "\r")
 
-		// Inside a multi-line string these bytes are a value, not syntax. A `[sources.b]`
-		// or a `rev = "…"` written inside one belongs to whichever key opened the string —
-		// so a scanner that reads them as a header and a key edits a line in a completely
-		// different key's value, which is the one failure this function exists to make
-		// impossible.
+		// Inside a multi-line string these bytes are a value, not syntax. A `rev = "…"`
+		// written inside one belongs to whichever key opened the string — so a scanner that
+		// read it as a key would edit a line in a completely different key's value, which is
+		// the one failure this function exists to make impossible.
 		if open != "" {
 			open = continueString(raw, open)
 			pos = next
 			continue
 		}
 
-		// Table tracking is on the trimmed line, and the value edit is on the raw one: the
-		// first needs to recognise `[ sources . "x" ]`, the second may not disturb a byte.
-		trimmed := strings.TrimSpace(raw)
-		switch {
-		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
+		// The key search is on the trimmed line and the value edit on the raw one: the first
+		// may not be fooled by indentation, the second may not disturb a byte.
+		if trimmed := strings.TrimSpace(raw); trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			// A commented-out `rev` is not the key. Skipping comments here is what keeps
 			// `# rev = "v0.9.0"` above the real key from being the line that moves.
-
-		case strings.HasPrefix(trimmed, "["):
-			// Any header ends the previous table. Stopping only at the next `[sources.`
-			// header would walk straight into [sources.<name>.kinds], where a kind may
-			// legally be named `rev`.
-			inTable = isSourceTable(trimmed, name)
-
-		case inTable:
-			if eq := revAssignment(line); eq >= 0 {
-				lo, hi, ok := quotedSpan(line, eq)
-				if !ok {
-					// The key is here and its value is not something this can rewrite
-					// exactly — a multi-line string, a bare value, an unterminated one.
-					// Refusing beats continuing to a later `rev` in another table.
-					return nil, cannotMove(name)
-				}
-				return []byte(text[:pos+lo] + rev + text[pos+hi:]), nil
+			pos = next
+			continue
+		}
+		if eq := keyAssignment(line, revKey); eq >= 0 {
+			lo, hi, ok := quotedSpan(line, eq)
+			if !ok {
+				// The key is here and its value is not something this can rewrite exactly —
+				// a multi-line string, a bare value, an unterminated one. Refusing beats
+				// continuing to a later `rev` in another table.
+				return nil, cannotMove(name)
 			}
+			return []byte(text[:pos+lo] + rev + text[pos+hi:]), nil
 		}
 		open = openString(raw)
 		pos = next
@@ -258,15 +253,15 @@ func splitKeyPath(s string) ([]string, bool) {
 	return append(parts, strings.TrimSpace(cur.String())), true
 }
 
-// revAssignment returns the offset just past the `=` of a line assigning the key rev, or -1
-// when the line is not one. Leading whitespace is tolerated; anything else between the key and
-// the `=` — a dot, another character — is not this key.
-func revAssignment(line string) int {
+// keyAssignment returns the offset just past the `=` of a line assigning key, or -1 when the
+// line is not one. Leading whitespace is tolerated; anything else between the key and the `=`
+// — a dot, another character — is not this key.
+func keyAssignment(line, key string) int {
 	i := skipSpace(line, 0)
-	if !strings.HasPrefix(line[i:], revKey) {
+	if !strings.HasPrefix(line[i:], key) {
 		return -1
 	}
-	j := skipSpace(line, i+len(revKey))
+	j := skipSpace(line, i+len(key))
 	if j >= len(line) || line[j] != '=' {
 		return -1
 	}

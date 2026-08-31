@@ -31,21 +31,21 @@
 ## 2. Amending an existing install list
 <!-- kind: behavior -->
 
-- [ ] 2.1 RED: Write failing tests for: *A one-line array gains a selector on its own line*,
+- [x] 2.1 RED: Write failing tests for: *A one-line array gains a selector on its own line*,
   *A multi-line array gains a line matching its indentation*, *A multi-line array with no
   trailing comma keeps that style*, *A selector already present is not added twice*, *A
   comment after the last element survives*
-- [ ] 2.2 RED: Write failing tests for the refusals: *An install that is not an array is
+- [x] 2.2 RED: Write failing tests for the refusals: *An install that is not an array is
   refused*, *A source written as an inline table is refused*, *An unterminated array is
-  refused*
-- [ ] 2.3 GREEN: Implement the array scanner — locate `install` under the source's own
+  refused*, *An element carrying an escape is refused*
+- [x] 2.3 GREEN: Implement the array scanner — locate `install` under the source's own
   standard table, span the array across lines with quote and comment awareness, and refuse
   anything but single-line quoted strings between the brackets
-- [ ] 2.4 GREEN: Implement `manifest.AddInstall`, inserting after the last element and its
+- [x] 2.4 GREEN: Implement `manifest.AddInstall`, inserting after the last element and its
   trailing comma, preserving indentation and comma style
-- [ ] 2.5 REFACTOR: Share the table-tracking scan with `SetRev` rather than keeping a second
+- [x] 2.5 REFACTOR: Share the table-tracking scan with `SetRev` rather than keeping a second
   copy, while both packages' tests stay green
-- [ ] 2.6 Run `go test ./internal/manifest/` — no regressions
+- [x] 2.6 Run `go test ./internal/manifest/` — no regressions
 
 ## 3. A source's default rev
 <!-- kind: behavior -->

@@ -130,8 +130,13 @@ The amendment SHALL refuse, with
 whenever it cannot locate exactly one `install` array under the source's own standard table.
 That covers: no `[sources.<name>]` header at all — a source written as an inline table
 qualifies — no `install` key under it, a value that is not an array, an array holding
-anything but single-line quoted strings, and an array whose closing bracket the file never
-reaches.
+anything but single-line quoted strings, an element carrying a backslash escape, and an array
+whose closing bracket the file never reaches.
+
+An escaped element is refused rather than decoded because the amendment has to compare each
+element against the selectors it was given: a comparison against undecoded text would miss a
+match, add a selector the array already holds, and produce a manifest the next parse refuses
+for declaring a duplicate.
 
 Both edits SHALL refuse any value that cannot be written literally into a TOML string —
 containing a quotation mark of either kind, a backslash, or a control character — with
@@ -162,6 +167,12 @@ at.
 #### Scenario: A source written as an inline table is refused
 
 - **WHEN** `graft.toml` declares its sources as `sources = { shared = { git = "...", rev = "...", install = ["agent:reviewer"] } }`, which parses, and an amendment is attempted
+- **THEN** the amendment is refused with that same message and no bytes are returned
+
+#### Scenario: An element carrying an escape is refused
+
+- **WHEN** a source's `install` holds `"agent:\u0072eviewer"`, which parses as
+  `agent:reviewer`, and an amendment is attempted
 - **THEN** the amendment is refused with that same message and no bytes are returned
 
 #### Scenario: An unterminated array is refused
