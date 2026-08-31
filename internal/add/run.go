@@ -13,6 +13,7 @@ import (
 	"github.com/optioni/graft/internal/manifest"
 	"github.com/optioni/graft/internal/source"
 	"github.com/optioni/graft/internal/sync"
+	"github.com/optioni/graft/internal/ui"
 )
 
 // Request is one `graft add`, already split into its parts by the command surface.
@@ -263,4 +264,18 @@ func movedPin(edits []string) bool {
 	return slices.ContainsFunc(edits, func(line string) bool {
 		return strings.HasPrefix(line, manifest.Filename+": moved source ")
 	})
+}
+
+// Lines is what an add prints: the manifest edit first, then the sync report unchanged.
+//
+// The edit comes first because it is the thing the reader has to notice — a file they own
+// changed — and because the sync report below it is then the consequence rather than a
+// second subject. The ordering is decided here rather than in internal/cli so that it is a
+// property of a value a test can hold, not of two loops in a command.
+func (r *Report) Lines(u *ui.UI) []string {
+	lines := slices.Clone(r.Edits)
+	if r.Sync != nil {
+		lines = append(lines, r.Sync.Lines(u)...)
+	}
+	return lines
 }

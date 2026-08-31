@@ -139,12 +139,12 @@
 ## 9. Reporting the manifest edit
 <!-- kind: behavior -->
 
-- [ ] 9.1 RED: Write failing tests for: *Adding a source reports one line*, *Moving a pin and
+- [x] 9.1 RED: Write failing tests for: *Adding a source reports one line*, *Moving a pin and
   adding a selector reports both, in order*, *An invocation that changes nothing says so*
-- [ ] 9.2 GREEN: Return the edit summary from `add.Run` and render it through `internal/ui`
+- [x] 9.2 GREEN: Return the edit summary from `add.Run` and render it through `internal/ui`
   on the error stream, before the sync report
-- [ ] 9.3 VERIFY: Assert standard output stays byte-empty on every syncing `add`
-- [ ] 9.4 Run `go test ./internal/add/ ./internal/cli/` — no regressions
+- [x] 9.3 VERIFY: Assert standard output stays byte-empty on every syncing `add`
+- [x] 9.4 Run `go test ./internal/add/ ./internal/cli/` — no regressions
 
 ## 10. `--list`
 <!-- kind: behavior -->
