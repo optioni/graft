@@ -48,14 +48,14 @@ without touching anything.
 |---|---|---|
 | `update-command` | `graft update` and `graft update --to`, re-resolving pins and reporting what moved. | `sync-command` |
 | `list-command` | `graft list`, and the `--json` output contract. | `sync-command` |
-| `add-command` | `graft add` non-interactive: selectors as arguments, `--list`, `--no-sync`, manifest amendment. | `sync-command` |
-| `add-picker` | The interactive multi-select, the `kind:*` collapse offer, and the no-TTY error. Chooses selectors and nothing else. | `add-command` |
+| `add-command` | ✅ `graft add` non-interactive: selectors as arguments, `--list`, `--no-sync`, manifest amendment. | `sync-command` |
+| `add-picker` | ✅ The interactive multi-select, the `kind:*` collapse offer, and the no-TTY error. Chooses selectors and nothing else. | `add-command` |
 
 ## Phase 6 — Self-hosting
 
 | Change | Delivers | Depends on |
 |---|---|---|
-| `self-hosting` | `graft.toml` replaces the hand-copied `openspec/schemas/tdd/` and `.claude/agents/`, and the dogfood CI job stops being inert. | `add-command`, `update-command` |
+| `self-hosting` | ⏸ `graft.toml` replaces the hand-copied `openspec/schemas/tdd/` and `.claude/agents/`, and the dogfood CI job stops being inert. **Proposed and blocked**: `openspec-schemas` publishes no `catalog.yaml`. | `add-command`, `update-command` |
 
 ## Dependencies
 
