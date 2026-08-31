@@ -37,14 +37,14 @@
 ## 4. The terminal driver
 <!-- kind: behavior -->
 
-- [ ] 4.1 RED: Write failing tests for: *A scripted key stream chooses a selector*, *An arrow
+- [x] 4.1 RED: Write failing tests for: *A scripted key stream chooses a selector*, *An arrow
   key is one event, not an escape and two letters*, *Raw mode is restored on every path*, *A
   closed input cancels*
-- [ ] 4.2 GREEN: Implement `picker.Terminal` and `picker.Run` — read, decode, update, render,
+- [x] 4.2 GREEN: Implement `picker.Terminal` and `picker.Run` — read, decode, update, render,
   restore; raw mode entered through the caller's function and restored on every return
-- [ ] 4.3 CHECK: Confirm no test in the package needs a pseudo-terminal, and that
+- [x] 4.3 CHECK: Confirm no test in the package needs a pseudo-terminal, and that
   `term.MakeRaw` is the only line the suite does not reach
-- [ ] 4.4 Run `go test ./internal/picker/` — no regressions
+- [x] 4.4 Run `go test ./internal/picker/` — no regressions
 
 ## 5. The chooser in the add sequence
 <!-- kind: behavior -->
