@@ -65,8 +65,17 @@ missing artifact and the change never reaches `planning-review`.
 
 Verified rather than assumed:
 
-- **The source is public and clones anonymously**: `git ls-remote https://github.com/optioni/openspec-schemas`
-  answers with no credentials, which is what lets the dogfood job run with no secret.
+- ~~**The source is public and clones anonymously**~~ — **this was wrong, and the check that
+  "verified" it was invalid.** `GIT_TERMINAL_PROMPT=0 git ls-remote https://github.com/optioni/openspec-schemas`
+  answered on the developer's machine, and I read that as anonymous access. It was not: that
+  variable disables the *terminal prompt*, not the credential helper, and osxkeychain supplied
+  a token silently. `gh repo view --json isPrivate` says `true`. The first real CI run failed
+  at `./graft sync` with `could not read Username for 'https://github.com'`.
+
+  The lesson is about the shape of the check rather than the fact: a negative capability —
+  "this works *without* credentials" — cannot be tested from a machine that has them. It needed
+  either a clean credential environment or the authoritative answer from the API, and it got
+  neither.
 - **The layout matches SPEC.md's own example**: `extras/agents/*.md` and
   `extras/openspec-schemas/tdd/`, so the `catalog.yaml` in design.md needs no rearranging of
   the source and no consumer override here.

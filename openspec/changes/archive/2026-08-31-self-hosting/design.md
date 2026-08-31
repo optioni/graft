@@ -71,8 +71,9 @@ reproducibility between updates.
 - Migration: none. The files already exist at the destinations; graft takes over writing them.
 - Backfill, seeding, index rebuild: none.
 - Cache invalidation: none. A first sync populates `~/.cache/graft` on each machine.
-- Authorization: the source is public and clones anonymously, which is what lets the dogfood
-  job run with no secret.
+- Authorization: **wrong as written, corrected after the first CI run.** This said the source
+  is public and clones anonymously. It is private, and the dogfood job cannot read it without a
+  credential — see the correction in planning-review.md.
 - Observability: the dogfood job is the observability — `graft sync && git diff --exit-code`
   fails the build if the tree and the lock ever disagree.
 - Deployment: none.
