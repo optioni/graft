@@ -1,10 +1,15 @@
 package cli
 
 import (
+	"io"
+	"os"
+
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/optioni/graft/internal/add"
 	"github.com/optioni/graft/internal/itemid"
+	"github.com/optioni/graft/internal/picker"
 	"github.com/optioni/graft/internal/ui"
 )
 
@@ -21,7 +26,7 @@ const (
 // the call into internal/add. Every refusal here is a usage error, because the invocation
 // is malformed rather than the run having failed at something — and each one is decided
 // before internal/add is reached, so a mistyped selector never starts a git process.
-func newAdd(u *ui.UI) *cobra.Command {
+func newAdd(u *ui.UI, o Options) *cobra.Command {
 	var list, noSync bool
 
 	cmd := &cobra.Command{
@@ -66,9 +71,9 @@ publishes none. --list prints what the source offers and writes nothing;
 				}
 				return nil
 			}
-			if len(selectors) == 0 {
-				// The picker is a later change. Until it exists this is the whole
-				// behavior, on a terminal and off one alike: never a hang, never a guess.
+			if len(selectors) == 0 && !o.Interactive() {
+				// Off a terminal there is nobody to ask, and graft never guesses a set of
+				// items to install. On one, the picker asks.
 				return usagef("add requires at least one selector, or --list to see what the source offers")
 			}
 			for _, sel := range selectors {
@@ -94,6 +99,10 @@ publishes none. --list prints what the source offers and writes nothing;
 				Rev:       rev,
 				Install:   args[1:],
 				NoSync:    noSync,
+			}
+			if len(req.Install) == 0 {
+				// Reached only when the validator above found a terminal to draw on.
+				req.Choose = pick(u, o)
 			}
 
 			if list {
@@ -127,3 +136,35 @@ publishes none. --list prints what the source offers and writes nothing;
 
 	return cmd
 }
+
+// pick is the chooser `add` hands to internal/add: the picker, drawn on the error stream,
+// reading keys from the process's own input.
+//
+// The error stream rather than standard output, because a picker is interaction and not
+// content a caller asked for — stdout stays byte-empty for a syncing add, picker or no
+// picker.
+func pick(u *ui.UI, o Options) func(string, []picker.Item) ([]string, error) {
+	return func(title string, items []picker.Item) ([]string, error) {
+		m := picker.New(items).WithTitle(title).WithHeight(listHeight(o.Stderr))
+		return picker.Run(picker.Terminal{In: o.Stdin, Out: u.Err(), MakeRaw: o.MakeRaw}, m)
+	}
+}
+
+// listHeight is how many item lines the picker may use: the terminal's height less the
+// lines the view spends on its title, its help, and the room a shell prompt wants back. A
+// stream whose size cannot be read returns 0, which leaves the picker's own default.
+func listHeight(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok {
+		return 0
+	}
+	_, rows, err := term.GetSize(int(f.Fd()))
+	if err != nil {
+		return 0
+	}
+	return rows - reservedRows
+}
+
+// reservedRows is what the view spends around the list: a title and a blank line, a blank
+// line and the help line, and one row left for the cursor to sit on.
+const reservedRows = 5

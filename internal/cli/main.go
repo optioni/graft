@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/optioni/graft/internal/buildinfo"
 	"github.com/optioni/graft/internal/ui"
@@ -33,6 +34,21 @@ type Options struct {
 	// IsTerminal reports whether a stream is a terminal. A nil value means ui.IsTerminal.
 	IsTerminal func(io.Writer) bool
 
+	// Stdin is where the `add` picker reads keys. A nil value means os.Stdin.
+	Stdin io.Reader
+
+	// Interactive reports whether graft may draw a picker: both the key source and the
+	// stream it would draw on are terminals. A nil value asks the process.
+	//
+	// Standard output is deliberately not consulted. `graft add … | tee log` should still
+	// be able to ask, and stdout stays byte-empty for a syncing add either way.
+	Interactive func() bool
+
+	// MakeRaw puts the terminal into raw mode and returns the function restoring it. A nil
+	// value uses os.Stdin. It is a field so that every test of the picker's wiring runs
+	// without a terminal at all.
+	MakeRaw func() (restore func(), err error)
+
 	// Version, Commit, and Date are the strings the linker injects into cmd/graft.
 	Version string
 	Commit  string
@@ -52,6 +68,7 @@ func Main(o Options) int {
 	if isTerminal == nil {
 		isTerminal = ui.IsTerminal
 	}
+	o = withProcessDefaults(o, isTerminal)
 
 	// The colour decision is taken from stdout, and from stdout only — SPEC.md's rule, kept
 	// literally, so the two streams cannot disagree about it.
@@ -170,10 +187,34 @@ Sources and the items to install are declared in graft.toml.`,
 	root.AddCommand(newSync(u))
 	root.AddCommand(newUpdate(u))
 	root.AddCommand(newList(u))
-	root.AddCommand(newAdd(u))
+	root.AddCommand(newAdd(u, o))
 	root.SetHelpCommand(newHelpCommand())
 
 	return root
+}
+
+// withProcessDefaults fills in the three fields the picker needs from the process, so that
+// every one of them is a value a test can replace and none is looked up where it is used.
+func withProcessDefaults(o Options, isTerminal func(io.Writer) bool) Options {
+	if o.Stdin == nil {
+		o.Stdin = os.Stdin
+	}
+	if o.Interactive == nil {
+		o.Interactive = func() bool {
+			return term.IsTerminal(int(os.Stdin.Fd())) && isTerminal(o.Stderr)
+		}
+	}
+	if o.MakeRaw == nil {
+		o.MakeRaw = func() (func(), error) {
+			fd := int(os.Stdin.Fd())
+			state, err := term.MakeRaw(fd)
+			if err != nil {
+				return nil, fmt.Errorf("cannot read keys from this terminal: %w", err)
+			}
+			return func() { _ = term.Restore(fd, state) }, nil
+		}
+	}
+	return o
 }
 
 // The names of cobra's hidden completion protocol commands. They are matched literally

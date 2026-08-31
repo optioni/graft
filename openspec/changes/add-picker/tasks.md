@@ -65,15 +65,15 @@
 ## 6. The command surface
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing tests for: *No selectors, no TTY*, *A malformed selector is
+- [x] 6.1 RED: Write failing tests for: *No selectors, no TTY*, *A malformed selector is
   refused before the network*, and a cancelled run exiting `1` with `add cancelled`
-- [ ] 6.2 GREEN: Add `Options.Stdin`, `Options.Interactive`, and `Options.MakeRaw`, each
+- [x] 6.2 GREEN: Add `Options.Stdin`, `Options.Interactive`, and `Options.MakeRaw`, each
   defaulting to the real process when nil
-- [ ] 6.3 GREEN: Wire `add` — the no-selector refusal only when not interactive, the chooser
+- [x] 6.3 GREEN: Wire `add` — the no-selector refusal only when not interactive, the chooser
   built from the picker otherwise, and `add cancelled` when it comes back empty
-- [ ] 6.4 CHECK: Confirm standard output is still byte-empty for a syncing `add`, including
+- [x] 6.4 CHECK: Confirm standard output is still byte-empty for a syncing `add`, including
   one that went through the picker
-- [ ] 6.5 Run `go test ./internal/cli/` — no regressions
+- [x] 6.5 Run `go test ./internal/cli/` — no regressions
 
 ## 7. Documentation
 <!-- kind: operational -->

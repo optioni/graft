@@ -1,7 +1,6 @@
 package cli_test
 
 import (
-	"io"
 	"testing"
 
 	"github.com/optioni/graft/internal/cli"
@@ -12,13 +11,10 @@ import (
 // no working directory and no fixture: an invocation the surface rejects never becomes a
 // run against anything, and never starts a git process.
 
-func addUsage(t *testing.T, args []string, want string, terminal bool) {
+func addUsage(t *testing.T, args []string, want string, interactive bool) {
 	t.Helper()
 
-	o := cli.Options{Args: args}
-	if terminal {
-		o.IsTerminal = func(io.Writer) bool { return true }
-	}
+	o := cli.Options{Args: args, Interactive: func() bool { return interactive }}
 	stdout, stderr, code := run(t, o)
 
 	if wantErr := "graft: " + want + "\n" + hint + "\n"; stderr != wantErr {
@@ -54,14 +50,34 @@ func TestAddRefusesAMalformedSelector(t *testing.T) {
 	addUsage(t, []string{"add", "optioni/shared", "reviewer"}, `invalid selector "reviewer": want kind:name`, false)
 }
 
-// The picker is a later change. Until it exists this refusal is the whole behavior, and
-// it is the same on a terminal and off one — never a hang, never a guess.
-func TestAddWithoutSelectorsIsRefused(t *testing.T) {
+// Off a terminal there is nobody to ask, and graft never guesses a set of items to
+// install. The refusal names what it needed rather than hanging on a pipe.
+func TestAddWithoutSelectorsIsRefusedWithNoTerminal(t *testing.T) {
 	t.Parallel()
 
-	const want = "add requires at least one selector, or --list to see what the source offers"
-	for _, terminal := range []bool{false, true} {
-		addUsage(t, []string{"add", "optioni/shared"}, want, terminal)
+	addUsage(t, []string{"add", "optioni/shared"},
+		"add requires at least one selector, or --list to see what the source offers", false)
+}
+
+// On a terminal the same invocation is allowed through to the picker. It is asserted by
+// what fails instead: the run reaches name derivation, which is past the validator, and
+// fails there without a network call or a picker being drawn.
+func TestAddWithoutSelectorsIsAllowedThroughOnATerminal(t *testing.T) {
+	t.Parallel()
+
+	stdout, stderr, code := run(t, cli.Options{
+		Args:        []string{"add", "optioni/sh ared"},
+		Interactive: func() bool { return true },
+	})
+
+	if want := "graft: cannot derive a source name from \"optioni/sh ared\"\n"; stderr != want {
+		t.Errorf("stderr = %q, want %q — the no-selector refusal must not have fired", stderr, want)
+	}
+	if stdout != "" {
+		t.Errorf("stdout = %q, want empty", stdout)
+	}
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
 	}
 }
 
