@@ -52,12 +52,15 @@ type sourceRepo struct {
 	dir string
 }
 
-func newSourceRepo(t *testing.T) *sourceRepo {
+func newSourceRepo(t *testing.T) *sourceRepo { return newNamedSourceRepo(t, "shared") }
+
+// newNamedSourceRepo builds a fixture whose directory carries a chosen name. The name is
+// not decoration: `graft add` derives a source name from the git value's last path
+// segment, so the fixture's own directory name is what the manifest it writes is keyed on,
+// and two fixtures in one test need two names.
+func newNamedSourceRepo(t *testing.T, name string) *sourceRepo {
 	t.Helper()
-	// Named rather than left as t.TempDir()'s numeric leaf: `graft add` derives a source
-	// name from the git value's last path segment, so the fixture's own directory name is
-	// what the manifest it writes will be keyed on.
-	r := &sourceRepo{t: t, dir: filepath.Join(t.TempDir(), "shared")}
+	r := &sourceRepo{t: t, dir: filepath.Join(t.TempDir(), name)}
 	r.git("-c", "init.defaultBranch=main", "init", "-q", r.dir)
 	r.git("-C", r.dir, "config", "user.name", "graft fixture")
 	r.git("-C", r.dir, "config", "user.email", "fixture@graft.test")

@@ -175,16 +175,16 @@
 <!-- kind: behavior -->
 
 - [x] 12.1 VERIFY: Confirm the group 0 acceptance test passes end to end
-- [ ] 12.2 RED then GREEN: The remaining end-to-end scenarios — *A second source is added
+- [x] 12.2 RED then GREEN: The remaining end-to-end scenarios — *A second source is added
   beside an existing one*, *Several selectors are written in the order given*, *A selector
   matching nothing leaves graft.toml unwritten*, *An explicit rev is written verbatim*, *A
   source with tags gets its highest tag as the default pin*, *A source with no tags gets its
   default branch*, *An explicit rev on a declared source moves the pin*, *The manifest is
   written and nothing else is*, *An unverified selector is written*, *An unreachable source
   leaves no manifest behind*
-- [ ] 12.3 VERIFY: Assert `--no-sync` with `@rev` succeeds against a source path no repository
+- [x] 12.3 VERIFY: Assert `--no-sync` with `@rev` succeeds against a source path no repository
   exists at — the only honest proof that it makes no network call
-- [ ] 12.4 REFACTOR: Fold the acceptance harness into the shape the existing `sync` and
+- [x] 12.4 REFACTOR: Fold the acceptance harness into the shape the existing `sync` and
   `update` acceptance tests use
 
 ## 13. Documentation
