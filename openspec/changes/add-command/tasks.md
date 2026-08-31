@@ -190,13 +190,13 @@
 ## 13. Documentation
 <!-- kind: operational -->
 
-- [ ] 13.1 CHECK: Re-read CLAUDE.md's rule *`graft.toml` is a human's file* and confirm it now
+- [x] 13.1 CHECK: Re-read CLAUDE.md's rule *`graft.toml` is a human's file* and confirm it now
   describes only half of what graft writes — it speaks of moving a pin, not of appending a
   table or amending an array
-- [ ] 13.2 CHANGE: Rewrite that rule in place to cover all three edits and the insertion
+- [x] 13.2 CHANGE: Rewrite that rule in place to cover all three edits and the insertion
   anchor the amendment uses, deleting what is now too narrow rather than appending beside it
-- [ ] 13.3 VERIFY: Confirm the rule is still under five lines and that no other document
-  repeats it
+- [x] 13.3 VERIFY: Confirm the rule stays one entry and that SPEC.md's failure-mode table
+  and `## graft add` section describe the same behavior the specs do
 
 ## 14. Change Review
 <!-- kind: operational -->

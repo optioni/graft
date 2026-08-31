@@ -186,8 +186,18 @@ Two behaviors worth naming:
 - When every item of a kind is selected, `add` offers to collapse the selection to
   `kind:*`. This is a semantic choice, not a confirmation: `agent:*` adopts agents the
   source adds later, an explicit list does not.
-- `rev` defaults to the source's latest semver tag, falling back to default-branch HEAD
-  when it has none. `@rev` overrides.
+- `rev` defaults to the source's highest stable semver tag, falling back to the name of the
+  branch its HEAD points at when it publishes none. `@rev` overrides, and takes anything a
+  `rev` takes, a range included. The default is always a ref: a range is a policy only the
+  consumer can choose.
+
+The source's name in `graft.toml` is its git value's last path segment, after the last `/`
+or `:`, with a trailing `.git` dropped — `optioni/shared`, `github.com/optioni/shared.git`,
+and `git@github.com:optioni/shared` all become `shared`. An `@` introduces a rev only when
+the text before it holds a `/` or a `:`, which is what keeps an scp-style address whole. A
+source already declared is amended rather than duplicated, and an `add` naming a rev the
+manifest does not hold moves the pin — the second command allowed to, and the only one that
+does so while adding something. An `add` naming no rev never moves one.
 
 `add` syncs on success. `--no-sync` writes the manifest only.
 
@@ -368,7 +378,12 @@ is why the destination is shown before install and why a consumer override alway
 | `rev` is a range no published tag satisfies | Error: `source "<name>": rev "<range>" matches none of the source's semver tags`. Distinguished from the row above so the reader knows whether to fix the range or stop using one on that source. |
 | `catalog.yaml` missing or invalid | Error: the repo is not graftable. No fallback. |
 | A selector matches no item | Error listing what the catalog does provide. Typo protection. |
-| `add` without selectors and without a TTY | Error naming the selectors it needed. Never hangs, never guesses. |
+| `add` without selectors | Error: `add requires at least one selector, or --list to see what the source offers`. Never hangs, never guesses. Until the picker exists this is the answer on a terminal too; with it, the refusal narrows to the case where there is no TTY. |
+| `add` given a git value with no usable last segment | Error: `cannot derive a source name from "<git>"`. The name must be a TOML bare key — a dot excluded, since `[sources.my.repo]` is a different table — and a name graft would have to quote is one the consumer should choose. |
+| `add` naming a source already declared for a different repository | Error: `graft.toml: source "<name>": already declared with git "<git>"`, naming the value the manifest holds. Retargeting a declared source would move every file it owns. |
+| `add` against an `install` that is not a plain array of strings under `[sources.<name>]` | Error: `graft.toml: source "<name>": cannot amend install: install is not a plain array of strings under [sources.<name>]`. Covers a source written as an inline table, an element carrying an escape, and an array the file never closes. |
+| An amended `graft.toml` that does not read back as what was asked for | Error: `graft.toml: source "<name>": the amendment did not take effect`. An internal invariant: the edit parsed and landed somewhere else. Nothing is written. |
+| `add` given no source, an empty source, an empty rev, `--list` with selectors, or `--list` with `--no-sync` | Usage error, with the hint line. |
 | Two items resolve to one path | Error naming both items and the path. |
 | Destination outside the repo root | Error. |
 | A source's file listing climbs out of the item | Error naming the entry. It could otherwise place a file elsewhere in the repo, or read one outside the source. |

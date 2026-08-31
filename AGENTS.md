@@ -93,13 +93,17 @@ internal/cli/       the cobra command surface; internal/ui owns both streams
   `rev = "main"` or `rev = "^1.2.0"` drift silently, which defeats the point of pinning — the
   one exception is a source `sync` finds no lock entry for at all, which it resolves once
   because a first resolution is not a re-evaluation.
-- **`graft.toml` is a human's file.** The pin moves by replacing one value in place, never by
-  re-serializing a parsed manifest: re-encoding deletes every comment, normalizes the alignment
-  SPEC.md's own example uses, and turns a one-line pin move into a whole-file diff nobody reads.
-  A shape the editor cannot rewrite exactly is refused rather than guessed at — a wrong guess
-  corrupts the consumer's own request, and a wrong *target* looks like success while the run
-  resolves the old rev. Any change that writes `graft.toml` needs a test asserting the result
-  differs from the original in exactly one line.
+- **`graft.toml` is a human's file.** graft moves a pin, appends a source table, and amends an
+  `install` array — each by editing text in place, never by re-serializing a parsed manifest,
+  which deletes every comment and turns a one-line change into a whole-file diff nobody reads.
+  A shape the editor cannot rewrite exactly is refused rather than guessed at: a wrong guess
+  corrupts the consumer's own request, and a wrong *target* looks like success. Every edit needs
+  a test bounding what it touched — one changed line for a pin move, the original bytes as a
+  *prefix* for an append, and for an amendment the inserted lines plus at most the one comma an
+  element that had none must gain. The amendment anchors on the array's last element rather than
+  its closing bracket, so a comment between them survives with no rule of its own. `add` is the
+  only command that may create the file; every other one fails on its absence, which is the
+  error that tells a user they are not in a graft repository.
 - **Error strings are asserted by tests.** For a CLI this small the failure-mode table is
   the product. Changing a message is a deliberate contract change.
 - **graft executes nothing from a source, but it does place.** It reads `catalog.yaml`
