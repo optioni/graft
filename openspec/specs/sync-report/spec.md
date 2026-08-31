@@ -163,16 +163,23 @@ is still reported.
 ### Requirement: Each changed item gets one line naming the verb, the item, and its file count
 
 Under a source's header, each item with something to report SHALL be one line, indented two
-spaces, holding the verb, the item id, the file count, and — for a removed item — a note
-saying why it went. The words `added`, `updated`, and `removed` SHALL be used rather than
-symbols.
+spaces, holding the verb, the item id, the file count, and — for a removed item, or an item
+that replaced content graft did not own — a note. The words `added`, `adopted`, `updated`, and
+`removed` SHALL be used rather than symbols.
 
 The verb SHALL be:
 
 - `added` when the lock had no entry for the item under that source,
+- `adopted` when the lock had no entry **and** at least one of the item's files replaced
+  content at a destination the previous lock did not claim,
 - `removed` when the lock had one and the new lock does not,
 - `updated` when both have one and either the source's resolved sha moved or the item's file
   list changed.
+
+`adopted` exists because `added` is otherwise a false statement: nothing was added, something
+was replaced. An item whose verb is `updated` SHALL keep that verb even when it replaced
+unclaimed content — the verb is corrected only where it would say the opposite of what
+happened — and SHALL carry the note below like any other.
 
 An item present in both locks whose files and source sha are all unchanged SHALL produce no
 line at all.
@@ -183,7 +190,19 @@ for a removed item, rendered as `1 file` or `<n> files`.
 A removed item SHALL carry one of three notes: `no longer provided` when the source's catalog
 at the resolved sha no longer offers it, `no longer installed` when the catalog still offers
 it but no selector matches it, and `source removed` when `graft.toml` no longer declares the
-source at all. Added and updated items SHALL carry no note.
+source at all.
+
+An item that replaced content at a destination the previous lock did not claim SHALL carry the
+note `replaced existing content`, whether its verb is `adopted` or `updated`. Every other added
+or updated item SHALL carry no note.
+
+A destination the previous lock **did** claim is graft's own file being rewritten, which is
+what a sync does and not something to report; and a destination whose existing bytes are
+identical to what is written replaced nothing. Neither SHALL count.
+
+Replacement is a fact about the filesystem, so a run that writes nothing cannot observe it:
+under `--dry-run` no item SHALL be reported `adopted` and none SHALL carry this note. A dry run
+says what a plan would do, and this is not in the plan.
 
 The verb and the item id SHALL each be padded to the widest of their column **in that source's
 block** and followed by two spaces. The file count SHALL be padded to the widest count in that
@@ -206,6 +225,37 @@ Padding SHALL be computed on the unstyled text, so enabling colour never moves a
 
 - **AND** the id column is padded to the widest id in the block, the count column to the widest
   count, and the first line ends immediately after `6 files` with no trailing whitespace
+
+#### Scenario: An item that replaced a hand-written file is adopted
+
+- **WHEN** `.claude/agents/reviewer.md` exists with content of its own, no lock claims it, and
+  a sync writes that path for `agent:reviewer`
+- **THEN** the line reads `  adopted  agent:reviewer  1 file  replaced existing content`
+- **AND** the file holds the source's bytes afterwards, because adoption is reported rather
+  than refused
+
+#### Scenario: An updated item that replaced a hand-written file keeps its verb
+
+- **WHEN** `schema:tdd` is already in the lock, gains a file at a path that already existed
+  unclaimed, and the sync writes it
+- **THEN** the line's verb is `updated` and its note is `replaced existing content`
+
+#### Scenario: A destination the lock already claimed is not a replacement
+
+- **WHEN** a sync rewrites every file of an item the lock already claims, with new bytes
+- **THEN** the verb is `updated` and there is no note: those are graft's own files
+
+#### Scenario: Identical bytes replace nothing
+
+- **WHEN** a destination exists, no lock claims it, and its bytes are exactly what the sync is
+  about to write
+- **THEN** the item is reported `added` with no note
+
+#### Scenario: A dry run reports no adoption
+
+- **WHEN** the same repository as the first scenario is synced with `--dry-run`
+- **THEN** the line reads `  added  agent:reviewer  1 file` and carries no note
+- **AND** the file on disk is untouched
 
 #### Scenario: A newly installed item is added
 
@@ -256,8 +306,32 @@ every one of them is written — and the removed count the size of the prune set
 SHALL be rendered as `1 file` or `<n> files` for the written half and as a bare number for the
 removed half.
 
+When any planned write replaced content at a destination the previous lock did not claim, the
+written half SHALL be followed by that count in parentheses:
+
+```
+7 files written (1 replaced existing content), 0 removed - review with `git diff`
+```
+
+The parenthetical SHALL be absent when the count is zero, so a summary that has nothing to say
+about replacement says nothing rather than `(0 replaced existing content)`. The count is of
+files, not of items: one item replacing four files reads `(4 replaced existing content)`.
+
 Under `--dry-run` the same line SHALL instead read `<n> files to write, <m> to remove -
 nothing written`, so a reader can never mistake a plan for a result.
+
+#### Scenario: The summary names how many files replaced something
+
+- **WHEN** a sync writes seven files, one of which replaced a hand-written file no lock claimed
+- **THEN** the summary reads
+  ``7 files written (1 replaced existing content), 0 removed - review with `git diff` ``
+
+#### Scenario: A sync that replaced nothing carries no parenthetical
+
+- **WHEN** a sync writes six files and every destination was either absent or already claimed
+  by the lock
+- **THEN** the summary reads ``6 files written, 1 removed - review with `git diff` `` — byte
+  identical to what graft printed before this was reported at all
 
 #### Scenario: The summary counts every planned write
 
