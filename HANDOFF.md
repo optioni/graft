@@ -1,13 +1,18 @@
 # Handoff — graft implementation
 
-Updated 2026-08-31, after `self-hosting` was finished and archived. **The roadmap is done.**
+Updated 2026-08-31, after **v0.1.0 shipped**. The roadmap is done and the tool is released.
 
 ## Where things stand
 
-**13 of 13 changes archived**, plus two the roadmap did not anticipate. The tool is
-complete — `sync`, `update`, `list`, and `add` with its picker all build and run — and graft
-now vendors its own agents and schema through its own `graft.toml`, pinned at
-`openspec-schemas@v0.1.0`.
+**13 of 13 changes archived**, plus three the roadmap did not anticipate —
+`catalog-hardening`, `semver-ranges`, and `adoption-report`. The tool is complete — `sync`,
+`update`, `list`, and `add` with its picker all build and run — and graft vendors its own
+agents and schema through its own `graft.toml`, pinned at `openspec-schemas@v0.1.0`.
+
+**Released: `v0.1.0`.** The repo is public, GoReleaser publishes four platform tarballs with
+checksums and build provenance, and `brew install optioni/tap/graft` works — verified by
+installing it and running the installed binary against this repo's own lockfile. Cutting the
+next one is a tag: `git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z`.
 
 Nothing is in flight. The only work left is not implementation: see **Not done** below.
 
@@ -60,11 +65,12 @@ Do not run `graft sync`/`graft update` against this repo's own `.claude/agents/`
 ## Not done, and not forgotten
 
 - **The dogfood check is manual now.** `./graft sync && git diff --exit-code`, by hand, when
-  a pin moves. The CI job that did it was dropped: `openspec-schemas` is private, `GITHUB_TOKEN`
-  only reaches the repo it runs in, and a job that cannot read its source is a red build
-  everyone learns to ignore. Making that repo public, or giving graft a read token as a secret,
-  would let it come back.
-- `HOMEBREW_TAP_TOKEN` is not set as a repo secret; `~/Code/homebrew-tap` has no commits.
+  a pin moves. The CI job that did it was dropped because `openspec-schemas` is private and
+  `GITHUB_TOKEN` only reaches the repo it runs in — a job that cannot read its source is a red
+  build everyone learns to ignore. **graft is public now, so making `openspec-schemas` public
+  is all it would take to bring the job back**; the config is in the history at `dd0fc2a^`.
+- **`golangci-lint-action@v8` still targets Node 20**, which every CI run warns about. There is
+  no v9 to bump to; it clears when upstream ships one.
 - `openspec-schemas` now publishes `catalog.yaml` and `v0.1.0`; nothing is outstanding there.
 - **Homebrew's `node` is broken** — missing `libllhttp.9.3.dylib`. Worked around by putting
   nvm's node first on PATH; `brew reinstall node` is the real fix.
