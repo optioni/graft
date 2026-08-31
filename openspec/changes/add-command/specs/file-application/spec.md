@@ -42,8 +42,11 @@ point widens what a caller may ask for; it does not add a second writer.
   path
 - **AND** nothing is written and no staging file is left behind
 
-#### Scenario: A symlinked ancestor is refused
+#### Scenario: A staging leftover that is not a regular file is refused
 
-- **WHEN** the repository root is reached through a path whose parent is a symlink, or a
-  staging path's ancestor is a symlink to a directory
-- **THEN** the apply fails with the ancestor refusal's existing wording and writes nothing
+- **WHEN** `.graft.toml.tmp` exists as a symlink to a file outside the repository and a
+  manifest-only apply runs
+- **THEN** the apply fails naming the staging path, with the wording that check already
+  produces
+- **AND** `graft.toml` is not written, the symlink is not removed, and its target is
+  untouched — deleting a path no lock claims is the one thing graft may never do

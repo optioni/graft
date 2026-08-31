@@ -552,3 +552,36 @@ func sourceErrf(name string) func(string, ...any) error {
 func isNotExist(err error) bool {
 	return err != nil && errors.Is(err, fs.ErrNotExist)
 }
+
+// Manifest writes data to graft.toml at the repository root and does nothing else: no
+// planned write, no deletion, no empty-directory removal, and no graft.lock.
+//
+// It exists because `graft add --no-sync` has to record what the consumer asked for
+// without syncing, and it may not reach that through Run: internal/plan's prune set is
+// the lock's files minus the new resolution, so an empty plan against a populated lock
+// deletes everything the lock claims. The convenient path is a data-loss bug, and this is
+// the entry point that cannot express one — it has no prune set at all.
+//
+// Everything else is the plan-carrying path's, unchanged: the same pre-flight refusals
+// for graft.toml and for the staging path, the same staging file and rename, the same
+// removal of a temporary file a failed rename left behind, and the same containment
+// through the repository's os.Root. This widens what a caller may ask for; it does not
+// add a second writer.
+func Manifest(root string, data []byte) error {
+	repo, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("cannot open the repository root %q: %w", root, err)
+	}
+	defer func() { _ = repo.Close() }()
+
+	// Both checks before the first byte, for the reason preflight runs before Run's first
+	// write: a refusal that arrives after the file is staged leaves a repository holding a
+	// path nobody asked for.
+	if err := checkDestination(repo, manifest.Filename); err != nil {
+		return err
+	}
+	if err := checkDestination(repo, manifestTemp); err != nil {
+		return err
+	}
+	return writeManifest(repo, data)
+}

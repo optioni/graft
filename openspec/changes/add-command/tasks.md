@@ -66,16 +66,16 @@
 <!-- kind: behavior -->
 <!-- parallel-after: 0 -->
 
-- [ ] 4.1 RED: Write failing tests for: *Only graft.toml appears*, *An existing lock is left
-  alone*, *A graft.toml that is not a regular file is refused*, *A symlinked ancestor is
-  refused*
-- [ ] 4.2 GREEN: Implement `apply.Manifest`, reusing the existing staging, rename, pre-flight,
+- [x] 4.1 RED: Write failing tests for: *Only graft.toml appears*, *An existing lock is left
+  alone*, *A graft.toml that is not a regular file is refused*, *A staging leftover that is
+  not a regular file is refused*
+- [x] 4.2 GREEN: Implement `apply.Manifest`, reusing the existing staging, rename, pre-flight,
   and ancestor checks rather than a second write path
-- [ ] 4.3 CHECK: Confirm no prune set exists on this path — assert a populated lock's files
+- [x] 4.3 CHECK: Confirm no prune set exists on this path — assert a populated lock's files
   all survive, which is the rule graft may never break
-- [ ] 4.4 REFACTOR: Reuse the plan-carrying path's manifest writer verbatim if it factors out
+- [x] 4.4 REFACTOR: Reuse the plan-carrying path's manifest writer verbatim if it factors out
   cleanly
-- [ ] 4.5 Run `go test ./internal/apply/` — no regressions
+- [x] 4.5 Run `go test ./internal/apply/` — no regressions
 
 ## 5. Destinations for a catalog listing
 <!-- kind: behavior -->

@@ -168,7 +168,7 @@ one source and no other — are only observable end to end.
 | Only graft.toml appears | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 | An existing lock is left alone | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 | A graft.toml that is not a regular file is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
-| A symlinked ancestor is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
+| A staging leftover that is not a regular file is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 
 <!-- 61 rows, one per spec scenario -->
 ## Decisions

@@ -2,246 +2,119 @@ package apply_test
 
 import (
 	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/optioni/graft/internal/apply"
-	"github.com/optioni/graft/internal/lock"
-	"github.com/optioni/graft/internal/manifest"
-	"github.com/optioni/graft/internal/plan"
 )
 
-// graft.toml is the one file in the repository graft cannot regenerate, and until now
-// internal/apply refused to touch it at all. It still refuses every path that arrives in a
-// *plan* — the two are told apart by where the bytes came from, never by the path string.
+// `graft add --no-sync` records what the consumer asked for and syncs nothing. It cannot
+// reach that through a plan: an empty plan applied against a populated lock has a prune
+// set of everything the lock claims, so the convenient path is a data-loss bug. This is
+// the entry point that cannot express one.
 
-const movedManifest = `[sources.shared]
-git     = "example.com/o/r"
-rev     = "v1.1.0"
-install = ["schema:tdd"]
-`
-
-func TestRunWritesManifestBytesJustBeforeTheLock(t *testing.T) {
+func TestManifestWritesGraftTomlAndNothingElse(t *testing.T) {
 	t.Parallel()
 
 	repo := newTree(t)
-	repo.file(manifest.Filename, "[sources.shared]\nrev = \"v1.0.0\"\n")
-	src := newTree(t)
-	src.file("extras/a.md", "a\n")
-	src.file("extras/b.md", "b\n")
-
-	p := &plan.Plan{
-		Writes: []plan.Write{write("extras/a.md", "docs/a.md"), write("extras/b.md", "docs/b.md")},
-		Lock:   lockOf("docs/a.md", "docs/b.md"),
+	if err := apply.Manifest(repo.dir, []byte("[sources.shared]\n")); err != nil {
+		t.Fatalf("Manifest: %v", err)
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
-	if err != nil {
-		t.Fatalf("Run: %v", err)
+	if got := repo.read("graft.toml"); got != "[sources.shared]\n" {
+		t.Errorf("graft.toml = %q", got)
 	}
-
-	repo.assertEntries("docs/", "docs/a.md", "docs/b.md", lock.Filename, manifest.Filename)
-	if got := repo.read(manifest.Filename); got != movedManifest {
-		t.Errorf("graft.toml = %q, want %q", got, movedManifest)
-	}
-	// A manifest this package writes that the next run refuses to read is the worst
-	// failure available here, so the assertion goes through the parser rather than
-	// comparing strings alone.
-	if _, err := manifest.Parse([]byte(repo.read(manifest.Filename)), manifest.Filename); err != nil {
-		t.Errorf("the manifest this run wrote does not parse: %v", err)
-	}
-	if got := repo.read(lock.Filename); got == "" {
-		t.Error("graft.lock was not written")
+	if want := []string{"graft.toml"}; !slices.Equal(repo.entries(), want) {
+		t.Errorf("the repository holds %v, want %v", repo.entries(), want)
 	}
 }
 
-func TestRunWithoutManifestBytesLeavesTheManifestAlone(t *testing.T) {
-	t.Parallel()
-
-	const original = "# hand written\n[sources.shared]\nrev = \"v1.0.0\"\n"
-
-	repo := newTree(t)
-	repo.file(manifest.Filename, original)
-	src := newTree(t)
-	src.file("extras/a.md", "a\n")
-
-	p := &plan.Plan{Writes: []plan.Write{write("extras/a.md", "docs/a.md")}, Lock: lockOf("docs/a.md")}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-
-	if got := repo.read(manifest.Filename); got != original {
-		t.Errorf("graft.toml = %q, want %q — an apply given no manifest bytes never touches it", got, original)
-	}
-}
-
-// The empty plan is the boundary case: with no manifest bytes it writes one file, with them
-// it writes two, and neither writes a third.
-func TestRunEmptyPlanWithManifestBytes(t *testing.T) {
+// A manifest-only apply has no prune set, and the proof is a repository whose lock claims
+// files: every one of them is still there afterwards.
+func TestManifestPrunesNothing(t *testing.T) {
 	t.Parallel()
 
 	repo := newTree(t)
-	repo.file("README.md", "mine\n")
+	repo.file("graft.lock", "version = 1\n")
+	repo.file(".claude/agents/reviewer.md", "# reviewer\n")
+	repo.file(".claude/agents/repo-owned.md", "# not graft's\n")
+	before := repo.entries()
 
-	err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()}, apply.WithManifest([]byte(movedManifest)))
-	if err != nil {
-		t.Fatalf("Run: %v", err)
+	if err := apply.Manifest(repo.dir, []byte("[sources.shared]\n")); err != nil {
+		t.Fatalf("Manifest: %v", err)
 	}
 
-	repo.assertEntries("README.md", lock.Filename, manifest.Filename)
-	if got := repo.read(manifest.Filename); got != movedManifest {
-		t.Errorf("graft.toml = %q, want the given bytes", got)
+	if got := repo.read("graft.lock"); got != "version = 1\n" {
+		t.Errorf("graft.lock changed: %q", got)
 	}
-	if got := repo.read("README.md"); got != "mine\n" {
-		t.Errorf("README.md = %q, want %q", got, "mine\n")
+	want := append(slices.Clone(before), "graft.toml")
+	slices.Sort(want)
+	got := repo.entries()
+	slices.Sort(got)
+	if !slices.Equal(got, want) {
+		t.Errorf("the repository holds %v, want %v", got, want)
 	}
 }
 
-// The provenance rule, tested at its sharpest: the run rewriting graft.toml still refuses a
-// plan that names graft.toml as a destination.
-func TestRunStillRefusesAPlannedWriteOfTheManifest(t *testing.T) {
-	t.Parallel()
-
-	const original = "[sources.shared]\nrev = \"v1.0.0\"\n"
-
-	repo := newTree(t)
-	repo.file(manifest.Filename, original)
-	src := newTree(t)
-	src.file("extras/a.md", "a\n")
-	src.file("extras/evil.toml", "[sources.attacker]\n")
-
-	p := &plan.Plan{
-		Writes: []plan.Write{
-			write("extras/a.md", "docs/a.md"),
-			write("extras/evil.toml", manifest.Filename),
-		},
-		Lock: lockOf("docs/a.md", manifest.Filename),
-	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
-	assertError(t, err, `cannot write "graft.toml": graft never writes over "graft.toml"`)
-
-	if got := repo.read(manifest.Filename); got != original {
-		t.Errorf("graft.toml = %q, want the original: the refusal is in the pre-flight pass", got)
-	}
-	repo.assertEntries(manifest.Filename)
-}
-
-func TestRunRefusesAManifestThatIsNotARegularFile(t *testing.T) {
+func TestManifestRefusesAGraftTomlThatIsNotARegularFile(t *testing.T) {
 	t.Parallel()
 
 	repo := newTree(t)
-	repo.mkdir(manifest.Filename)
-	src := newTree(t)
-	src.file("extras/a.md", "a\n")
+	repo.mkdir("graft.toml")
 
-	p := &plan.Plan{Writes: []plan.Write{write("extras/a.md", "docs/a.md")}, Lock: lockOf("docs/a.md")}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
-	assertError(t, err, `cannot write "graft.toml": it exists and is not a regular file`)
-
-	repo.assertEntries(manifest.Filename + "/")
+	err := apply.Manifest(repo.dir, []byte("[sources.shared]\n"))
+	if err == nil {
+		t.Fatal("Manifest succeeded over a directory named graft.toml")
+	}
+	if want := `cannot write "graft.toml": it exists and is not a regular file`; err.Error() != want {
+		t.Errorf("error = %q, want %q", err, want)
+	}
 }
 
-// The residual failure the pre-flight pass cannot remove. graft.toml stays where it was, so
-// the manifest and the lock still agree — the state a re-run recovers from.
-func TestRunFailedApplyLeavesTheManifestUnmoved(t *testing.T) {
+// The staging path is the one path this package writes that no plan and no lock names, so
+// a leftover that is not a regular file is refused rather than removed: deleting a path no
+// lock claims is the one thing graft may never do.
+func TestManifestRefusesAStagingLeftoverThatIsNotARegularFile(t *testing.T) {
 	t.Parallel()
 
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: permission bits do not deny anything")
+	outside := filepath.Join(t.TempDir(), "elsewhere.toml")
+	if err := os.WriteFile(outside, []byte("do not touch\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
 	}
-
-	const original = "[sources.shared]\nrev = \"v1.0.0\"\n"
-
 	repo := newTree(t)
-	repo.file(manifest.Filename, original)
-	repo.file(lock.Filename, "the previous lock\n")
-	repo.file("locked/keep", "x\n")
-	if err := os.Chmod(repo.path("locked"), 0o555); err != nil {
-		t.Fatalf("Chmod: %v", err)
+	repo.symlink(outside, ".graft.toml.tmp")
+
+	err := apply.Manifest(repo.dir, []byte("[sources.shared]\n"))
+	if err == nil {
+		t.Fatal("Manifest succeeded with a symlink at the staging path")
 	}
-	t.Cleanup(func() { _ = os.Chmod(repo.path("locked"), 0o755) })
-
-	src := newTree(t)
-	src.file("extras/b.md", "b\n")
-
-	p := &plan.Plan{Writes: []plan.Write{write("extras/b.md", "locked/b.md")}, Lock: lockOf("locked/b.md")}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
-	assertErrorPrefix(t, err, `cannot write "locked/b.md": `)
-
-	if got := repo.read(manifest.Filename); got != original {
-		t.Errorf("graft.toml = %q, want the original", got)
+	if !strings.HasPrefix(err.Error(), `cannot write ".graft.toml.tmp"`) {
+		t.Errorf("error = %q, want it to name the staging path", err)
 	}
-	if got := repo.read(lock.Filename); got != "the previous lock\n" {
-		t.Errorf("graft.lock = %q, want the previous one", got)
+	if repo.exists("graft.toml") {
+		t.Error("graft.toml was written after the refusal")
+	}
+	if !repo.exists(".graft.toml.tmp") {
+		t.Error("the staging symlink was removed: graft may not delete a path no lock claims")
+	}
+	if data, err := os.ReadFile(outside); err != nil || string(data) != "do not touch\n" {
+		t.Errorf("the symlink's target was written through: %q, %v", data, err)
 	}
 }
 
-// The manifest is written through a temporary file and a rename, so it is never absent and
-// never half-written. Neither outcome may leave the temporary behind.
-func TestRunLeavesNoTemporaryManifestBehind(t *testing.T) {
+// A repository root that cannot be opened is named, exactly as the plan-carrying path
+// names it: graft never creates the repository it runs in.
+func TestManifestRefusesARootThatIsNotThere(t *testing.T) {
 	t.Parallel()
 
-	repo := newTree(t)
-	repo.file(manifest.Filename, "[sources.shared]\nrev = \"v1.0.0\"\n")
+	missing := filepath.Join(t.TempDir(), "no-such-repo")
 
-	err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()}, apply.WithManifest([]byte(movedManifest)))
-	if err != nil {
-		t.Fatalf("Run: %v", err)
+	err := apply.Manifest(missing, []byte("[sources.shared]\n"))
+	if err == nil {
+		t.Fatal("Manifest succeeded against a root that does not exist")
 	}
-	repo.assertEntries(lock.Filename, manifest.Filename)
-
-	// And on a failed run: the plan's write fails, so the manifest write is never reached
-	// and the tree is exactly what it was.
-	failing := newTree(t)
-	failing.file(manifest.Filename, "[sources.shared]\nrev = \"v1.0.0\"\n")
-	failing.mkdir("docs/a.md")
-	src := newTree(t)
-	src.file("extras/a.md", "a\n")
-
-	p := &plan.Plan{Writes: []plan.Write{write("extras/a.md", "docs/a.md")}, Lock: lockOf("docs/a.md")}
-	err = apply.Run(failing.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
-	assertError(t, err, `cannot write "docs/a.md": it exists and is not a regular file`)
-	failing.assertEntries("docs/", "docs/a.md/", manifest.Filename)
-}
-
-// A leftover temporary from a process that died mid-write, which is not a regular file. It
-// is refused rather than removed blindly, and the message names the path the user has to go
-// and look at rather than the destination they asked for.
-//
-// An *empty* directory is the case that matters: os.Root.Remove takes one as readily as a
-// file, so a blind removal here would be graft deleting a path no lock claims. The refusal
-// is in the pre-flight pass, so the planned write never happens either — the alternative is
-// failing with the tree already moved and no record of it.
-func TestRunRefusesALeftoverTemporaryThatIsNotARegularFile(t *testing.T) {
-	t.Parallel()
-
-	const original = "[sources.shared]\nrev = \"v1.0.0\"\n"
-
-	for name, occupy := range map[string]func(*tree){
-		"a directory with something in it": func(r *tree) { r.mkdir(".graft.toml.tmp/occupied") },
-		"an empty directory":               func(r *tree) { r.mkdir(".graft.toml.tmp") },
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			repo := newTree(t)
-			repo.file(manifest.Filename, original)
-			occupy(repo)
-
-			src := newTree(t)
-			src.file("extras/a.md", "a\n")
-			p := &plan.Plan{Writes: []plan.Write{write("extras/a.md", "docs/a.md")}, Lock: lockOf("docs/a.md")}
-
-			err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p, apply.WithManifest([]byte(movedManifest)))
-			assertError(t, err, `cannot write ".graft.toml.tmp": it exists and is not a regular file`)
-
-			if got := repo.read(manifest.Filename); got != original {
-				t.Errorf("graft.toml = %q, want the original", got)
-			}
-			if !repo.exists(".graft.toml.tmp") {
-				t.Error("the leftover was removed: graft only ever removes a path it confirmed regular")
-			}
-			if repo.exists("docs/a.md") {
-				t.Error("the plan was applied: the staging path is refused before the first write")
-			}
-		})
+	if !strings.HasPrefix(err.Error(), "cannot open the repository root ") {
+		t.Errorf("error = %q, want it to name the root", err)
 	}
 }
