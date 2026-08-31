@@ -30,7 +30,7 @@ Nothing is in flight. The only work left is not implementation: see **Not done**
 | 10 | `semver-ranges` | archived — not in IMPLEMENTATION-ORDER.md; inserted ahead of `add-command` because a range changes the `graft.toml` contract and the sync/update split, neither of which is `add`'s business |
 | 11 | `add-command` | archived — `graft add`, `--list`, and `--no-sync` build and run; the manifest is amended by surgical text edit |
 | 12 | `add-picker` | archived — the interactive multi-select and the `kind:*` collapse offer; verified through a real pty as well as by unit tests |
-| 13 | `self-hosting` | archived — `graft.toml` declares `openspec-schemas@v0.1.0`. The dogfood CI job was dropped rather than activated: the source is private and CI has no credential for it |
+| 13 | `self-hosting` | archived — `graft.toml` declares `openspec-schemas`, now pinned at `v0.1.1` |
 
 ## If a vendored file ever moves
 
@@ -64,11 +64,9 @@ Do not run `graft sync`/`graft update` against this repo's own `.claude/agents/`
 
 ## Not done, and not forgotten
 
-- **The dogfood check is manual now.** `./graft sync && git diff --exit-code`, by hand, when
-  a pin moves. The CI job that did it was dropped because `openspec-schemas` is private and
-  `GITHUB_TOKEN` only reaches the repo it runs in — a job that cannot read its source is a red
-  build everyone learns to ignore. **graft is public now, so making `openspec-schemas` public
-  is all it would take to bring the job back**; the config is in the history at `dd0fc2a^`.
+- **There is no dogfood CI job, and that is settled — do not propose bringing it back.** The
+  check is manual: `./graft sync && git diff --exit-code`, by hand, when a pin moves. That
+  line is the whole of what is left to know.
 - **`golangci-lint-action@v8` still targets Node 20**, which every CI run warns about. There is
   no v9 to bump to; it clears when upstream ships one.
 - `openspec-schemas` now publishes `catalog.yaml` and `v0.1.0`; nothing is outstanding there.

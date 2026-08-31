@@ -76,19 +76,15 @@ else — no step is ever spelled out twice.
 GitHub Actions. On pull requests and pushes to `main`: `task ci` on `ubuntu-latest` and
 `macos-latest`, with the module cache warmed. That is the whole pipeline.
 
-There was a second job that dogfooded — `graft sync` followed by `git diff --exit-code`,
-asserting the repo's own vendored tree had not moved. It is gone. `openspec-schemas` is
-private, so the job cannot read it without a credential of its own, and a CI job that cannot
-run is worse than none: it is a red build everyone learns to ignore.
-
-The check itself is not gone, only its automation. Run it by hand when a pin moves:
+There is deliberately no second job checking that the repo's own vendored tree matches what
+graft would write. Run that by hand when a pin moves:
 
 ```sh
 task build && ./graft sync && git diff --exit-code
 ```
 
-That is the same two commands, and it is the most realistic integration test this repo has —
-which is why it is written down here rather than left to memory.
+It is written down here rather than left to memory because it is the most realistic
+integration test this repo has.
 
 Note this is **producer** CI only. Repos that consume graft need no CI integration —
 syncing is a deliberate human action on committed files, and a repo sitting on an older pin
