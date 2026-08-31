@@ -51,16 +51,16 @@
 <!-- kind: behavior -->
 <!-- parallel-after: 0 -->
 
-- [ ] 3.1 RED: Write failing tests for: *The highest stable tag wins*, *A source with no
+- [x] 3.1 RED: Write failing tests for: *The highest stable tag wins*, *A source with no
   semver tags falls back to its branch*, *An empty repository is an error, not an empty rev*,
   *An unreachable source is not reported as an empty one*, *A git value beginning with a dash
   is refused before the call*
-- [ ] 3.2 GREEN: Implement `source.DefaultRev` — one `git ls-remote --symref` call through
+- [x] 3.2 GREEN: Implement `source.DefaultRev` — one `git ls-remote --symref` call through
   `CloneURL` and `gitOutput`, tags selected by `MatchRange(name, "*", tags)`, the symref's
   branch as the fallback
-- [ ] 3.3 REFACTOR: Fold the tag-parsing loop shared with `resolveRange` into one helper, or
+- [x] 3.3 REFACTOR: Fold the tag-parsing loop shared with `resolveRange` into one helper, or
   record why the two shapes differ enough to stay apart
-- [ ] 3.4 Run `go test ./internal/source/` — no regressions
+- [x] 3.4 Run `go test ./internal/source/` — no regressions
 
 ## 4. A manifest-only apply
 <!-- kind: behavior -->
