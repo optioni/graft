@@ -1,15 +1,15 @@
 ## 1. The picker model
 <!-- kind: behavior -->
 
-- [ ] 1.1 RED: Write failing tests for: *Pressing keys moves a cursor and selects*, *The
+- [x] 1.1 RED: Write failing tests for: *Pressing keys moves a cursor and selects*, *The
   cursor stops at both ends*, *`a` selects all and then clears all*, *An unbound key changes
   nothing*, *`enter` confirms and stops*
-- [ ] 1.2 GREEN: Implement `picker.Item`, `picker.Key`, and `picker.Model` with `Update`,
+- [x] 1.2 GREEN: Implement `picker.Item`, `picker.Key`, and `picker.Model` with `Update`,
   `Done`, `Cancelled`, and `Selectors` — pure over values, no filesystem and no clock
-- [ ] 1.3 RED then GREEN: *Cancelling with a selection made discards it* and *Confirming
+- [x] 1.3 RED then GREEN: *Cancelling with a selection made discards it* and *Confirming
   nothing is a cancellation*
-- [ ] 1.4 REFACTOR: Keep the key table one readable mapping, or record that none is needed
-- [ ] 1.5 Run `go test ./internal/picker/` — no regressions
+- [x] 1.4 REFACTOR: Keep the key table one readable mapping, or record that none is needed
+- [x] 1.5 Run `go test ./internal/picker/` — no regressions
 
 ## 2. Rendering
 <!-- kind: behavior -->
