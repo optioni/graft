@@ -81,16 +81,16 @@
 <!-- kind: behavior -->
 <!-- parallel-after: 0 -->
 
-- [ ] 5.1 RED: Write failing tests in `internal/plan` for `ItemDestinations` — an item's own
+- [x] 5.1 RED: Write failing tests in `internal/plan` for `ItemDestinations` — an item's own
   destinations from a catalog, a consumer override, and the listing's `Dir` flag, with no
   filesystem access: a file item names its file, a directory item its directory, a
   list-valued `to` names several, and an escaping destination is refused
-- [ ] 5.2 GREEN: Export that computation, factoring the entry interpolation, the override
+- [x] 5.2 GREEN: Export that computation, factoring the entry interpolation, the override
   lookup, and the repo-root check out of `destinations` so both callers share one copy — a
   directory item's destination rendered with a trailing `/`
-- [ ] 5.3 VERIFY: Confirm `internal/plan`'s purity test still passes, and that no new test
+- [x] 5.3 VERIFY: Confirm `internal/plan`'s purity test still passes, and that no new test
   needs a real directory
-- [ ] 5.4 Run `go test ./internal/plan/` — no regressions
+- [x] 5.4 Run `go test ./internal/plan/` — no regressions
 
 ## 6. Parsing the add invocation
 <!-- kind: behavior -->

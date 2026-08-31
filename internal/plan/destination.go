@@ -38,21 +38,7 @@ type placement struct {
 // computed destination set would be acting on a plan that failed validation.
 func destinations(in Input, it catalog.Item) ([]placement, error) {
 	fail := itemErrf(in.Source.Name, it.ID)
-	// One condition, one construction: the escape is raised for the interpolated
-	// destination and for every path computed under it, and both must read alike.
-	escape := func(dest string) error {
-		return fail("destination %q escapes the repo root", dest)
-	}
 	kind := in.Catalog.Kinds[it.Kind]
-
-	// The consumer's override wins, and replaces the whole `to` — including a
-	// list-valued one. It carries no flatten of its own: graft.toml declares a
-	// destination and nothing else, so the catalog's flatten survives. Looked up once
-	// per item rather than once per destination, since it is a property of the kind.
-	entries := kind.To
-	if override, ok := in.Source.Kinds[it.Kind]; ok {
-		entries = []string{override}
-	}
 
 	// The listing is read before the destinations, because whether `from` names a
 	// directory decides when two `to` entries are the same destination.
@@ -63,28 +49,10 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 	// keeps a malformed listing from surfacing later as an item colliding with itself.
 	files = slices.Compact(files)
 
-	// Every entry is interpolated and checked before any file is mapped, so a
-	// destination that may not be used is refused even when the item contributes
-	// nothing to place under it.
-	to := make([]string, 0, len(entries))
-	declared := make(map[string]string, len(entries))
-	for _, entry := range entries {
-		dest := strings.ReplaceAll(entry, "{name}", it.Name)
-		if !insideRepo(strings.TrimSuffix(dest, "/")) {
-			return nil, escape(dest)
-		}
-		// Keyed on what the destination will actually mean rather than on the string,
-		// so "a/{name}" and "a/{name}/" are recognised as one destination for a
-		// directory item — which by D4 they are — and as two for a file item, which
-		// they also are: one names the file, the other a directory to put it in.
-		if first, dup := declared[destKey(dest, listing.Dir)]; dup {
-			// The catalog already refuses two identical `to` entries; these are two
-			// different ones that collapse onto the same path once {name} is filled
-			// in, which only shows up per item.
-			return nil, fail("destinations %q and %q both interpolate to %q", first, entry, path.Clean(dest))
-		}
-		declared[destKey(dest, listing.Dir)] = entry
-		to = append(to, dest)
+	entries := toEntries(in, it)
+	to, err := interpolate(in, it, entries, listing.Dir)
+	if err != nil {
+		return nil, err
 	}
 
 	var out []placement
@@ -104,7 +72,7 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 			// than its destination lands elsewhere inside the repo rather than
 			// outside it — and the same entry names the file to read.
 			if !insideRepo(final) {
-				return nil, escape(final)
+				return nil, escapeErr(in, it, final)
 			}
 			if !insideItem(rel) {
 				return nil, fail("file %q is not a relative path inside the item", rel)
@@ -124,6 +92,101 @@ func destinations(in Input, it catalog.Item) ([]placement, error) {
 		}
 	}
 	return out, nil
+}
+
+// ItemDestinations returns the repo-relative destinations one item occupies: the file a
+// file item becomes, or the directory a directory item fills, one entry per `to` the
+// kind declares.
+//
+// It is what `graft add --list` prints, and it is deliberately not the item's files. A
+// listing that named every file inside a directory item would put the source's own layout
+// in front of a consumer, which is the coupling an item id exists to avoid — and the
+// destination is the thing being agreed to, whole.
+//
+// The rules are the ones a sync applies, through the same two helpers: the consumer's
+// override beats the catalog, `{name}` is interpolated, and nothing may escape the repo
+// root. Like everything else here it reads no directory: whether the item is one is
+// carried by the Listing the caller already holds.
+func ItemDestinations(in Input, it catalog.Item) ([]string, error) {
+	dir := in.Items[it.ID].Dir
+	to, err := interpolate(in, it, toEntries(in, it), dir)
+	if err != nil {
+		return nil, err
+	}
+
+	flatten := in.Catalog.Kinds[it.Kind].Flatten
+	out := make([]string, 0, len(to))
+	for _, dest := range to {
+		if dir {
+			// path.Clean drops a trailing slash and the slash is put back, so a `to`
+			// written with one and a `to` written without it print alike — and a
+			// directory is visibly a directory in the listing.
+			out = append(out, path.Clean(dest)+"/")
+			continue
+		}
+		// A file item's one listed path is its own base name, which is what place needs
+		// and what source.List produces. Taking it from From rather than from the
+		// listing keeps this usable for an item whose listing a caller has not built.
+		final := place(dest, false, flatten, path.Base(it.From))
+		if !insideRepo(final) {
+			return nil, escapeErr(in, it, final)
+		}
+		out = append(out, final)
+	}
+	return out, nil
+}
+
+// toEntries is the kind's destinations for this item: the consumer's override when there
+// is one, and the catalog's `to` otherwise.
+//
+// The override wins and replaces the whole `to` — including a list-valued one. It carries
+// no flatten of its own: graft.toml declares a destination and nothing else, so the
+// catalog's flatten survives. Looked up once per item rather than once per destination,
+// since it is a property of the kind.
+func toEntries(in Input, it catalog.Item) []string {
+	if override, ok := in.Source.Kinds[it.Kind]; ok {
+		return []string{override}
+	}
+	return in.Catalog.Kinds[it.Kind].To
+}
+
+// interpolate fills {name} into each entry and refuses the two conditions that are
+// properties of the entries alone: a destination outside the repository, and two entries
+// that collapse onto one destination.
+//
+// Every entry is checked before any file is mapped, so a destination that may not be used
+// is refused even when the item contributes nothing to place under it.
+func interpolate(in Input, it catalog.Item, entries []string, dir bool) ([]string, error) {
+	fail := itemErrf(in.Source.Name, it.ID)
+
+	to := make([]string, 0, len(entries))
+	declared := make(map[string]string, len(entries))
+	for _, entry := range entries {
+		dest := strings.ReplaceAll(entry, "{name}", it.Name)
+		if !insideRepo(strings.TrimSuffix(dest, "/")) {
+			return nil, escapeErr(in, it, dest)
+		}
+		// Keyed on what the destination will actually mean rather than on the string,
+		// so "a/{name}" and "a/{name}/" are recognised as one destination for a
+		// directory item — which by D4 they are — and as two for a file item, which
+		// they also are: one names the file, the other a directory to put it in.
+		if first, dup := declared[destKey(dest, dir)]; dup {
+			// The catalog already refuses two identical `to` entries; these are two
+			// different ones that collapse onto the same path once {name} is filled
+			// in, which only shows up per item.
+			return nil, fail("destinations %q and %q both interpolate to %q", first, entry, path.Clean(dest))
+		}
+		declared[destKey(dest, dir)] = entry
+		to = append(to, dest)
+	}
+	return to, nil
+}
+
+// escapeErr is one condition with one construction: the escape is raised for the
+// interpolated destination and for every path computed under it, and both must read
+// alike.
+func escapeErr(in Input, it catalog.Item, dest string) error {
+	return itemErrf(in.Source.Name, it.ID)("destination %q escapes the repo root", dest)
 }
 
 // itemErrf builds the per-item error prefix every message in this package shares, so
