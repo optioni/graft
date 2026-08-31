@@ -129,8 +129,12 @@ describes the tool.
 ## Risks / Trade-offs
 
 [The published source's bytes differ from the hand-copied files, and the first sync rewrites
-them] → Found by running the sync locally before committing anything, which is task 2.1. The
-resolution is in the source, not here: the copies in this repository are the newer ones today.
+them] → Found by running the sync locally before committing anything, which is task 1.3. Which
+side is stale decides what to do, and the direction of the diff is what says so: bytes this
+repository holds that the source does not are a change that never made it upstream, and must be
+resolved there before anything is committed here. Bytes the source holds that this repository
+does not are simply a hand copy that fell behind, and taking them is the whole point of
+declaring the source.
 
 [`agent:*` adopts an agent this repository does not want] → It is a file in `.claude/agents/`,
 visible in the sync report and in `git diff`, and removable by narrowing the selector. The

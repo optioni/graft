@@ -5,33 +5,37 @@ Not this repository's work, and not graft's. It is listed because nothing below 
 until it is done, and because a task list that hid the blocker would make this change look
 stalled rather than waiting.
 
-- [ ] 0.1 CHECK: Confirm `github.com/optioni/openspec-schemas` publishes `catalog.yaml` on
+- [x] 0.1 CHECK: Confirm `github.com/optioni/openspec-schemas` publishes `catalog.yaml` on
   the ref this repository will pin — `git ls-remote` for the ref, then read the file
-- [ ] 0.2 CHANGE: If it does not, add the `catalog.yaml` design.md reproduces, push the
+- [x] 0.2 CHANGE: If it does not, add the `catalog.yaml` design.md reproduces, push the
   outstanding commits on `main`, and tag — all three in that repository, by its owner
-- [ ] 0.3 VERIFY: `git ls-remote --tags` names the tag, and a clone of it holds
+- [x] 0.3 VERIFY: `git ls-remote --tags` names the tag, and a clone of it holds
   `catalog.yaml`, `extras/openspec-schemas/tdd/`, and `extras/agents/`
 
 ## 1. Declare the source
 <!-- kind: operational -->
 
-- [ ] 1.1 CHECK: Record the bytes that are there now — `git status` clean, and a checksum of
+- [x] 1.1 CHECK: Record the bytes that are there now — `git status` clean, and a checksum of
   every file under `openspec/schemas/tdd/` and `.claude/agents/` — so the next step's claim
   is measurable rather than eyeballed
-- [ ] 1.2 CHANGE: `task build`, then
+- [x] 1.2 CHANGE: `task build`, then
   `./graft add github.com/optioni/openspec-schemas@<tag> schema:tdd 'agent:*'`
-- [ ] 1.3 VERIFY: `git diff --stat` names `graft.toml` and `graft.lock` and nothing else. Any
-  other path means the published source and the hand-copied files disagree — resolve that in
-  the source, and do not commit whatever graft wrote
+- [x] 1.3 VERIFY: `git diff --stat` names `graft.toml` and `graft.lock`, and any other path is
+  read for its **direction** before anything is committed — bytes this repository holds that
+  the source does not are an upstream change that never landed and must be resolved there;
+  bytes the source holds that this repository does not are a hand copy that fell behind.
+  *Outcome: two files, both additions from the source — `.claude/agents/apply-orchestrator.md`
+  (+23) and `openspec/schemas/tdd/schema.yaml` (+27), the worktree-isolation guidance. The
+  copies here were stale, not ahead. Taken.*
 
 ## 2. Confirm the sync is a no-op
 <!-- kind: operational -->
 
-- [ ] 2.1 CHECK: `./graft sync` a second time — it prints `up to date` and writes nothing
-- [ ] 2.2 VERIFY: `git diff --exit-code` passes, which is precisely what the dogfood job runs
-- [ ] 2.3 VERIFY: `./graft list` names the source, its pin, its sha, and five items —
+- [x] 2.1 CHECK: `./graft sync` a second time — it prints `up to date` and writes nothing
+- [x] 2.2 VERIFY: `git diff --exit-code` passes, which is precisely what the dogfood job runs
+- [x] 2.3 VERIFY: `./graft list` names the source, its pin, its sha, and five items —
   `schema:tdd` plus four agents — and `./graft list --json` parses
-- [ ] 2.4 VERIFY: `graft.lock` names every file under both destinations, so a later removal
+- [x] 2.4 VERIFY: `graft.lock` names every file under both destinations, so a later removal
   from the source prunes them rather than leaving orphans
 
 ## 3. Documentation

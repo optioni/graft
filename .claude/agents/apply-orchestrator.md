@@ -25,6 +25,25 @@ A change name (e.g., `stats-engine`). The change's artifacts already exist under
    - `blocked` (missing artifacts) → surface the message and stop.
 5. Read the source files the change will touch — scan design.md and tasks.md for paths (anything matching `app/`, `server/`, `shared/`, `.ts`, `.vue`, config files) and read each that exists, plus any pattern-example module the design names. You keep this context for the whole change; you do not re-gather it per group.
 
+6. **Decide where to work.** Run `git worktree list`, and the harness's own agent listing if it
+   has one (e.g. `ListAgents`). If another session may be active in this repository, create an
+   isolated worktree and do all of this change's work there:
+
+   ```bash
+   git worktree add ../<repo>-<name> -b <name>
+   ```
+
+   A shared checkout means a shared index, a shared HEAD, and usually a shared build cache. Two
+   sessions in one tree produce failures that do not look cross-session: a broad `git add` sweeps
+   the other session's files into your commit, `git reset HEAD~1` drops a commit that is not
+   yours, a build compiles the other's half-finished multi-file edit, and either session's
+   uncommitted lint or type error fails the shared gate for both. Each surfaces as an error in a
+   file you never touched.
+
+   Report the worktree path in your final report so the work can be found and merged. If a
+   worktree is impossible for this toolchain, say so explicitly in the report and follow the
+   shared-tree discipline in the schema's Isolation section instead.
+
 ## Step 2: Parse task groups
 
 Split tasks.md by `##` headers. For each group:
@@ -144,4 +163,8 @@ Reason: <description>
 - **Mark tasks `- [x]` in tasks.md** immediately after each group is committed.
 - **Acceptance-red groups must not have implementation** — stop after the test fails for the right reason.
 - **Pause between groups, never mid-group** — if the usage check shows a risk of hitting the rate limit before a group finishes, stop before starting it and report `Apply paused`. A boundary pause loses nothing; a mid-group halt strands uncommitted work.
+- **Prefer an isolated worktree** — if any other session may be working in this repository, do the change's work in its own `git worktree` and merge it back as one reviewed unit. A working tree, its index, its HEAD and its build cache are all shared state.
+- **Never rewrite shared history** — no relative refs (`HEAD~1`, `HEAD^`, `@{1}`) in `reset`, `rebase` or `--amend` in a shared checkout, and stage explicit paths rather than `git add -A`/`-u`. Fix forward instead.
+- **A scripted or multi-file edit is the riskiest kind** — apply it in an isolated tree, or hold the repository's edit lock for its whole duration. Speed is not safety: an unreviewed bulk edit is precisely what leaves a tree un-compiling for everyone.
+- **A failure in a file you do not own is suspect** — in a shared checkout, re-run and check the named file is yours before debugging it.
 - **Escape hatch is per-group and rare** — only an unusually large single group may be handed to an implementer subagent; never split a normal change into per-group subagents by default.

@@ -581,6 +581,33 @@ apply:
     implementation starts are expected; later external commits that touch a planned
     contract or implementation surface require the same refresh.
 
+    ## Isolation
+
+    Before the first implementation task, check whether another agent session may be
+    working in this repository — `git worktree list`, and the repository's own agent
+    listing if it has one. If one might be, implement this change in its own git
+    worktree rather than in the shared checkout:
+
+        git worktree add ../<repo>-<change-name> -b <change-name>
+
+    A working tree is shared state, and so are the index, HEAD, and any build cache
+    keyed on the checkout path. Two sessions in one tree means a broad `git add` sweeps
+    the other's files, `git reset HEAD~1` can drop the other's commit, a build compiles
+    the other's half-finished edit, and a lint or type error in either one's uncommitted
+    work fails the shared gate for both. None of these announce themselves as
+    cross-session problems: they surface as a failure in a file you did not touch.
+
+    Work in the worktree until the change is complete and verified, then merge or
+    rebase onto the shared branch as one reviewed unit and remove the worktree. Do not
+    rewrite shared history to tidy up afterwards.
+
+    If a worktree is genuinely impossible — a toolchain that resolves paths absolutely,
+    a dependency cache that cannot be duplicated — say so in the change's design or task
+    notes, and then treat every git command as a shared-state mutation: stage explicit
+    paths only, never `git add -A`/`-u` or a bare directory; never use a relative ref
+    (`HEAD~1`, `HEAD^`, `@{1}`) in `reset`, `rebase` or `--amend`, because another
+    session's commit may have landed in between; and fix forward rather than rewriting.
+
     ## Gates
 
     Check the result before starting the next group:
