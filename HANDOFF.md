@@ -1,12 +1,15 @@
 # Handoff — graft implementation
 
-Updated 2026-08-31, after `add-command` and `add-picker` were finished and archived.
+Updated 2026-08-31, after `self-hosting` was finished and archived. **The roadmap is done.**
 
 ## Where things stand
 
-**12 of 13 changes archived.** The tool is feature-complete: `sync`, `update`, `list`, and
-`add` — with its picker — all build and run. The one change left, `self-hosting`, is
-proposed and **blocked on another repository**; see below.
+**13 of 13 changes archived**, plus two the roadmap did not anticipate. The tool is
+complete — `sync`, `update`, `list`, and `add` with its picker all build and run — and graft
+now vendors its own agents and schema through its own `graft.toml`, pinned at
+`openspec-schemas@v0.1.0`.
+
+Nothing is in flight. The only work left is not implementation: see **Not done** below.
 
 | # | Change | State |
 |---|--------|-------|
@@ -22,24 +25,18 @@ proposed and **blocked on another repository**; see below.
 | 10 | `semver-ranges` | archived — not in IMPLEMENTATION-ORDER.md; inserted ahead of `add-command` because a range changes the `graft.toml` contract and the sync/update split, neither of which is `add`'s business |
 | 11 | `add-command` | archived — `graft add`, `--list`, and `--no-sync` build and run; the manifest is amended by surgical text edit |
 | 12 | `add-picker` | archived — the interactive multi-select and the `kind:*` collapse offer; verified through a real pty as well as by unit tests |
-| 13 | `self-hosting` | **proposed, blocked.** Not on graft — on `openspec-schemas`, which must publish a `catalog.yaml`, push its four outstanding commits, and tag. See `openspec/changes/self-hosting/` |
+| 13 | `self-hosting` | archived — `graft.toml` declares `openspec-schemas@v0.1.0`; the dogfood CI job no longer skips |
 
-## What unblocks the last change
+## If a vendored file ever moves
 
-Three things, all in `~/Code/openspec-schemas`, all of them pushes:
+`openspec/schemas/tdd/` and `.claude/agents/` are graft's now. Editing them here does
+nothing — the next sync overwrites them. Edit them in `~/Code/openspec-schemas`, tag, and
+`./graft update` here.
 
-1. Add `catalog.yaml` at its root. The exact content is in
-   `openspec/changes/self-hosting/design.md` — it matches the layout that repository already
-   has, so nothing there needs rearranging.
-2. Push the four commits its `main` is behind by. Two of the differing files are ones graft
-   would install, so syncing from the published `main` today would overwrite this
-   repository's newer copies and the dogfood CI job would fail — correctly.
-3. Tag it, ideally `v0.1.0`. Without a tag the pin is `rev = "main"`, which works but makes
-   every `graft update` an unreviewed sha rather than a version.
-
-Then, here: `./graft add github.com/optioni/openspec-schemas@v0.1.0 schema:tdd 'agent:*'`,
-confirm `git diff --stat` names only `graft.toml` and `graft.lock`, and follow
-`openspec/changes/self-hosting/tasks.md` from group 1.
+If a sync moves one unexpectedly, read the **direction** before committing anything. Bytes
+this repository holds that the source does not are an upstream change that never landed, and
+committing over them destroys work. Bytes the source holds that this repository does not are
+a copy that fell behind. The first sync hit the second case, in two files.
 
 ## How to run a change
 
@@ -62,10 +59,10 @@ Do not run `graft sync`/`graft update` against this repo's own `.claude/agents/`
 
 ## Not done, and not forgotten
 
-- **Nothing is pushed.** `origin` (`git@github.com:optioni/graft.git`) is empty. This is
-  why a scheduled *cloud* resume cannot work — it would clone nothing.
+- **Nothing is pushed.** `origin` (`git@github.com:optioni/graft.git`) is empty. Two things
+  wait on that: a scheduled *cloud* resume cannot work (it would clone nothing), and the
+  dogfood CI job has never actually run. Its two commands were run by hand and pass.
 - `HOMEBREW_TAP_TOKEN` is not set as a repo secret; `~/Code/homebrew-tap` has no commits.
-- `openspec-schemas` has **4 unpushed commits and no `catalog.yaml`**, which is exactly
-  what blocks `self-hosting`.
+- `openspec-schemas` now publishes `catalog.yaml` and `v0.1.0`; nothing is outstanding there.
 - **Homebrew's `node` is broken** — missing `libllhttp.9.3.dylib`. Worked around by putting
   nvm's node first on PATH; `brew reinstall node` is the real fix.

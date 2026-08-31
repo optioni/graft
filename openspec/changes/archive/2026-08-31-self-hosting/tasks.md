@@ -59,7 +59,9 @@ stalled rather than waiting.
   `./graft sync` and `git diff --exit-code`; a job that can silently skip is a job that will
   silently skip
 - [ ] 4.3 VERIFY: The next CI run's dogfood job syncs and passes, and its log shows the sync
-  rather than the skip
+  rather than the skip. **Cannot be done here**: `optioni/graft` has no published remote, so
+  no CI run exists to read. Its two commands — `./graft sync` then `git diff --exit-code` —
+  were run by hand against this tree and pass; this task closes on the first push
 
 ## 5. Change Review
 <!-- kind: operational -->
