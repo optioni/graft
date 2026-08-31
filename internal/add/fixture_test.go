@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/optioni/graft/internal/add"
+	"github.com/optioni/graft/internal/ui"
 )
 
 // Everything here is real: a real git repository, a real fetch cache, a real consumer
@@ -64,6 +65,17 @@ func (r *repo) commit(message string) string {
 }
 
 func (r *repo) tag(name string) { r.git("-C", r.dir, "tag", name) }
+
+// head is the sha the fixture's HEAD names, so a test asserts against what git recorded
+// rather than against a literal its author guessed at.
+func (r *repo) head() string {
+	r.t.Helper()
+	return r.git("-C", r.dir, "rev-parse", "HEAD")
+}
+
+// shortSHA is the form graft prints, spelled here so the expectation and the renderer
+// cannot drift apart silently.
+func shortSHA(sha string) string { return ui.ShortSHA(sha) }
 
 // seed is the offer every test here starts from: one directory item of two files, one
 // file item, under the two kinds SPEC.md's own examples use.

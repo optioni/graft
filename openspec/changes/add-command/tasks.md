@@ -149,14 +149,14 @@
 ## 10. `--list`
 <!-- kind: behavior -->
 
-- [ ] 10.1 RED: Write failing tests for: *A catalog is listed with its destinations*, *A
+- [x] 10.1 RED: Write failing tests for: *A catalog is listed with its destinations*, *A
   consumer override is reflected in the listing*, *A source offering no items lists none*, *An
   ungraftable source is refused under --list*
-- [ ] 10.2 GREEN: Implement the listing — resolve, fetch, read the catalog, compute
+- [x] 10.2 GREEN: Implement the listing — resolve, fetch, read the catalog, compute
   destinations, pad ids to a common width, sort ascending, print to standard output
-- [ ] 10.3 VERIFY: Assert two runs against one catalog print byte-identical text, and that the
+- [x] 10.3 VERIFY: Assert two runs against one catalog print byte-identical text, and that the
   repository holds no `graft.toml`, no `graft.lock`, and no written file afterwards
-- [ ] 10.4 Run `go test ./internal/add/ ./internal/cli/` — no regressions
+- [x] 10.4 Run `go test ./internal/add/ ./internal/cli/` — no regressions
 
 ## 11. The command surface
 <!-- kind: behavior -->
