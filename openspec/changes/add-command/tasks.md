@@ -106,15 +106,15 @@
 ## 7. A sync that honours pre-edited manifest bytes
 <!-- kind: behavior -->
 
-- [ ] 7.1 RED: Write failing tests for a run given manifest bytes: the run resolves what the
+- [x] 7.1 RED: Write failing tests for a run given manifest bytes: the run resolves what the
   bytes say, writes exactly those bytes, and never re-reads `graft.toml` from disk
-- [ ] 7.2 RED: Write a failing test asserting `Options.Manifest` and `Update.To` are never
+- [x] 7.2 RED: Write a failing test asserting `Options.Manifest` and `Update.To` are never
   both set — the two-sources-of-bytes risk design.md names
-- [ ] 7.3 GREEN: Add `sync.Options.Manifest`, threading it through `Run` beside the existing
+- [x] 7.3 GREEN: Add `sync.Options.Manifest`, threading it through `Run` beside the existing
   `movePin` path
-- [ ] 7.4 CHECK: Contract gate — confirm `graft.lock`'s format and its `version` are untouched
+- [x] 7.4 CHECK: Contract gate — confirm `graft.lock`'s format and its `version` are untouched
   by this change, and that a lock written before it still loads
-- [ ] 7.5 Run `go test ./internal/sync/` — no regressions
+- [x] 7.5 Run `go test ./internal/sync/` — no regressions
 
 ## 8. The add sequence
 <!-- kind: behavior -->

@@ -31,6 +31,15 @@ type Options struct {
 	// no directory is created.
 	DryRun bool
 
+	// Manifest is the graft.toml this run honours and writes, in place of the one on
+	// disk, or nil to read the file. `graft add` edits the manifest before anything is
+	// resolved, and a run that resolved the file while writing the edit would install one
+	// thing and record another.
+	//
+	// It is never set together with Update.To: two sources of manifest bytes is exactly
+	// that failure, and Run refuses the combination rather than choosing between them.
+	Manifest []byte
+
 	// Update makes this run a `graft update`: the sources it names have their revs
 	// re-resolved rather than taken from the lock. A nil Update is `graft sync`, which
 	// re-resolves nothing — the zero Options is exactly the sync behavior, so this field
@@ -69,7 +78,7 @@ func (o Options) refreshes(name string) bool {
 // problem — source "shared": …, graft.toml: …, catalog.yaml: … — so a second layer of
 // context here would say the same thing twice.
 func Run(o Options) (*Report, error) {
-	m, data, err := manifest.Read(filepath.Join(o.Root, manifest.Filename))
+	m, data, err := readManifest(o)
 	if err != nil {
 		return nil, err
 	}
@@ -134,13 +143,41 @@ func Run(o Options) (*Report, error) {
 	// --dry-run returning above leaves graft.toml exactly as it was, and a refusal inside
 	// internal/apply leaves it there too.
 	var opts []apply.Option
-	if moved != nil {
+	switch {
+	case moved != nil:
 		opts = append(opts, apply.WithManifest(moved))
+	case o.Manifest != nil:
+		// The bytes the run resolved, and the same object: readManifest parsed these and
+		// nothing else, so what reaches disk cannot describe a different request.
+		opts = append(opts, apply.WithManifest(o.Manifest))
 	}
 	if err := apply.Run(o.Root, res.trees, p, opts...); err != nil {
 		return nil, err
 	}
 	return report, nil
+}
+
+// readManifest returns the manifest this run honours and the bytes it parsed.
+//
+// Given bytes, it parses those and never touches the file: `graft add` has already read
+// graft.toml, amended it, and is holding the result, and re-reading the path would be
+// reading a file that could have changed between the two reads.
+//
+// Manifest bytes and a pin move together would give the run two sources of manifest bytes
+// — one to resolve, one to write — which is the corruption the whole edit discipline
+// exists to prevent. It is unreachable from the command surface, and refused here anyway.
+func readManifest(o Options) (*manifest.Manifest, []byte, error) {
+	if o.Manifest == nil {
+		return manifest.Read(filepath.Join(o.Root, manifest.Filename))
+	}
+	if o.Update != nil && o.Update.To != "" {
+		return nil, nil, fmt.Errorf("%s: a run cannot both be given manifest bytes and move a pin", manifest.Filename)
+	}
+	m, err := manifest.Parse(o.Manifest, manifest.Filename)
+	if err != nil {
+		return nil, nil, err
+	}
+	return m, o.Manifest, nil
 }
 
 // declares reports whether the manifest holds a source of this name.
