@@ -211,9 +211,9 @@
 ## 15. Lint & Verify
 <!-- kind: operational -->
 
-- [ ] 15.1 CHECK: Inspect the intended verification commands and the tiers they cover
-- [ ] 15.2 VERIFY: Run `task lint` — 0 errors
-- [ ] 15.3 VERIFY: Run `task test` — green
-- [ ] 15.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
-- [ ] 15.5 VERIFY: Run `task build` — the binary builds
-- [ ] 15.6 VERIFY: Run `openspec validate add-command --strict`
+- [x] 15.1 CHECK: Inspect the intended verification commands and the tiers they cover
+- [x] 15.2 VERIFY: Run `task lint` — 0 errors
+- [x] 15.3 VERIFY: Run `task test` — green
+- [x] 15.4 VERIFY: Run `task cover` — the 80% floor over `./internal/...` holds
+- [x] 15.5 VERIFY: Run `task build` — the binary builds
+- [x] 15.6 VERIFY: Run `openspec validate add-command --strict`
