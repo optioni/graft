@@ -161,20 +161,20 @@
 ## 11. The command surface
 <!-- kind: behavior -->
 
-- [ ] 11.1 RED: Write failing tests for: *No arguments*, *An empty source argument*, *--list
+- [x] 11.1 RED: Write failing tests for: *No arguments*, *An empty source argument*, *--list
   with selectors*, *--list with --no-sync*, *An unknown flag*, *An empty rev is a usage
   error*, *A malformed selector is refused before the network*, *No selectors, no TTY*, *No
   selectors on a terminal is the same refusal*
-- [ ] 11.2 GREEN: Implement `internal/cli/add.go` — the argument validator, the two flags, and
+- [x] 11.2 GREEN: Implement `internal/cli/add.go` — the argument validator, the two flags, and
   the call into `internal/add`; wiring only, no decision of its own
-- [ ] 11.3 GREEN: Register `add` on the root command
-- [ ] 11.4 VERIFY: Confirm every refusal above happens before any `git` process runs
-- [ ] 11.5 Run `go test ./internal/cli/` — no regressions
+- [x] 11.3 GREEN: Register `add` on the root command
+- [x] 11.4 VERIFY: Confirm every refusal above happens before any `git` process runs
+- [x] 11.5 Run `go test ./internal/cli/` — no regressions
 
 ## 12. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 12.1 VERIFY: Confirm the group 0 acceptance test passes end to end
+- [x] 12.1 VERIFY: Confirm the group 0 acceptance test passes end to end
 - [ ] 12.2 RED then GREEN: The remaining end-to-end scenarios — *A second source is added
   beside an existing one*, *Several selectors are written in the order given*, *A selector
   matching nothing leaves graft.toml unwritten*, *An explicit rev is written verbatim*, *A

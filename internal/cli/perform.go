@@ -21,11 +21,7 @@ import (
 // failure-mode table is written as those messages, and a layer of context here would say the
 // same thing twice.
 func perform(u *ui.UI, o sync.Options) error {
-	root, err := workingDirectory()
-	if err != nil {
-		return err
-	}
-	cacheRoot, err := source.DefaultCacheRoot()
+	root, cacheRoot, err := roots()
 	if err != nil {
 		return err
 	}
@@ -41,6 +37,19 @@ func perform(u *ui.UI, o sync.Options) error {
 		u.Note(line)
 	}
 	return nil
+}
+
+// roots is where every command runs: the repository graft was invoked in, and the
+// content-addressed fetch cache. Three commands need both, and a second copy of this pair
+// is a second chance for one of them to reach a different cache.
+func roots() (root, cacheRoot string, err error) {
+	if root, err = workingDirectory(); err != nil {
+		return "", "", err
+	}
+	if cacheRoot, err = source.DefaultCacheRoot(); err != nil {
+		return "", "", err
+	}
+	return root, cacheRoot, nil
 }
 
 // workingDirectory is the repository graft runs in. Every command starts here, so the

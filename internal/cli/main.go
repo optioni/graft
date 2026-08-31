@@ -170,6 +170,7 @@ Sources and the items to install are declared in graft.toml.`,
 	root.AddCommand(newSync(u))
 	root.AddCommand(newUpdate(u))
 	root.AddCommand(newList(u))
+	root.AddCommand(newAdd(u))
 	root.SetHelpCommand(newHelpCommand())
 
 	return root
