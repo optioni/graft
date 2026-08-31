@@ -22,7 +22,7 @@ func TestRunCreatesParentDirectories(t *testing.T) {
 		)},
 		Lock: lockOf("openspec/schemas/tdd/templates/design.md"),
 	}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+	if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -56,7 +56,7 @@ func TestRunOverwritesHandEdits(t *testing.T) {
 		Writes: []plan.Write{write("extras/tdd/schema.yaml", "openspec/schemas/tdd/schema.yaml")},
 		Lock:   lockOf("openspec/schemas/tdd/schema.yaml"),
 	}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+	if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -105,7 +105,7 @@ func TestRunNormalizesMode(t *testing.T) {
 				Writes: []plan.Write{write("extras/x", ".claude/hooks/x")},
 				Lock:   lockOf(".claude/hooks/x"),
 			}
-			if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+			if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 				t.Fatalf("Run: %v", err)
 			}
 
@@ -129,7 +129,7 @@ func TestRunUnreadableSourceFile(t *testing.T) {
 		Writes: []plan.Write{write("extras/gone.md", "docs/gone.md")},
 		Lock:   lockOf("docs/gone.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertErrorPrefix(t, err, `source "shared": cannot read "extras/gone.md": `)
 
 	repo.assertEntries()
@@ -144,7 +144,7 @@ func TestRunUnregisteredSource(t *testing.T) {
 		Writes: []plan.Write{write("extras/x.md", "docs/x.md")},
 		Lock:   lockOf("docs/x.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{}, p)
+	_, err := apply.Run(repo.dir, map[string]string{}, p)
 	assertError(t, err, `source "shared": no fetched tree`)
 
 	repo.assertEntries()
@@ -159,7 +159,7 @@ func TestRunEmptyPlanWritesOnlyTheLock(t *testing.T) {
 	repo := newTree(t)
 	repo.file("README.md", "mine\n")
 
-	if err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()}); err != nil {
+	if _, err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -185,7 +185,7 @@ func TestRunTouchesNothingOutsideThePlan(t *testing.T) {
 		Writes: []plan.Write{write("extras/apply.md", ".claude/agents/apply.md")},
 		Lock:   lockOf(".claude/agents/apply.md"),
 	}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+	if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -223,7 +223,7 @@ func TestRunDestinationDirectoryRefused(t *testing.T) {
 		Writes: []plan.Write{write("extras/api", "docs/api")},
 		Lock:   lockOf("docs/api"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertError(t, err, `cannot write "docs/api": it exists and is not a regular file`)
 
 	repo.assertEntries("docs/", "docs/api/", "docs/api/index.md")
@@ -245,7 +245,7 @@ func TestRunDestinationSymlinkRefused(t *testing.T) {
 		Writes: []plan.Write{write("extras/x.md", ".claude/agents/x.md")},
 		Lock:   lockOf(".claude/agents/x.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertError(t, err, `cannot write ".claude/agents/x.md": it exists and is not a regular file`)
 
 	// The check ran before anything was opened for writing, so the link's target is
@@ -279,7 +279,7 @@ func TestRunSourcePathNotRegular(t *testing.T) {
 				Writes: []plan.Write{write("extras/dir", "docs/x.md")},
 				Lock:   lockOf("docs/x.md"),
 			}
-			err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+			_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 			assertError(t, err, `source "shared": cannot read "extras/dir": not a regular file`)
 
 			repo.assertEntries()
@@ -300,7 +300,7 @@ func TestRunUnopenableSourceTree(t *testing.T) {
 		Writes: []plan.Write{write("extras/x.md", "docs/x.md")},
 		Lock:   lockOf("docs/x.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": missing}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": missing}, p)
 	assertErrorPrefix(t, err, `source "shared": cannot read "extras/x.md": `)
 
 	repo.assertEntries()

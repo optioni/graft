@@ -27,7 +27,7 @@ func TestRunForeignFileSurvives(t *testing.T) {
 		repo.file(synced, "synced\n")
 
 		p := &plan.Plan{Prune: []string{synced}, Lock: emptyLock()}
-		if err := apply.Run(repo.dir, nil, p); err != nil {
+		if _, err := apply.Run(repo.dir, nil, p); err != nil {
 			t.Fatalf("Run: %v", err)
 		}
 
@@ -50,7 +50,7 @@ func TestRunForeignFileSurvives(t *testing.T) {
 			Writes: []plan.Write{write("extras/apply-orchestrator.md", synced)},
 			Lock:   lockOf(synced),
 		}
-		if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+		if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 			t.Fatalf("Run: %v", err)
 		}
 
@@ -72,7 +72,7 @@ func TestRunForeignFileSurvives(t *testing.T) {
 			Writes: []plan.Write{write("extras/reviewer.md", ".claude/agents/reviewer.md")},
 			Lock:   lockOf(".claude/agents/reviewer.md"),
 		}
-		if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+		if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 			t.Fatalf("Run: %v", err)
 		}
 
@@ -101,7 +101,7 @@ func TestRunNeverEnumeratesADirectory(t *testing.T) {
 	repo.file(".claude/agents/synced.md", "synced\n")
 
 	p := &plan.Plan{Prune: []string{".claude/agents/synced.md"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -117,7 +117,7 @@ func TestRunPruneMissingPath(t *testing.T) {
 	repo.file("openspec/schemas/tdd/other.yaml", "kept\n")
 
 	p := &plan.Plan{Prune: []string{"openspec/schemas/tdd/schema.yaml"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -140,7 +140,7 @@ func TestRunPruneDirectoryRefused(t *testing.T) {
 	repo.file("docs/api/index.md", "mine\n")
 
 	p := &plan.Plan{Prune: []string{"docs/api"}, Lock: emptyLock()}
-	err := apply.Run(repo.dir, nil, p)
+	_, err := apply.Run(repo.dir, nil, p)
 	assertError(t, err, `cannot remove "docs/api": it is not a regular file`)
 
 	repo.assertEntries("docs/", "docs/api/", "docs/api/index.md")
@@ -154,7 +154,7 @@ func TestRunPruneSymlinkRefused(t *testing.T) {
 	repo.symlink("local-reviewer.md", ".claude/agents/x.md")
 
 	p := &plan.Plan{Prune: []string{".claude/agents/x.md"}, Lock: emptyLock()}
-	err := apply.Run(repo.dir, nil, p)
+	_, err := apply.Run(repo.dir, nil, p)
 	assertError(t, err, `cannot remove ".claude/agents/x.md": it is not a regular file`)
 
 	// Removing the link would succeed and would be a deletion of something graft never
@@ -179,7 +179,7 @@ func TestRunPruneSymlinkedParentRefused(t *testing.T) {
 	repo.symlink("docs", "vendor")
 
 	p := &plan.Plan{Prune: []string{"vendor/x.md"}, Lock: emptyLock()}
-	err := apply.Run(repo.dir, nil, p)
+	_, err := apply.Run(repo.dir, nil, p)
 	assertError(t, err, `cannot remove "vendor/x.md": "vendor" is not a directory`)
 
 	if got := repo.read("docs/x.md"); got != "repo-owned\n" {
@@ -195,7 +195,7 @@ func TestRunPruneFileParentRefused(t *testing.T) {
 	repo.file("docs", "not a directory\n")
 
 	p := &plan.Plan{Prune: []string{"docs/x.md"}, Lock: emptyLock()}
-	err := apply.Run(repo.dir, nil, p)
+	_, err := apply.Run(repo.dir, nil, p)
 	assertError(t, err, `cannot remove "docs/x.md": "docs" is not a directory`)
 
 	repo.assertEntries("docs")
@@ -224,7 +224,7 @@ func TestRunNeverPrunesAFileItJustWrote(t *testing.T) {
 		Prune:  []string{".claude/agents/Foo.md"},
 		Lock:   lockOf(".claude/agents/foo.md"),
 	}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+	if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 

@@ -27,7 +27,7 @@ func TestRunWritesThePlansLock(t *testing.T) {
 			"openspec/schemas/tdd/templates/design.md",
 		),
 	}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+	if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -67,12 +67,12 @@ func TestRunTwiceWritesIdenticalLock(t *testing.T) {
 	}
 	trees := map[string]string{"shared": src.dir}
 
-	if err := apply.Run(repo.dir, trees, p); err != nil {
+	if _, err := apply.Run(repo.dir, trees, p); err != nil {
 		t.Fatalf("first Run: %v", err)
 	}
 	first := repo.read(lock.Filename)
 
-	if err := apply.Run(repo.dir, trees, p); err != nil {
+	if _, err := apply.Run(repo.dir, trees, p); err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
 	if second := repo.read(lock.Filename); second != first {
@@ -110,7 +110,7 @@ func TestRunMidFlightFailureKeepsPreviousLock(t *testing.T) {
 		},
 		Lock: lockOf("locked/b.md", "ok/a.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertErrorPrefix(t, err, `cannot write "locked/b.md": `)
 
 	if got := repo.read(lock.Filename); got != "the previous lock\n" {
@@ -139,6 +139,6 @@ func TestRunUnwritableLock(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(repo.dir, 0o755) })
 
-	err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()})
+	_, err := apply.Run(repo.dir, nil, &plan.Plan{Lock: emptyLock()})
 	assertErrorPrefix(t, err, `cannot write "graft.lock": `)
 }

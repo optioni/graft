@@ -12,6 +12,7 @@ import (
 // The three verbs SPEC.md's report uses. Words, not symbols.
 const (
 	verbAdded   = "added"
+	verbAdopted = "adopted"
 	verbUpdated = "updated"
 	verbRemoved = "removed"
 )
@@ -23,6 +24,10 @@ const (
 	noteNotProvided  = "no longer provided"
 	noteNotInstalled = "no longer installed"
 	noteSourceGone   = "source removed"
+
+	// noteReplaced is the one note an added or updated item can carry: this write went
+	// over content graft did not own.
+	noteReplaced = "replaced existing content"
 )
 
 // Report is what a sync changed, as a value: which sources moved, which items were added,
@@ -40,6 +45,11 @@ type Report struct {
 	// Written is every file the plan writes, and Removed the size of its prune set.
 	Written int
 	Removed int
+
+	// Replaced is how many of those writes went over content the lock did not claim. It is
+	// filled in after the apply, because it is a fact about the filesystem rather than
+	// about the plan — which is why a dry run always reports none.
+	Replaced int
 
 	// DryRun changes what the summary says, not what any of the rest means.
 	DryRun bool
@@ -223,4 +233,48 @@ func unionOfNames(old, current map[string]lock.Source) []string {
 	}
 	slices.Sort(names)
 	return names
+}
+
+// adopt folds the applier's account of what it replaced into the report: the note on every
+// item that replaced something, the verb where `added` would otherwise be false, and the
+// count the summary carries.
+//
+// The verb is corrected only for an item the lock had never seen. An item already in the
+// lock that gains a file at an occupied path has genuinely been updated, and a fourth verb
+// for the combination would name an intersection rather than an event — the note says the
+// rest.
+//
+// It runs after the apply because nothing before the apply can know. A dry run never calls
+// it, which is exactly why a dry run reports no adoption.
+func (r *Report) adopt(p *plan.Plan, replaced []string) {
+	if len(replaced) == 0 {
+		return
+	}
+	r.Replaced = len(replaced)
+
+	dests := make(map[string]struct{}, len(replaced))
+	for _, d := range replaced {
+		dests[d] = struct{}{}
+	}
+
+	type owner struct{ source, item string }
+	adopted := map[owner]struct{}{}
+	for _, w := range p.Writes {
+		if _, ok := dests[w.Dest]; ok {
+			adopted[owner{w.Source, w.Item}] = struct{}{}
+		}
+	}
+
+	for i := range r.Sources {
+		for j := range r.Sources[i].Items {
+			it := &r.Sources[i].Items[j]
+			if _, ok := adopted[owner{r.Sources[i].Name, it.ID}]; !ok {
+				continue
+			}
+			if it.Verb == verbAdded {
+				it.Verb = verbAdopted
+			}
+			it.Note = noteReplaced
+		}
+	}
 }

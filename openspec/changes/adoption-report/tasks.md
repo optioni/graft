@@ -23,35 +23,35 @@
 <!-- kind: behavior -->
 <!-- parallel-after: 0 -->
 
-- [ ] 2.1 RED: Write failing tests for: *A hand-written file at a destination is reported*, *A
+- [x] 2.1 RED: Write failing tests for: *A hand-written file at a destination is reported*, *A
   claimed destination is not reported*, *Identical bytes are not a replacement*, *An absent
   destination is not a replacement*, *A failed apply reports nothing*
-- [ ] 2.2 GREEN: Compare against the bytes already held before writing, for unclaimed
+- [x] 2.2 GREEN: Compare against the bytes already held before writing, for unclaimed
   destinations only, and return the paths from `apply.Run`
-- [ ] 2.3 CHECK: Confirm nothing about what is written changed — the same writes, the same
+- [x] 2.3 CHECK: Confirm nothing about what is written changed — the same writes, the same
   order, the same containment, and the prune set untouched
-- [ ] 2.4 Run `go test ./internal/apply/` — no regressions
+- [x] 2.4 Run `go test ./internal/apply/` — no regressions
 
 ## 3. The report says so
 <!-- kind: behavior -->
 
-- [ ] 3.1 RED: Write failing tests for: *An item that replaced a hand-written file is
+- [x] 3.1 RED: Write failing tests for: *An item that replaced a hand-written file is
   adopted*, *An updated item that replaced a hand-written file keeps its verb*, *A destination
   the lock already claimed is not a replacement*, *Identical bytes replace nothing*, *A dry run
   reports no adoption*
-- [ ] 3.2 RED: Write failing tests for: *The summary names how many files replaced something*
+- [x] 3.2 RED: Write failing tests for: *The summary names how many files replaced something*
   and *A sync that replaced nothing carries no parenthetical*
-- [ ] 3.3 GREEN: Fold the applier's paths into the report — the verb where it would be false,
+- [x] 3.3 GREEN: Fold the applier's paths into the report — the verb where it would be false,
   the note, and the count — and render the summary's parenthetical
-- [ ] 3.4 VERIFY: Assert a report with no replacement is byte-identical to what it was before
+- [x] 3.4 VERIFY: Assert a report with no replacement is byte-identical to what it was before
   this change, including its column alignment
-- [ ] 3.5 Run `go test ./internal/sync/` — no regressions
+- [x] 3.5 Run `go test ./internal/sync/` — no regressions
 
 ## 4. Acceptance Test — Outer Loop GREEN
 <!-- kind: behavior -->
 
-- [ ] 4.1 VERIFY: Confirm the group 0 acceptance test passes end to end
-- [ ] 4.2 RED then GREEN: A second `graft sync` over the same repository reports nothing
+- [x] 4.1 VERIFY: Confirm the group 0 acceptance test passes end to end
+- [x] 4.2 RED then GREEN: A second `graft sync` over the same repository reports nothing
   adopted — the file is graft's now, and adoption is a one-time event
 
 ## 5. Documentation

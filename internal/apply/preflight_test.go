@@ -32,7 +32,7 @@ func TestPreflightRefusesBeforeAnyWrite(t *testing.T) {
 			},
 			Lock: lockOf("docs/a", "docs/b", "docs/c"),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertError(t, err, `cannot write "docs/c": it exists and is not a regular file`)
 
 		repo.assertEntries("docs/", "docs/c/", "docs/c/index.md")
@@ -52,7 +52,7 @@ func TestPreflightRefusesBeforeAnyWrite(t *testing.T) {
 			Prune:  []string{"docs/api"},
 			Lock:   lockOf("openspec/a.md"),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertError(t, err, `cannot remove "docs/api": it is not a regular file`)
 
 		repo.assertEntries("docs/", "docs/api/", "docs/api/index.md", "graft.lock")
@@ -75,7 +75,7 @@ func TestPreflightRefusesBeforeAnyWrite(t *testing.T) {
 			},
 			Lock: lockOf("docs/a", "docs/b"),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertErrorPrefix(t, err, `source "shared": cannot read "extras/gone.md": `)
 
 		repo.assertEntries()
@@ -95,7 +95,7 @@ func TestPreflightRefusesBeforeAnyWrite(t *testing.T) {
 			},
 			Lock: lockOf("docs/a", "docs/b"),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertError(t, err, `source "other": no fetched tree`)
 
 		repo.assertEntries()
@@ -116,7 +116,7 @@ func TestPreflightRefusesBeforeAnyWrite(t *testing.T) {
 			},
 			Lock: lockOf(".git/config", "docs/a"),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertError(t, err, `cannot write ".git/config": graft never writes inside ".git"`)
 
 		repo.assertEntries()
@@ -140,7 +140,7 @@ func TestPreflightChecksTheLocksOwnDestination(t *testing.T) {
 		Prune:  []string{"docs/old.md"},
 		Lock:   lockOf("docs/a.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertError(t, err, `cannot write "graft.lock": it exists and is not a regular file`)
 
 	repo.assertEntries("docs/", "docs/old.md", "graft.lock/")

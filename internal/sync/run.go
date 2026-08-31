@@ -151,9 +151,11 @@ func Run(o Options) (*Report, error) {
 		// nothing else, so what reaches disk cannot describe a different request.
 		opts = append(opts, apply.WithManifest(o.Manifest))
 	}
-	if err := apply.Run(o.Root, res.trees, p, opts...); err != nil {
+	replaced, err := apply.Run(o.Root, res.trees, p, opts...)
+	if err != nil {
 		return nil, err
 	}
+	report.adopt(p, replaced)
 	return report, nil
 }
 

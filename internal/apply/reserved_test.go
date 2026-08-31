@@ -28,7 +28,7 @@ func TestRunReservedPaths(t *testing.T) {
 			Writes: []plan.Write{write("extras/config", ".git/config")},
 			Lock:   lockOf(".git/config"),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertError(t, err, `cannot write ".git/config": graft never writes inside ".git"`)
 
 		if got := repo.read(".git/config"); got != "[core]\n" {
@@ -49,7 +49,7 @@ func TestRunReservedPaths(t *testing.T) {
 			Prune: []string{".git/hooks/pre-commit"},
 			Lock:  emptyLock(),
 		}
-		err := apply.Run(repo.dir, nil, p)
+		_, err := apply.Run(repo.dir, nil, p)
 		assertError(t, err, `cannot remove ".git/hooks/pre-commit": graft never removes inside ".git"`)
 
 		if !repo.exists(".git/hooks/pre-commit") {
@@ -70,7 +70,7 @@ func TestRunReservedPaths(t *testing.T) {
 				Writes: []plan.Write{write("extras/x", name)},
 				Lock:   lockOf(name),
 			}
-			err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+			_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 			assertError(t, err, `cannot write "`+name+`": graft never writes over "`+name+`"`)
 
 			if got := repo.read(name); got != "mine\n" {
@@ -87,7 +87,7 @@ func TestRunReservedPaths(t *testing.T) {
 			repo.file(name, "mine\n")
 
 			p := &plan.Plan{Prune: []string{name}, Lock: emptyLock()}
-			err := apply.Run(repo.dir, nil, p)
+			_, err := apply.Run(repo.dir, nil, p)
 			assertError(t, err, `cannot remove "`+name+`": graft never removes "`+name+`"`)
 
 			if got := repo.read(name); got != "mine\n" {
@@ -114,7 +114,7 @@ func TestRunReservedPaths(t *testing.T) {
 			},
 			Lock: lockOf(".github/workflows/ci.yml", ".gitignore"),
 		}
-		if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+		if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 			t.Fatalf("Run: %v", err)
 		}
 
@@ -151,7 +151,7 @@ func TestRunReservedPathsFoldCase(t *testing.T) {
 				Writes: []plan.Write{write("extras/x", dest)},
 				Lock:   lockOf(dest),
 			}
-			if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
+			if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
 				t.Errorf("writing %q was allowed", dest)
 			}
 			if got := repo.read(".git/config"); got != "[core]\n" {
@@ -168,7 +168,7 @@ func TestRunReservedPathsFoldCase(t *testing.T) {
 			repo.file(".git/hooks/pre-commit", "#!/bin/sh\n")
 
 			p := &plan.Plan{Prune: []string{dest}, Lock: emptyLock()}
-			if err := apply.Run(repo.dir, nil, p); err == nil {
+			if _, err := apply.Run(repo.dir, nil, p); err == nil {
 				t.Errorf("pruning %q was allowed", dest)
 			}
 			if !repo.exists(".git/hooks/pre-commit") {
@@ -193,7 +193,7 @@ func TestRunReservedPathsRefuseEmpty(t *testing.T) {
 			Writes: []plan.Write{write("extras/x", dest)},
 			Lock:   emptyLock(),
 		}
-		if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
+		if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err == nil {
 			t.Errorf("writing %q was allowed", dest)
 		}
 		repo.assertEntries()

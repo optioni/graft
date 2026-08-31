@@ -22,7 +22,7 @@ func TestRunRemovesEmptiedDirectories(t *testing.T) {
 		},
 		Lock: emptyLock(),
 	}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -37,7 +37,7 @@ func TestRunKeepsNonEmptyDirectory(t *testing.T) {
 	repo.file(".claude/agents/apply-orchestrator.md", "synced\n")
 
 	p := &plan.Plan{Prune: []string{".claude/agents/apply-orchestrator.md"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -57,7 +57,7 @@ func TestRunLeavesUnrelatedEmptyDirectory(t *testing.T) {
 	repo.file("docs/old.md", "synced\n")
 
 	p := &plan.Plan{Prune: []string{"docs/old.md"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -79,7 +79,7 @@ func TestRunKeepsSymlinkedAncestor(t *testing.T) {
 	// the removal walk is never reached. Its own non-directory check is therefore a floor
 	// under this one rather than the thing that saves the link here.
 	p := &plan.Plan{Prune: []string{"agents/x.md"}, Lock: emptyLock()}
-	err := apply.Run(repo.dir, nil, p)
+	_, err := apply.Run(repo.dir, nil, p)
 	assertError(t, err, `cannot remove "agents/x.md": "agents" is not a directory`)
 
 	repo.assertEntries("agents", "shared/", "shared/keep.md")
@@ -96,7 +96,7 @@ func TestRunKeepsSymlinkedAncestorOfARealPrune(t *testing.T) {
 	repo.symlink("shared", "docs/link")
 
 	p := &plan.Plan{Prune: []string{"docs/x.md"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -117,7 +117,7 @@ func TestRunPruneAtRoot(t *testing.T) {
 	repo.file("README.md", "synced\n")
 
 	p := &plan.Plan{Prune: []string{"README.md"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -143,7 +143,7 @@ func TestRunOrdersOperations(t *testing.T) {
 		Prune:  []string{"docs/gone.md", "openspec/schemas/tdd/templates/old.md"},
 		Lock:   lockOf("openspec/schemas/tdd/templates/new.md"),
 	}
-	if err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
+	if _, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -168,7 +168,7 @@ func TestRunKeepsADirectoryItDidNotEmpty(t *testing.T) {
 	repo.mkdir("vendor/tools")
 
 	p := &plan.Plan{Prune: []string{"vendor/tools/x.md"}, Lock: emptyLock()}
-	if err := apply.Run(repo.dir, nil, p); err != nil {
+	if _, err := apply.Run(repo.dir, nil, p); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 

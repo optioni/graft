@@ -105,5 +105,16 @@ func (r *Report) summary() string {
 	if r.DryRun {
 		return fmt.Sprintf("%s to write, %d to remove - nothing written", ui.FileCount(r.Written), r.Removed)
 	}
-	return fmt.Sprintf("%s written, %d removed - review with `git diff`", ui.FileCount(r.Written), r.Removed)
+	return fmt.Sprintf("%s written%s, %d removed - review with `git diff`",
+		ui.FileCount(r.Written), r.replacedNote(), r.Removed)
+}
+
+// replacedNote is the summary's parenthetical, or nothing at all when nothing was replaced
+// — a summary with nothing to say about replacement says nothing, rather than carrying a
+// `(0 replaced existing content)` that every reader learns to skip.
+func (r *Report) replacedNote() string {
+	if r.Replaced == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (%d %s)", r.Replaced, noteReplaced)
 }

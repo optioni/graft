@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -52,7 +53,7 @@ func WithManifest(data []byte) Option {
 // remove the directories the prune set left empty, write graft.toml when the caller supplied
 // it, write graft.lock. Nothing here derives a path of its own — every one comes from the
 // plan, or is one of graft's own two files at the root.
-func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) error {
+func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) ([]string, error) {
 	var o options
 	for _, apply := range opts {
 		apply(&o)
@@ -60,7 +61,7 @@ func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) err
 
 	repo, err := os.OpenRoot(root)
 	if err != nil {
-		return fmt.Errorf("cannot open the repository root %q: %w", root, err)
+		return nil, fmt.Errorf("cannot open the repository root %q: %w", root, err)
 	}
 	defer func() { _ = repo.Close() }()
 
@@ -68,19 +69,26 @@ func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) err
 	defer src.close()
 
 	if err := preflight(repo, src, p, o); err != nil {
-		return err
+		return nil, err
 	}
 
 	// The identity of each file written, so the prune step can decline to delete one of
 	// them. See written.
 	var wrote written
+	// The destinations at which existing content was replaced, in the plan's own order.
+	// A run that fails returns none of these, for the same reason it writes no lock: a
+	// partial account describes a state that never existed.
+	var replaced []string
 	for _, w := range p.Writes {
 		data, err := src.read(w.Source, w.From)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		if replaces(repo, w, data) {
+			replaced = append(replaced, w.Dest)
 		}
 		if err := writeFile(repo, w.Dest, data); err != nil {
-			return err
+			return nil, err
 		}
 		if fi, err := repo.Lstat(w.Dest); err == nil {
 			wrote = append(wrote, fi)
@@ -96,7 +104,7 @@ func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) err
 	for _, dest := range p.Prune {
 		gone, err := removeFile(repo, dest, wrote)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if gone {
 			unlinked = append(unlinked, dest)
@@ -107,10 +115,44 @@ func Run(root string, trees map[string]string, p *plan.Plan, opts ...Option) err
 
 	if o.manifest != nil {
 		if err := writeManifest(repo, o.manifest); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return writeLock(repo, p.Lock)
+	if err := writeLock(repo, p.Lock); err != nil {
+		return nil, err
+	}
+	return replaced, nil
+}
+
+// replaces reports whether writing this file replaces content graft does not own: the
+// destination exists, the plan did not mark it claimed by the lock, and its bytes differ
+// from the bytes about to be written.
+//
+// All three conditions matter. A claimed destination is graft's own file being rewritten,
+// which is what a sync does. A destination holding exactly what is about to be written
+// replaced nothing. An absent one is an ordinary write. Reporting any of them would put a
+// number in the summary that a reader learns to skip.
+//
+// The comparison is against bytes the caller is already holding, so it costs one read of a
+// file that is about to be overwritten anyway — and none at all for a claimed path, which
+// is every file of a consumer that has synced before.
+//
+// A read that fails answers false rather than an error. Whatever is there is about to be
+// overwritten either way, and the write itself is where a real failure surfaces; refusing a
+// run because a note could not be produced would put reporting ahead of the work.
+func replaces(repo *os.Root, w plan.Write, data []byte) bool {
+	if w.Claimed {
+		return false
+	}
+	fi, err := repo.Lstat(w.Dest)
+	if err != nil || !fi.Mode().IsRegular() {
+		return false
+	}
+	existing, err := repo.ReadFile(w.Dest)
+	if err != nil {
+		return false
+	}
+	return !bytes.Equal(existing, data)
 }
 
 // removeEmptyDirs removes the directories the prune set left empty, deepest first.

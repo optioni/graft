@@ -31,7 +31,7 @@ func TestRunDestinationEscapeRefused(t *testing.T) {
 			Writes: []plan.Write{write("extras/x.md", escaping)},
 			Lock:   lockOf(escaping),
 		}
-		err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+		_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 		assertErrorPrefix(t, err, `cannot write "`+escaping+`": `)
 		if outside.exists("outside.md") {
 			t.Error("a file was written outside the repository root")
@@ -42,7 +42,8 @@ func TestRunDestinationEscapeRefused(t *testing.T) {
 		outside.file("outside.md", "not graft's\n")
 
 		p := &plan.Plan{Prune: []string{escaping}, Lock: emptyLock()}
-		assertErrorPrefix(t, apply.Run(repo.dir, nil, p), `cannot remove "`+escaping+`": `)
+		_, err := apply.Run(repo.dir, nil, p)
+		assertErrorPrefix(t, err, `cannot remove "`+escaping+`": `)
 		if got := outside.read("outside.md"); got != "not graft's\n" {
 			t.Errorf("outside.md = %q, want %q", got, "not graft's\n")
 		}
@@ -67,7 +68,7 @@ func TestRunSourceEscapeRefused(t *testing.T) {
 		Writes: []plan.Write{write(escaping, "docs/secret.md")},
 		Lock:   lockOf("docs/secret.md"),
 	}
-	err = apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err = apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertErrorPrefix(t, err, `source "shared": cannot read "`+escaping+`": `)
 
 	repo.assertEntries()
@@ -79,7 +80,7 @@ func TestRunMissingRoot(t *testing.T) {
 	parent := newTree(t)
 	missing := filepath.Join(parent.dir, "not-a-repository")
 
-	err := apply.Run(missing, nil, &plan.Plan{Lock: emptyLock()})
+	_, err := apply.Run(missing, nil, &plan.Plan{Lock: emptyLock()})
 	assertErrorPrefix(t, err, `cannot open the repository root "`+missing+`": `)
 
 	// graft never creates the repository it runs in.

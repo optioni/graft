@@ -25,7 +25,7 @@ func TestRunDestinationSymlinkedParentRefused(t *testing.T) {
 		Writes: []plan.Write{write("extras/x.md", ".claude/agents/x.md")},
 		Lock:   lockOf(".claude/agents/x.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertError(t, err, `cannot write ".claude/agents/x.md": ".claude" is not a directory`)
 
 	repo.assertEntries(
@@ -50,7 +50,7 @@ func TestRunDestinationFileParentRefused(t *testing.T) {
 		Writes: []plan.Write{write("extras/x.yaml", "openspec/schemas/x.yaml")},
 		Lock:   lockOf("openspec/schemas/x.yaml"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertError(t, err, `cannot write "openspec/schemas/x.yaml": "openspec" is not a directory`)
 
 	repo.assertEntries("openspec")
@@ -72,6 +72,6 @@ func TestRunDestinationNamesTheShallowestBadAncestor(t *testing.T) {
 		Writes: []plan.Write{write("extras/x.md", "top/link/x.md")},
 		Lock:   lockOf("top/link/x.md"),
 	}
-	err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
+	_, err := apply.Run(repo.dir, map[string]string{"shared": src.dir}, p)
 	assertError(t, err, `cannot write "top/link/x.md": "top" is not a directory`)
 }
