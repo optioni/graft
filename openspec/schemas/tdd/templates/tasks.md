@@ -51,13 +51,26 @@
 - [ ] N.2 CHANGE: Fix every CRITICAL, resolve or accept each WARNING, re-run affected tests
 - [ ] N.3 VERIFY: Confirm no blocking or unowned finding remains
 
-## N+1. Lint & Verify
+## N+1. Documentation
+<!-- kind: operational -->
+<!-- OPT-IN. Keep this group ONLY when the change has durable information to add or
+     correct in a maintained document. Omit it entirely otherwise — never add a generic
+     documentation-review or changelog task.
+     Each task names the document, section, and audience, states whether it adds,
+     rewrites, or removes, and gives the durable reason it stays useful. A group adding
+     more than ~10 lines to one document must also say what it corrects or replaces
+     there. Where a repository keeps nested agent guidance, name the NARROWEST file that
+     covers the rule. -->
+
+- [ ] N+1.1 <Add|Rewrite|Remove> in <doc>: <section> (audience: <who>) — <what changes, what it replaces, and why it stays useful>
+
+## N+2. Lint & Verify
 <!-- kind: operational -->
 <!-- Replace with this repository's actual commands — see the project context and rules. -->
 
-- [ ] N+1.1 CHECK: Inspect the intended verification commands and affected tiers
-- [ ] N+1.2 VERIFY: Run the project's linter — 0 errors
-- [ ] N+1.3 VERIFY: Run the project's type checker — 0 errors
-- [ ] N+1.4 VERIFY: Run the project's test suite — green
-- [ ] N+1.5 VERIFY: Run the coverage gate when gated code is affected
-- [ ] N+1.6 VERIFY: Run `openspec validate <change> --strict`
+- [ ] N+2.1 CHECK: Inspect the intended verification commands and affected tiers
+- [ ] N+2.2 VERIFY: Run the project's linter — 0 errors
+- [ ] N+2.3 VERIFY: Run the project's type checker — 0 errors
+- [ ] N+2.4 VERIFY: Run the project's test suite — green
+- [ ] N+2.5 VERIFY: Run the coverage gate when gated code is affected
+- [ ] N+2.6 VERIFY: Run `openspec validate <change> --strict`
