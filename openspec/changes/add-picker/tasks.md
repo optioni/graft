@@ -14,25 +14,25 @@
 ## 2. Rendering
 <!-- kind: behavior -->
 
-- [ ] 2.1 RED: Write failing tests for: *Rendering names every item's destination*, *An item
+- [x] 2.1 RED: Write failing tests for: *Rendering names every item's destination*, *An item
   with several destinations names all of them*
-- [ ] 2.2 GREEN: Implement `View`, padding ids to a common width with `ui.Pad` so the picker
+- [x] 2.2 GREEN: Implement `View`, padding ids to a common width with `ui.Pad` so the picker
   and `--list` align text the same way, marking the cursor and the selected items
-- [ ] 2.3 GREEN: Window the list to the cursor so a catalog longer than the terminal still
+- [x] 2.3 GREEN: Window the list to the cursor so a catalog longer than the terminal still
   renders, falling back to a fixed height when none is known
-- [ ] 2.4 Run `go test ./internal/picker/` — no regressions
+- [x] 2.4 Run `go test ./internal/picker/` — no regressions
 
 ## 3. The collapse offer
 <!-- kind: behavior -->
 
-- [ ] 3.1 RED: Write failing tests for: *Selecting both agents offers the glob*, *A kind with
+- [x] 3.1 RED: Write failing tests for: *Selecting both agents offers the glob*, *A kind with
   one item is never offered*, *Two wholly selected kinds are offered separately*, *Cancelling
   at the offer cancels the whole picker*
-- [ ] 3.2 GREEN: Implement the second screen — one offer per wholly selected kind of more
+- [x] 3.2 GREEN: Implement the second screen — one offer per wholly selected kind of more
   than one item, each accepted or declined, the text stating what `kind:*` means
-- [ ] 3.3 GREEN: Order the resulting selectors by kind as the catalog orders them and by id
+- [x] 3.3 GREEN: Order the resulting selectors by kind as the catalog orders them and by id
   within a kind, so two runs of one selection produce one manifest
-- [ ] 3.4 Run `go test ./internal/picker/` — no regressions
+- [x] 3.4 Run `go test ./internal/picker/` — no regressions
 
 ## 4. The terminal driver
 <!-- kind: behavior -->

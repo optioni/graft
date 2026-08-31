@@ -64,6 +64,9 @@ type Model struct {
 
 	phase phase
 
+	// title is the heading the list opens with — the source header `--list` prints.
+	title string
+
 	// height is how many item lines the list may occupy, and top the first item shown.
 	height int
 	top    int
