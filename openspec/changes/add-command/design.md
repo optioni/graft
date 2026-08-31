@@ -151,6 +151,7 @@ one source and no other — are only observable end to end.
 | A one-line array gains a selector on its own line | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A multi-line array gains a line matching its indentation | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A multi-line array with no trailing comma keeps that style | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
+| A comment trailing the last element stays with it | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A selector already present is not added twice | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | A comment after the last element survives | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
 | Appending a name already declared is refused | Table test over bytes in, bytes out | unit | none — pure over bytes | `go test ./internal/manifest/` |
@@ -170,7 +171,7 @@ one source and no other — are only observable end to end.
 | A graft.toml that is not a regular file is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 | A staging leftover that is not a regular file is refused | Direct call against a repository built in `t.TempDir()` | integration | real filesystem | `go test ./internal/apply/` |
 
-<!-- 61 rows, one per spec scenario -->
+<!-- 62 rows, one per spec scenario -->
 ## Decisions
 
 **The install amendment inserts after the last element, not before the closing bracket.**

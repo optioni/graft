@@ -60,8 +60,21 @@ func AddInstall(data []byte, name string, selectors []string) ([]byte, error) {
 		return append([]byte(nil), data...), nil
 	}
 
-	at, insert := arr.insertion(add)
-	return []byte(text[:at] + insert + text[at:]), nil
+	out := text
+	// Applied from the last offset backwards, so an earlier splice does not move a later
+	// one's index.
+	for _, e := range arr.insertion(text, add) {
+		out = out[:e.at] + e.text + out[e.at:]
+	}
+	return []byte(out), nil
+}
+
+// splice is one insertion: the offset to write at, and the text to write there. An
+// amendment is one splice, or two when the previous element has to gain a comma at its own
+// end while the new lines go after the comment that trails it.
+type splice struct {
+	at   int
+	text string
 }
 
 // installArray is where one source's install array is and what shape it was written in.
@@ -75,8 +88,8 @@ type installArray struct {
 	elements   []string // each element's content, in order
 }
 
-// insertion returns where to write and what to write there.
-func (a installArray) insertion(add []string) (int, string) {
+// insertion returns the splices that add the selectors, in descending offset order.
+func (a installArray) insertion(text string, add []string) []splice {
 	quotedAll := make([]string, 0, len(add))
 	for _, sel := range add {
 		quotedAll = append(quotedAll, quoted(sel))
@@ -85,24 +98,17 @@ func (a installArray) insertion(add []string) (int, string) {
 	// An array with no element yet: everything goes straight after the bracket, which
 	// keeps a one-line array on one line and leaves a multi-line one valid.
 	if a.lastEnd < 0 {
-		return a.open + 1, strings.Join(quotedAll, ", ")
+		return []splice{{at: a.open + 1, text: strings.Join(quotedAll, ", ")}}
 	}
 
 	if !a.multiline {
 		if a.afterComma >= 0 {
-			return a.afterComma, " " + strings.Join(quotedAll, ", ")
+			return []splice{{at: a.afterComma, text: " " + strings.Join(quotedAll, ", ")}}
 		}
-		return a.lastEnd, ", " + strings.Join(quotedAll, ", ")
+		return []splice{{at: a.lastEnd, text: ", " + strings.Join(quotedAll, ", ")}}
 	}
 
 	var b strings.Builder
-	at := a.afterComma
-	if at < 0 {
-		// The comma the previous element never had. It is written at that element's own
-		// line end, which is the one existing line this may touch.
-		at = a.lastEnd
-		b.WriteString(",")
-	}
 	for i, q := range quotedAll {
 		b.WriteString("\n" + a.indent + q)
 		// The array's own style: every element carries a comma, or the last one does not.
@@ -110,7 +116,47 @@ func (a installArray) insertion(add []string) (int, string) {
 			b.WriteString(",")
 		}
 	}
-	return at, b.String()
+
+	// New lines begin after whatever trails the last element on its own line — a comment
+	// there belongs to that element, and splitting the line would hand it to the element
+	// being added.
+	after := a.afterComma
+	if after < 0 {
+		after = a.lastEnd
+	}
+	at := a.lineTail(text, after)
+	lines := splice{at: at, text: b.String()}
+	if a.afterComma >= 0 {
+		return []splice{lines}
+	}
+	// The comma the previous element never had. It goes at that element's own end, ahead
+	// of any comment, which is the one existing line an amendment may touch.
+	comma := splice{at: a.lastEnd, text: ","}
+	if at == a.lastEnd {
+		return []splice{{at: a.lastEnd, text: "," + b.String()}}
+	}
+	return []splice{lines, comma}
+}
+
+// lineTail returns the offset an insertion after p should be written at: past a comment
+// trailing p on the same line, and never past the array's closing bracket.
+//
+// Without it an amendment inserts between an element and the comment explaining it, which
+// silently re-attaches that comment to a selector the consumer never wrote it about.
+func (a installArray) lineTail(text string, p int) int {
+	i := p
+	for i < a.close && (text[i] == ' ' || text[i] == '\t') {
+		i++
+	}
+	if i >= a.close || text[i] != '#' {
+		// A newline, the closing bracket, or another element on the same line. Leaving the
+		// offset where it was keeps the insertion inside the array in every one of them.
+		return p
+	}
+	for i < len(text) && text[i] != '\n' {
+		i++
+	}
+	return i
 }
 
 // findInstall locates the install array in the body of a source's table, between lo and

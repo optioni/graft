@@ -60,8 +60,12 @@ one or more selectors added to an existing source's `install` array, every other
 file left exactly as it was, and the array's own formatting preserved.
 
 The insertion point SHALL be immediately after the array's last element, and after that
-element's trailing comma when it has one, so a comment sitting between the last element and
-the closing bracket survives untouched.
+element's trailing comma when it has one, so a comment sitting on its own line between the
+last element and the closing bracket survives untouched. A comment trailing the last element
+*on that element's own line* SHALL stay with it: the insertion SHALL begin after it, because
+a comment explaining an element that ends up beside a different one is a manifest that lies,
+produced by the edit whose whole purpose is not to disturb one. The comma an element without
+one must gain SHALL still be written at the element's own end, ahead of that comment.
 
 The array's shape SHALL decide the rendering:
 
@@ -103,6 +107,15 @@ SHALL return no bytes at all on any error.
 - **THEN** exactly two lines differ: the previous last element's line, which gains a single
   `,` at its end, and the inserted line, which reads `"schema:tdd"` with no comma
 - **AND** the result parses as a manifest declaring both selectors, in that order
+
+#### Scenario: A comment trailing the last element stays with it
+
+- **WHEN** a multi-line array's last element reads `"agent:reviewer",   # the one we use`
+  and it is amended with `schema:tdd`
+- **THEN** that line is byte-identical, comment included, and the new element is written on
+  the line after it
+- **AND** with the comma absent from that element, the comma is added at the element's own
+  end — before the comment — and the result parses
 
 #### Scenario: A selector already present is not added twice
 

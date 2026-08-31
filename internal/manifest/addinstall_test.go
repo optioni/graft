@@ -250,3 +250,63 @@ install = ["agent:reviewer"]
 		t.Errorf("the commented-out key was not skipped:\n%s", got)
 	}
 }
+
+// A comment explaining an element belongs to that element. An amendment that inserted
+// between the two would silently re-attach it to a selector the consumer never wrote it
+// about — which is a manifest that lies, produced by the edit whose whole purpose is not
+// to disturb one.
+func TestAddInstallKeepsACommentWithTheElementItTrails(t *testing.T) {
+	t.Parallel()
+
+	before := `[sources.shared]
+git     = "a/shared"
+rev     = "v1.0.0"
+install = [
+    "agent:reviewer",   # the one we actually use
+]
+`
+	got, err := manifest.AddInstall([]byte(before), "shared", []string{"schema:tdd"})
+	if err != nil {
+		t.Fatalf("AddInstall: %v", err)
+	}
+	want := `install = [
+    "agent:reviewer",   # the one we actually use
+    "schema:tdd",
+]
+`
+	if !strings.Contains(string(got), want) {
+		t.Errorf("the comment moved to the new element:\n%s", got)
+	}
+	if lines := changedLines(before, string(got)); len(lines) != 2 {
+		t.Errorf("changed lines = %v, want two (the insertion and the shift)\n%s", lines, got)
+	}
+}
+
+// The same, for an array whose last element carries no comma: the comma goes at that
+// element's own end, ahead of its comment, and the new element on the line after.
+func TestAddInstallAddsTheMissingCommaAheadOfATrailingComment(t *testing.T) {
+	t.Parallel()
+
+	before := `[sources.shared]
+git     = "a/shared"
+rev     = "v1.0.0"
+install = [
+    "agent:reviewer"   # the one we actually use
+]
+`
+	got, err := manifest.AddInstall([]byte(before), "shared", []string{"schema:tdd"})
+	if err != nil {
+		t.Fatalf("AddInstall: %v", err)
+	}
+	want := `install = [
+    "agent:reviewer",   # the one we actually use
+    "schema:tdd"
+]
+`
+	if !strings.Contains(string(got), want) {
+		t.Errorf("the comma or the new element landed in the wrong place:\n%s", got)
+	}
+	if _, err := manifest.Parse(got, manifest.Filename); err != nil {
+		t.Fatalf("the amended manifest does not parse: %v\n%s", err, got)
+	}
+}
