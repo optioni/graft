@@ -95,13 +95,13 @@
 ## 6. Parsing the add invocation
 <!-- kind: behavior -->
 
-- [ ] 6.1 RED: Write failing tests for: *Three spellings of one repository derive one name*,
+- [x] 6.1 RED: Write failing tests for: *Three spellings of one repository derive one name*,
   *A git value with no usable last segment is refused*, and the `@rev` split, including that
   `git@github.com:optioni/shared` keeps its `@`
-- [ ] 6.2 GREEN: Implement the derivation and the `@rev` split in `internal/add`, pure over
+- [x] 6.2 GREEN: Implement the derivation and the `@rev` split in `internal/add`, pure over
   strings
-- [ ] 6.3 REFACTOR: Name the two rules where they are readable, or record that none is needed
-- [ ] 6.4 Run `go test ./internal/add/` — no regressions
+- [x] 6.3 REFACTOR: Name the two rules where they are readable, or record that none is needed
+- [x] 6.4 Run `go test ./internal/add/` — no regressions
 
 ## 7. A sync that honours pre-edited manifest bytes
 <!-- kind: behavior -->
