@@ -27,7 +27,7 @@ const revKey = "rev"
 // package that puts them anywhere. On any error it returns no bytes at all, so no caller can
 // write a half-edited file.
 func SetRev(data []byte, name, rev string) ([]byte, error) {
-	if err := checkRev(rev); err != nil {
+	if err := checkLiteral(revKey, rev); err != nil {
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func closingQuote(line string, i int) int {
 	return -1
 }
 
-// checkRev refuses a rev that cannot be written literally into a TOML string.
+// checkLiteral refuses a value that cannot be written literally into a TOML string.
 //
 // A quotation mark of either kind would close the string it is written into, and everything
 // after it becomes manifest syntax: a newline and `install = []` appended to a rev is a key
@@ -157,10 +157,14 @@ func closingQuote(line string, i int) int {
 //
 // unicode.IsControl rather than a `< 0x20` test: DEL and the C1 range are invalid inside a
 // TOML basic string too.
-func checkRev(rev string) error {
-	for _, r := range rev {
+//
+// key names the value in the message — `rev`, `git`, `selector` — because the append writes
+// three kinds of value and a message that named none of them would leave the reader hunting.
+// The wording for `rev` is byte-identical to the one this refusal has always produced.
+func checkLiteral(key, value string) error {
+	for _, r := range value {
 		if r == '"' || r == '\'' || r == '\\' || unicode.IsControl(r) {
-			return fmt.Errorf("%s: rev %q contains a quote, a backslash, or a control character", Filename, rev)
+			return fmt.Errorf("%s: %s %q contains a quote, a backslash, or a control character", Filename, key, value)
 		}
 	}
 	return nil

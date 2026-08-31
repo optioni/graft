@@ -13,20 +13,20 @@
 ## 1. Appending a source table to graft.toml
 <!-- kind: behavior -->
 
-- [ ] 1.1 RED: Write failing tests for: *A table is appended to a manifest holding one
+- [x] 1.1 RED: Write failing tests for: *A table is appended to a manifest holding one
   source*, *An empty file gets the table alone*, *A file with no final newline gains one*,
   *Several selectors render on one line, in order*, *Appending a name already declared is
   refused*, *A name that is not a bare key is refused*, *A selector carrying a quote is
   refused*
-- [ ] 1.2 GREEN: Implement `manifest.AddSource`, rendering the block with SPEC.md's alignment
+- [x] 1.2 GREEN: Implement `manifest.AddSource`, rendering the block with SPEC.md's alignment
   and asserting the original bytes are a prefix of the result
-- [ ] 1.3 GREEN: Generalize `checkRev`'s refusal to `git`, `rev`, and `selector` values,
+- [x] 1.3 GREEN: Generalize `checkRev`'s refusal to `git`, `rev`, and `selector` values,
   leaving the existing `rev` message byte-identical
-- [ ] 1.4 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm the
+- [x] 1.4 CHECK: Contract gate — re-read SPEC.md's `graft.toml` section and confirm the
   rendered block matches the documented format key for key
-- [ ] 1.5 REFACTOR: Extract whatever `AddSource` and `SetRev` genuinely share, or record that
+- [x] 1.5 REFACTOR: Extract whatever `AddSource` and `SetRev` genuinely share, or record that
   the scanner is not yet duplicated
-- [ ] 1.6 Run `go test ./internal/manifest/` — no regressions
+- [x] 1.6 Run `go test ./internal/manifest/` — no regressions
 
 ## 2. Amending an existing install list
 <!-- kind: behavior -->
