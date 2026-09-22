@@ -12,7 +12,7 @@ The orchestrator will provide:
 - `proposal.md` — the motivation, scope, and capabilities of the change
 - The relevant spec files — acceptance scenarios that define required behavior
 - `design.md` — technical decisions and test boundaries
-- The diff of all changes made
+- A base commit ref — run `git diff <base>..HEAD` yourself to get the change's full diff. The orchestrator deliberately does not carry it: your context ends with this review, and its has to survive the rest of the change.
 
 ## Review dimensions
 

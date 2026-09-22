@@ -4,8 +4,8 @@ version = 1
 [[source]]
 name     = "openspec-schemas"
 git      = "github.com/optioni/openspec-schemas"
-rev      = "v0.1.1"
-resolved = "c90b823d4a68b616bb528fa7cda96dc0ae17668f"
+rev      = "v0.4.0"
+resolved = "9f65234f99d97393c7f238d202a88f2d4b82b91b"
 
   [[source.item]]
   id    = "agent:apply-orchestrator"
@@ -22,6 +22,14 @@ resolved = "c90b823d4a68b616bb528fa7cda96dc0ae17668f"
   [[source.item]]
   id    = "agent:phase-orchestrator"
   files = [".claude/agents/phase-orchestrator.md"]
+
+  [[source.item]]
+  id    = "agent:planning-reviewer"
+  files = [".claude/agents/planning-reviewer.md"]
+
+  [[source.item]]
+  id    = "agent:repo-locator"
+  files = [".claude/agents/repo-locator.md"]
 
   [[source.item]]
   id    = "schema:tdd"

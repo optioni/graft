@@ -4,6 +4,33 @@
      lockfiles, CI and build config, formatter settings). Do NOT write a test that
      asserts a config key; the command that consumes the config is the check. -->
 
+<!-- A task is an instruction and its verification: what to do, and how you will know it
+     worked. Two sentences is the working size; past about four you are justifying rather
+     than instructing, and the justification belongs in design.md — cite it from the task
+     instead. Do not argue with the implementer; if a wrong move is reachable, the check
+     that catches it is the answer. If this file outgrows the design.md it implements, the
+     design is being written here one task at a time. Check text does not count. -->
+
+<!-- Before finalising, walk the group list once and ask of each pair whether it must be
+     ordered at all — outside-in TDD tells a sequential story about work that often is not
+     one. A pair may run in parallel when they share no file, neither needs the other's
+     code to exist, and this group's gate run does not compile or execute the other's
+     files — the breadth of the gate command is not the test; what the run reaches is.
+     Mark those with `<!-- parallel-after: N -->`; where they are genuinely sequential,
+     say so in one line and name the first criterion that fires for the pair it fires on.
+     Silence reads as nobody having looked, and a repository-wide fact about the gate
+     reads the same way, because it is true of every change here — unless the project
+     rules already record that veto, in which case cite them and skip the walk. -->
+
+<!-- Write every check out in full, RUN it at planning time against current HEAD, and
+     record its exit status beside it. A check for behavior this change adds must be RED
+     at HEAD. A check pinning an invariant that already holds is green at HEAD and proves
+     nothing without a negative control — plant the violation, show it fires, remove it,
+     show it goes quiet. Record what each check SELECTED as well as its exit status —
+     tests executed, lines matched — because a filter naming nothing exits clean, and
+     zero selected is a failed check. Every number below (line counts, call sites,
+     totals, coverage) names the command that produced it. -->
+
 ## 0. Acceptance Test — Outer Loop RED
 <!-- kind: behavior -->
 <!-- OPT-IN. Keep this group only when the change alters a client-visible interface whose

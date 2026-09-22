@@ -28,8 +28,9 @@ artifacts:
       proposal and specs phases. Research existing specs in `openspec/specs/` before
       filling this in. Each capability listed here will need a corresponding spec file.
 
-      Keep it concise (under 400 words). Focus on the "why" not the "how" —
-      implementation details belong in design.md.
+      Keep it under about 900 words across all five sections — room for the Capabilities
+      contract and a real Impact list, and no room for design. Focus on the "why" not the
+      "how"; implementation details belong in design.md.
 
       This is the foundation — specs, design, and tasks all build on this.
     requires: []
@@ -83,8 +84,26 @@ artifacts:
       MODIFIED requirements workflow:
       1. Locate the existing requirement in openspec/specs/<capability>/spec.md
       2. Copy the ENTIRE requirement block (from `### Requirement:` through all scenarios)
+         from the live spec **as it stands at current HEAD** — not from an earlier change's
+         delta, not from an archived copy, not from memory
       3. Paste under `## MODIFIED Requirements` and edit to reflect new behavior
       4. Ensure header text matches exactly (whitespace-insensitive)
+      5. Diff the finished block against the live requirement and account for every
+         difference. Each one is either an edit this change intends or a silent revert of
+         somebody else's landed work, and the diff is the only thing that tells them apart.
+         A block carried back byte-identical is not a modification — drop it, or say what
+         changed.
+
+      A MODIFIED block replaces the live requirement wholesale at archive time. A stale copy
+      therefore does not conflict, it **reverts** — and it reverts quietly, in an artifact
+      nobody re-reads. Any change that archives between this plan and its implementation
+      makes every carried body stale until it is re-derived.
+
+      Requirements accrete, and an oversized requirement is the real defect behind most of
+      these reverts: the larger the block, the more of somebody else's work each delta
+      carries, and the less likely anyone reviews it line by line. When a change touching one
+      behavior has to carry a dozen, the requirement has stopped being one requirement —
+      split it into the behaviors it has accumulated.
 
       Common pitfall: Using MODIFIED with partial content loses detail at archive time.
       If adding new concerns without changing existing behavior, use ADDED instead.
@@ -230,6 +249,55 @@ artifacts:
       setting that corrupts data without erroring. "Loudly" is the common case: if a bad
       value crashes at boot or fails the build, the boot and the build are the test.
 
+      **A task is an instruction and its verification, not an argument for itself.** Two
+      sentences is the working size: what to do, and how you will know it worked. A task
+      running past about four sentences of prose has stopped instructing and started
+      justifying — and justification belongs in design.md, where one decision is recorded
+      once instead of restated in each task that depends on it. Cite it from the task
+      (`per design.md → Decisions`) rather than reproducing the reasoning.
+
+      In particular, do not argue with the implementer. Pre-empting a wrong move the design
+      already rules out, warning about a mistake someone made last time, or defending a
+      choice against an alternative nobody proposed all read as instruction and are not.
+      If a wrong move is genuinely reachable, the check that catches it is the answer; a
+      paragraph asking the implementer not to make it is not.
+
+      This budget covers prose. It does not cover the text of a check — a check script
+      written out in full is not padding, and the rule below says why it must be there.
+
+      **Watch the ratio between tasks.md and design.md.** Tasks growing past the design they
+      implement is the signal that the design is unfinished: the decisions are being made in
+      the checklist, one task at a time, where no reviewer reads them as a whole and the next
+      change cannot inherit them. When a plan crosses that line, the repair is to move the
+      reasoning into design.md, not to write shorter tasks around it.
+
+      **Every check you write must be run before the plan ships, and must be able to fail.**
+      Write the check out in full in the task, run it at planning time against current HEAD,
+      and record its exit status and the relevant line of its output next to it. Which result
+      you need depends on what the check is for:
+
+      - A check standing in for a **behavior this change adds** must be RED at HEAD. It cannot
+        be otherwise — the behavior does not exist yet. A green one is testing something else.
+      - A check **pinning an invariant that already holds** — a grep that must find nothing, a
+        boundary that must not move — is green at HEAD, which proves nothing on its own. It
+        needs a negative control: plant the violation, show the check fires, remove the plant,
+        show it goes quiet again. Record both halves. An unfalsifiable guard is worse than no
+        guard, because it is believed.
+
+      **Record what the check selected, not only that it ran.** A selector naming nothing
+      succeeds — a test filter that matches no test, a pattern searched under a path that does
+      not exist, a result line dropped by whatever reads the output. There was nothing to
+      fail, so it passed, and it will keep passing after the behavior it was named for is
+      deleted. So the evidence beside every check is a count: tests executed, lines matched,
+      files scanned. **Zero selected is a failed check**, and the count — not the exit
+      status — is what shows the command reaches the thing it claims to verify.
+
+      **Every number in the plan comes from a command.** Line counts, call-site counts,
+      scenario totals, coverage percentages, "the only three places that do X" — write the
+      command that produced the number beside the number. Counts arrived at by reading are
+      wrong often enough that a reviewer who recounts them will keep finding defects, and a
+      task built on a wrong count sends the implementer to the wrong places.
+
       **TDD structure — every behavior-changing implementation group MUST follow this
       pattern:**
       1. RED: write the smallest failing tests that express the group's behavior. Derive
@@ -267,12 +335,59 @@ artifacts:
       project context for what an acceptance test costs in this repository; where the
       acceptance tier is slow or serialized, that cost is paid by every future run.
 
-      **Parallel groups**: when two or more groups operate on independent modules or
-      packages and share only an already-completed upstream group as a dependency, mark
-      them for parallel dispatch by adding `<!-- parallel-after: N -->` on the line
-      immediately after the `##` heading, where N is the last group both depend on. Only
-      mark groups as parallel if they are truly independent — touching different file
-      trees with no shared mutable state.
+      **Parallel groups — look for them, then say what you found.** Once the groups are
+      drafted, walk the list once more and ask of each pair whether it has to be ordered
+      at all. Outside-in TDD produces a narrative — outermost first, then inward — and
+      that narrative reads as a sequence even where the work underneath is not one. The
+      ordering you inherited from telling the story is not evidence that the second group
+      needs the first.
+
+      A pair may run in parallel when all three hold:
+
+      1. **No shared file.** Not "different directories" — the test is whether the two
+         groups write to the same file. Two groups adding separate modules inside one
+         package are fine; two groups editing one file are not, whatever tree it sits in.
+      2. **No dependency between them.** Neither needs the other's code to exist to write
+         its test or make it pass. This is the test that actually binds, and it is not
+         satisfied by touching different files: a factory in one file and the type it
+         constructs in another are still ordered.
+      3. **A failure stays attributable.** Concurrent implementers share one working
+         tree, so ask what this group's gate run actually reaches: does it load, compile,
+         or execute the other group's files? One compilation unit, a suite that imports or
+         executes every module, a lint over the whole tree — each of those makes the other
+         group's half-written file this group's failure, and the criterion fails. A gate
+         that only reaches files this group owns does not, however broad the command that
+         launches it. What the run touches is the test; the breadth of the command is not.
+
+         Where the answer is a property of the repository rather than of this pair — one
+         compilation unit, one suite that runs everything — it vetoes every pair in every
+         change here, and it will keep doing so. That fact belongs in the project rules,
+         not in this change. If the rules already record it, cite them in the ordering line
+         and skip the pair walk: the answer cannot come out differently, and walking the
+         pairs to rediscover it each time costs a planner's attention for nothing. If they
+         do not, walk the pairs once, record what you found in the ordering line, and say
+         that it is a standing property of the repository so it can move into the rules.
+         Either way, do not reach for it pair by pair: an answer that is the same for all
+         work in this repo says nothing about these groups, and citing it hides which
+         criterion actually bound.
+
+      Mark each qualifying group with `<!-- parallel-after: N -->` on the line immediately
+      after its `##` heading, where N is the last group they both depend on.
+
+      **Then record the outcome either way.** If groups are parallel, the markers say so.
+      If they are not, write one line in tasks.md naming the criterion that bound and the
+      pair it bound — "groups 2 through 8 all edit `src/changes.rs`, and one file is
+      shared mutable state" is a complete answer, and a better one than silence. Cite the
+      first criterion that fires, not the broadest one available: a pair already ruled out
+      by a shared file is not evidence about the gate, and citing the gate there reads as
+      an answer about the repository when the file was the real constraint. Sequential is
+      a legitimate finding; an unexamined sequence is not, and the reader cannot tell them
+      apart without the line.
+
+      Mark conservatively. A wrongly marked pair is now genuinely dispatched at the same
+      time, so the cost of a false positive is two agents in one tree — worse than the
+      serial run you avoided. When you are unsure whether the second group needs the
+      first, it does.
 
       **Contract gate:**
       Add a task before "Run the group tests" in any group that adds, changes, or removes
@@ -466,11 +581,29 @@ artifacts:
       the assumptions under audit and will confirm them. This session merges the findings,
       repairs the owning artifact, and writes planning-review.md; the reviewers edit nothing.
 
+      If this repository defines a planning reviewer subagent type, dispatch one per slice,
+      simultaneously. Slice the review list four ways, which keeps each reviewer's scope
+      small enough to be thorough and stops the same gap arriving four times: (A) capability
+      coverage, scenario quality, and cross-artifact contradictions; (B) design completeness,
+      test boundaries, and the audit of whether each proposed check could fail at all;
+      (C) task alignment, lifecycle discipline, and `parallel-after` independence; and
+      (D) factual verification — take every empirical claim the artifacts make about the
+      codebase or the environment and check it by running the command or reading the source,
+      reporting each as confirmed or false. Reviewer D finds the defects the other three
+      cannot, because a document review cannot catch a number nobody measured.
+
       Review all of the following:
 
       - **Capability coverage**: every capability in proposal.md has the correct delta
         spec, and no capability exists only in design.md or tasks.md. Capability names
         match the live `openspec/specs/` tree.
+
+      - **Delta fidelity**: every MODIFIED block is diffed against the live requirement at
+        HEAD, and every difference is accounted for as either this change's edit or an
+        unnoticed revert of work that landed since. Record the comparison, not the
+        impression — a body nobody diffed is a body nobody checked, and archiving it
+        overwrites the live requirement whole. A body carried back byte-identical belongs
+        under ADDED or nowhere.
 
       - **Scenario quality and coverage**: every scenario has concrete inputs, observable
         outcomes, and relevant side effects, and tasks.md contains a corresponding test
@@ -496,8 +629,17 @@ artifacts:
         update. Every group has exactly one valid kind marker. Behavior groups preserve
         RED → GREEN → REFACTOR; refactors preserve CHARACTERIZE → REFACTOR → VERIFY;
         operational groups preserve CHECK → CHANGE → VERIFY. Mixed groups are split
-        before implementation. Any `parallel-after` marker names groups that are truly
-        independent.
+        before implementation. tasks.md either carries `parallel-after` markers or states
+        why its groups are sequential — silence means nobody looked, though a citation of a
+        standing repository-wide veto recorded in the project rules is a complete answer and
+        needs no pair walk behind it. Every marker names a
+        pair that shares no file, has no dependency between them, and can fail
+        attributably. Where the finding is sequential, it names the first criterion that
+        fires for that pair; a repository-wide fact about the gate standing in for a pair
+        already ruled out by a shared file is an unexamined sequence wearing a reason.
+        Task lines instruct rather than justify, and tasks.md has not grown past the
+        design.md it implements — either is a sign the design is being written in the
+        checklist.
 
       - **Contradictions and stale assumptions**: artifacts agree about scope, contracts,
         names, persistence, dependencies, and verification expectations. Check the
@@ -512,7 +654,10 @@ artifacts:
 
       - **Scenarios whose verification cannot fail.** A scenario checked by printing
         rather than asserting, by a snapshot of a state that is never settled, or by a
-        test that would still pass with the behavior removed.
+        test that would still pass with the behavior removed. Run every command in the
+        verification matrix and read how many tests it actually selected: a filter that
+        matches none of them exits clean, so an entire matrix can be green while binding
+        nothing. The count is the finding; the exit status is not.
 
       - **Verification that stops short of the step it vouches for.** Each entry in the
         verification matrix must reach the step it is evidence about.
@@ -537,6 +682,12 @@ artifacts:
       Repair gaps in the owning artifact: proposal.md owns motivation, scope, capabilities,
       and impact; specs own observable behavior; design.md owns technical decisions, test
       boundaries, and verification; tasks.md owns ordered implementation and verification work.
+
+      **Repair a number with a command, not with an edit.** A count corrected in the artifact
+      that raised it is still wrong in every other artifact that quoted it, and the survivors
+      surface one at a time during implementation, each as its own defect. Sweep every
+      artifact for the old value in the same pass, fix each occurrence, and record the sweep
+      rather than the edit.
 
       Then record:
 
@@ -577,36 +728,41 @@ apply:
     Before the first implementation task, compare the current HEAD of this repository and
     of any relevant sibling repository with planning-review.md → Reviewed Against. If any
     moved after review, inspect the intervening diff and refresh the affected artifacts
-    and planning review before proceeding. Commits created by this change after
+    and planning review before proceeding. When the intervening commits archived another
+    change, re-derive every MODIFIED block in this change's deltas from the live spec:
+    a body written against the older text does not conflict at archive time, it reverts
+    that change silently. Commits created by this change after
     implementation starts are expected; later external commits that touch a planned
     contract or implementation surface require the same refresh.
 
     ## Isolation
 
-    Before the first implementation task, check whether another agent session may be
-    working in this repository — `git worktree list`, and the repository's own agent
-    listing if it has one. If one might be, implement this change in its own git
-    worktree rather than in the shared checkout:
+    **Work in the checkout you were given.** Do not create a git worktree unless the
+    project rules ask for one or the user does. Moving a change into a worktree relocates
+    the work somewhere the user is not looking and leaves a merge to be done later, so it
+    is a decision for whoever is watching the repository, not a guess to be made from
+    inside it. "Another session might be active" is not something this session can
+    establish, and acting on the possibility has proved to be wrong far more often than
+    right.
+
+    **Treat the working tree as shared state regardless**, because it is: parallel task
+    groups put two implementers in one checkout, and a working tree, its index, its HEAD
+    and any build cache keyed on the checkout path are all common ground. So, always:
+
+    - Stage explicit paths. Never `git add -A`/`-u`, never a bare directory — a broad add
+      commits the other agent's half-written files under your message.
+    - Never use a relative ref (`HEAD~1`, `HEAD^`, `@{1}`) in `reset`, `rebase` or
+      `--amend`; another commit may have landed in between. Fix forward instead.
+    - Treat a failure in a file you did not touch as suspect before you debug it — re-run,
+      and check whose work it is.
+
+    When the project rules or the user do call for isolation, create it explicitly:
 
         git worktree add ../<repo>-<change-name> -b <change-name>
 
-    A working tree is shared state, and so are the index, HEAD, and any build cache
-    keyed on the checkout path. Two sessions in one tree means a broad `git add` sweeps
-    the other's files, `git reset HEAD~1` can drop the other's commit, a build compiles
-    the other's half-finished edit, and a lint or type error in either one's uncommitted
-    work fails the shared gate for both. None of these announce themselves as
-    cross-session problems: they surface as a failure in a file you did not touch.
-
-    Work in the worktree until the change is complete and verified, then merge or
-    rebase onto the shared branch as one reviewed unit and remove the worktree. Do not
+    then work there until the change is complete and verified, merge or rebase onto the
+    shared branch as one reviewed unit, remove the worktree, and report its path. Do not
     rewrite shared history to tidy up afterwards.
-
-    If a worktree is genuinely impossible — a toolchain that resolves paths absolutely,
-    a dependency cache that cannot be duplicated — say so in the change's design or task
-    notes, and then treat every git command as a shared-state mutation: stage explicit
-    paths only, never `git add -A`/`-u` or a bare directory; never use a relative ref
-    (`HEAD~1`, `HEAD^`, `@{1}`) in `reset`, `rebase` or `--amend`, because another
-    session's commit may have landed in between; and fix forward rather than rewriting.
 
     ## Gates
 
@@ -622,13 +778,39 @@ apply:
     If this repository defines implementer and reviewer subagent types, dispatch one
     implementer per task group, run the gate between groups, and mark the group complete.
     Pre-gather context before dispatching — the agent starts cold and must not explore
-    the codebase itself: include the proposal, the specs relevant to that group, design.md,
-    that group's task lines only, a short git state summary, the existing source files the
-    group will modify, and one similar existing implementation as a pattern reference.
-    Tell it to report NEEDS_CONTEXT rather than searching for anything not provided. After
+    the codebase itself. Build every dispatch prompt of a change in one fixed order, with
+    the part that does not vary first: proposal.md and design.md by path together with the
+    slice this group implements quoted, then that group's specs the same way, its task
+    lines only, a short git state summary, and a manifest naming the exact paths the group
+    will read or modify plus one similar existing implementation as a pattern reference. Where
+    a group edits agent-facing guidance, the manifest names the candidate files and quotes the
+    entries the change may supersede, so placing the rule in the narrowest file that covers it
+    does not mean reading every such file in the repository first.
+    Re-measure before dispatching: the counts and line numbers in a group's task lines were
+    taken when the plan was written, and a claim that no longer reproduces against the tree
+    is drift in the owning artifact, repaired before the group goes out rather than met at
+    its gate. Quote slices, name documents. A dispatch prompt is a tool input that stays in the
+    orchestrator's context for the rest of the change, so a document quoted in full is
+    charged again for every group dispatched — which is the cost per-group dispatch exists
+    to avoid. Quoting the passage that governs this group is cheap and saves the searching;
+    quoting the document is not. Do not shape a dispatch prompt hoping to warm a prefix for
+    the next group: measured, a prompt is not cached across sibling agents.
+    Tell it to report NEEDS_CONTEXT rather than searching for anything not provided, and to
+    stop and report rather than grind: the same failure surviving three consecutive fixes is
+    a BLOCKED, and a file the manifest does not name is a NEEDS_CONTEXT. Both are complete
+    outcomes. Re-dispatch the group to a fresh implementer with that evidence rather than
+    escalating — budget two per group — because every turn pays for the whole context again and
+    a long agent that is still failing is the most expensive thing in the run. After
     completing group N, dispatch all remaining groups marked `<!-- parallel-after: N -->`
     simultaneously, then gate each. Dispatch the Change Review group to the reviewer agent
-    with only the artifacts and the diff.
+    with only the artifacts and the base commit ref, and let the reviewer run the diff itself —
+    a context that ends with the review can afford the change's largest object; the
+    orchestrator's, with groups still to gate, cannot. If the repository also provides a
+    locator subagent, send location questions there — a planned path that no longer exists, a
+    file an implementer named only by concept, which nested guidance file covers a package —
+    and keep the paths it returns rather than its reasoning. The orchestrator does not search
+    the tree itself, because a search's output does not need to survive the change and its
+    context does.
 
     If the repository defines no such agents, implement each group inline in this session
     and delegate only the Change Review finding pass. Never fork the implementing session

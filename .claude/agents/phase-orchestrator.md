@@ -26,14 +26,11 @@ The user will tell you one of:
 
 Work through each target change one at a time.
 
-### 2·0. Usage safety check (before starting each change)
+### 2·0. Budget check (before starting each change)
 
-Before beginning a change — including the transition from one archive to the next change — run the `checking-usage` skill's `fetch-usage.sh --json` and read the authoritative 5-hour session utilization. You are guarding against the rate limit being hit **mid-change**, which halts a subagent and leaves half-implemented, uncommitted work.
+The change boundary — after one archive, before the next change starts — is the only place where stopping costs nothing. A halt mid-change leaves a subagent's work half-implemented and uncommitted.
 
-- `five_hour.utilization` is the percent of the 5h **session** limit used (remaining = `100 - utilization`); `five_hour.resets_at` is when the window resets. `five_hour.severity` (`warning`/higher) is a ready-made "am I close?" signal.
-- If the session limit is heavily used — a real risk of hitting it before a full change completes — **do not start the next change**. Stop here, at a clean boundary where every prior change is archived and committed, and report the utilization, the reset time (`resets_at`), and that you are pausing to avoid a mid-change halt. Resume after the window resets or on the user's instruction.
-
-`fetch-usage.sh` calls the OAuth usage API and reports your true remaining quota — unlike `ccusage`, which estimates from local logs against an assumed budget and is wrong for this purpose. If `fetch-usage.sh` fails (no token / offline), fall back to telling the user to run the interactive `/usage` command. Treat this as a safety heuristic: when at all in doubt, surface the snapshot and let the user decide rather than risk halting mid-change. (See the `checking-usage` skill for details.)
+If this harness exposes a usage or quota check, and the project rules name one, run it at each change boundary and read the remaining session allowance. When what remains is not clearly enough for a whole change, **do not start the next one**: stop at the boundary where every prior change is archived and committed, and report the numbers, the reset time, and why you are pausing. Resume after the window resets or on the user's instruction. If no such check exists, keep the boundary discipline anyway — and when at all in doubt, surface the situation and let the user decide rather than risk halting mid-change.
 
 ### 2a. Artifact generation (ff-change)
 
@@ -51,7 +48,7 @@ Spawn an **`apply-orchestrator`** subagent **using the `sonnet` model**:
 
 > You are implementing the change `"<change-name>"`. Its artifacts exist under `openspec/changes/<change-name>/`. Work through all task groups in order until all are complete or you are blocked. Report the final status as either "Apply complete" or "Apply paused" with the reason.
 
-One subagent per change is the right isolation boundary for an unattended batch: it keeps each change's full implementation context out of your (the phase orchestrator's) window. Note that the apply-orchestrator implements its change's task groups **inline** within its own context — it does not fan out a subagent per group; it dispatches only a reviewer for the Change Review group.
+One subagent per change is the right isolation boundary for an unattended batch: it keeps each change's full implementation context out of your (the phase orchestrator's) window. The apply-orchestrator in turn dispatches **one implementer subagent per task group**, so no single context carries a whole change; expect its report to summarise groups, not code.
 
 If the subagent reports `Apply paused` or any blocker: **surface the full status output and ask for instructions**. Options to offer:
 1. Retry (after the user resolves the issue)
@@ -104,4 +101,4 @@ Not started (depend on change-c):
 - **Never run out of dependency order** — if a dependency failed or was skipped, skip all changes that depend on it and say so in the final report.
 - **Spawn subagents for all three steps** (ff-change, apply, archive) — do not invoke those skills inline. Each step is heavy and will exhaust your context if run directly.
 - **In-progress changes** (directory exists, not archived): start at 2b, not 2a.
-- **Pause at change boundaries, never mid-change** — if the usage check (2·0) shows a risk of hitting the rate limit before a change finishes, stop after the current archive and report; do not dispatch the next change. A boundary pause loses nothing; a mid-change halt strands uncommitted work.
+- **Pause at change boundaries, never mid-change** — if the budget check (2·0) shows a risk of running out before a change finishes, stop after the current archive and report; do not dispatch the next change. A boundary pause loses nothing; a mid-change halt strands uncommitted work.

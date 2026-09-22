@@ -7,6 +7,8 @@
 - This repository HEAD: `<commit>`
 - <!-- Sibling repository --> HEAD: `<commit or Not applicable>`
 - Working tree: <!-- clean, or name the planning files intentionally included -->
+- MODIFIED deltas diffed against the live spec at that HEAD: <!-- N of N, and what each
+     unaccounted difference turned out to be — or Not applicable when the change adds only -->
 
 ## Gaps Found and Fixed
 
