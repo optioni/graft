@@ -102,7 +102,7 @@ Tag `vX.Y.Z` on `main` → GoReleaser builds and publishes.
 - A Homebrew **cask** is published to `optioni/homebrew-tap` by the same run. GoReleaser
   deprecated formula output (`brews`), and Homebrew on Linux does not support casks — so
   brew installs are macOS-only and Linux users take `go install` or a released binary.
-  A post-install hook clears the quarantine attribute.
+  A `postflight_steps` run step (via `custom_block`) clears the quarantine attribute.
 
 Releases are cut by hand. Automated version bumping stays out until tagging actually hurts.
 
